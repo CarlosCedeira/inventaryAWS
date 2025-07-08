@@ -1,0 +1,103 @@
+CREATE TABLE Categoria (
+  id INT PRIMARY KEY NOT NULL,
+  nombre VARCHAR(100) NOT NULL,
+  descripcion TEXT,
+  padre_id INT,
+  nieto_id INT,
+  FOREIGN KEY (padre_id) REFERENCES Categoria(id),
+  FOREIGN KEY (nieto_id) REFERENCES Categoria(id)
+);
+
+CREATE TABLE Usuarios (
+  id INT PRIMARY KEY,
+  rol VARCHAR(50) NOT NULL,
+  nombre VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE Producto (
+  id INT PRIMARY KEY,
+  nombre VARCHAR(100) NOT NULL,
+  descripcion TEXT,
+  id_categoria INT NOT NULL,
+  cantidad INT NOT NULL,
+  precio_compra DECIMAL(10,2) NOT NULL,
+  fecha_entrada DATE NOT NULL,
+  caducidad DATE NOT NULL,
+  ubicacion VARCHAR(100),
+  unidad_medida VARCHAR(50),
+  cantidad_medida DECIMAL(10,2),
+  codigo_barras VARCHAR(50),
+  eliminado BOOLEAN DEFAULT FALSE,
+  FOREIGN KEY (id_categoria) REFERENCES Categoria(id)
+);
+
+CREATE TABLE Proveedores (
+  id INT PRIMARY KEY,
+  nombre VARCHAR(100) NOT NULL,
+  direccion TEXT NOT NULL,
+  telefono VARCHAR(20) NOT NULL,
+  correo VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE ProductoProveedor (
+  id INT PRIMARY KEY,
+  id_producto INT NOT NULL,
+  id_proveedor INT NOT NULL,
+  precio_unitario DECIMAL(10,2) NOT NULL,
+  tiempo_entrega_estimado INT,
+  FOREIGN KEY (id_producto) REFERENCES Producto(id),
+  FOREIGN KEY (id_proveedor) REFERENCES Proveedores(id)
+);
+
+CREATE TABLE Compras (
+  id INT PRIMARY KEY,
+  id_producto INT NOT NULL,
+  id_proveedor INT NOT NULL,
+  fecha DATE NOT NULL,
+  cantidad INT NOT NULL,
+  precio_unitario DECIMAL(10,2) NOT NULL, 
+  precio_total DECIMAL(10,2) NOT NULL,
+  numero_factura VARCHAR(50),
+  FOREIGN KEY (id_producto) REFERENCES Producto(id),
+  FOREIGN KEY (id_proveedor) REFERENCES Proveedores(id)
+);
+
+CREATE TABLE Clientes (
+  id INT PRIMARY KEY,
+  nombre VARCHAR(100) NOT NULL,
+  direccion TEXT NOT NULL,
+  telefono VARCHAR(20) NOT NULL,
+  correo VARCHAR(100) NOT NULL,
+  documento VARCHAR(50),
+  tipo_cliente VARCHAR(50),
+  añadido_por INT NOT NULL,
+  FOREIGN KEY (añadido_por) REFERENCES Usuarios(id)
+);
+
+CREATE TABLE Ventas (
+  id INT PRIMARY KEY,
+  id_producto INT NOT NULL,
+  id_cliente INT NOT NULL,
+  cantidad INT NOT NULL,
+  precio_unitario DECIMAL(10,2) NOT NULL,
+  precio_total DECIMAL(10,2) NOT NULL,
+  fecha_salida DATE,
+  descuentos DECIMAL(10,2),
+  impuestos DECIMAL(10,2) NOT NULL,
+  id_comercial INT NOT NULL,
+  numero_factura VARCHAR(50),
+  FOREIGN KEY (id_producto) REFERENCES Producto(id),
+  FOREIGN KEY (id_cliente) REFERENCES Clientes(id),
+  FOREIGN KEY (id_comercial) REFERENCES Usuarios(id)
+);
+
+CREATE TABLE Movimientos (
+  id INT PRIMARY KEY,
+  id_producto INT NOT NULL,
+  tipo_movimiento VARCHAR(10) NOT NULL, -- entrada, salida
+  motivo VARCHAR(50) NOT NULL, -- caducado, roto, devolución, otros
+  cantidad INT NOT NULL,
+  descripcion TEXT NOT NULL,
+  fecha_salida DATE NOT NULL,
+  FOREIGN KEY (id_producto) REFERENCES Producto(id)
+);
