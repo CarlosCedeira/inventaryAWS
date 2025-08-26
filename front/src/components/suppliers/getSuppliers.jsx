@@ -32,6 +32,7 @@ const GetSupliers = () => {
   return (
     <>
       <h1 className="text-center mt-3 mb-5">Lista de proveedores</h1>
+      <button className="btn btn-success mb-3">Añadir proveedor</button>
 
       <div className={`fade-init${fadeIn ? " fade-in" : ""}`}>
         <table className="table table-responsive table-hover align-middle shadow">

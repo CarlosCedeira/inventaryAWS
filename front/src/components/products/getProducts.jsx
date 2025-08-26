@@ -111,8 +111,8 @@ const GetProducts = () => {
               <th className="text-start">Precio de Compra</th>
               <th className="text-start">Caducidad</th>
               <th className="text-start">Ubicación</th>
-              <th className="text-start">Unidad de medida</th>
-              <th className="text-start">Cantidad de medida</th>
+              {/*<th className="text-start">Unidad de medida</th> */}
+              {/* <th className="text-start">Cantidad de medida</th> */}
             </tr>
           </thead>
           <tbody>
@@ -154,7 +154,7 @@ const GetProducts = () => {
                 >
                   {product.ubicacion}
                 </td>
-                <td
+                {/*<td
                   className="text-start"
                   onClick={() => handleTdClick(product)}
                 >
@@ -165,7 +165,7 @@ const GetProducts = () => {
                   onClick={() => handleTdClick(product)}
                 >
                   {product.cantidad_medida}
-                </td>
+                </td> */}
               </tr>
             ))}
           </tbody>

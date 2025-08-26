@@ -143,6 +143,17 @@ function Nav() {
             <li className="nav-item">
               <a
                 className={`nav-link text-white ${
+                  activePage === "proveedores" ? "active" : ""
+                }`}
+                href="#"
+                onClick={() => setActivePage("proveedores")}
+              >
+                Proveedores
+              </a>
+            </li>
+            <li className="nav-item">
+              <a
+                className={`nav-link text-white ${
                   activePage === "ventas" ? "active" : ""
                 }`}
                 href="#"
@@ -162,17 +173,7 @@ function Nav() {
                 Compras
               </a>
             </li>
-            <li className="nav-item">
-              <a
-                className={`nav-link text-white ${
-                  activePage === "proveedores" ? "active" : ""
-                }`}
-                href="#"
-                onClick={() => setActivePage("proveedores")}
-              >
-                Proveedores
-              </a>
-            </li>
+
             <li className="nav-item">
               <a
                 className={`nav-link text-white ${
