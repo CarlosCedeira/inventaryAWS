@@ -14,9 +14,23 @@ const GetProducts = () => {
   const [showCard, setShowCard] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
 
+  // Función para obtener productos desde localStorage o getData.js
+  const loadProducts = () => {
+    const localProducts = localStorage.getItem("productos");
+    if (localProducts) {
+      const parsedProducts = JSON.parse(localProducts);
+      localStorage.setItem("productos", JSON.stringify(parsedProducts));
+      localStorage.setItem("productosBackup", JSON.stringify(parsedProducts));
+      return parsedProducts;
+    }
+    localStorage.setItem("productos", JSON.stringify(getProducts));
+    localStorage.setItem("productosBackup", JSON.stringify(getProducts));
+    return getProducts;
+  };
+
   useEffect(() => {
     const timer = setTimeout(() => {
-      setProducts(getProducts);
+      setProducts(loadProducts());
       setLoading(false);
     }, 1000);
     return () => clearTimeout(timer);
@@ -70,12 +84,13 @@ const GetProducts = () => {
 
   return (
     <>
-      <h1 className="text-center mt-3 mb-5">Lista de productos</h1>
-      <div className="d-flex align-items-center justify-content-right mb-3">
+      <h1 className="text-center mt-3 mb-5">Listado de productos</h1>
+      <div className="d-flex align-items-center justify-content-right mb-3 ms-3 sticky-top">
+        {" "}
         <div className="mb-3 d-flex justify-content-right">
           <input
             type="text"
-            className="form-control w-100"
+            className="form-control w-100 "
             placeholder="Buscar por nombre..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -101,7 +116,7 @@ const GetProducts = () => {
           </select>
         </div>
       </div>
-      <div className={`fade-init${fadeIn ? " fade-in" : ""}`}>
+      <div className={`fade-init${fadeIn ? " fade-in" : ""} ms-3`}>
         <table className="table table-responsive table-hover align-middle shadow">
           <thead className="table-primary sticky-top">
             <tr>
@@ -172,11 +187,7 @@ const GetProducts = () => {
         </table>
       </div>
       {showCard && selectedProduct && (
-        <CardLayout
-          product={selectedProduct}
-          onClose={handleCloseCard}
-          // Puedes pasar más props si lo necesitas
-        />
+        <CardLayout product={selectedProduct} onClose={handleCloseCard} />
       )}
     </>
   );

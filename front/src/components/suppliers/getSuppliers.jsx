@@ -1,16 +1,45 @@
 import { useEffect, useState } from "react";
-import getClients from "./getData.js";
+import getSuppliers from "./getData.js";
 import Spinners from "../spiners.jsx";
 
 const GetSupliers = () => {
   const [loading, setLoading] = useState(true);
-  const [clients, setClients] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
 
   const [fadeIn, setFadeIn] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+
+  // Estado para el formulario
+  const [form, setForm] = useState({
+    nombre: "",
+    tipo_cliente: "",
+    documento: "",
+    telefono: "",
+    direccion: "",
+    correo: "",
+    anadido_por: "",
+  });
+
+  // Función para obtener proveedores desde localStorage o getData.js
+  const loadSuppliers = () => {
+    const localSuppliers = localStorage.getItem("proveedores");
+    if (localSuppliers) {
+      const parsedSuppliers = JSON.parse(localSuppliers);
+      localStorage.setItem("proveedores", JSON.stringify(parsedSuppliers));
+      localStorage.setItem(
+        "proveedoresBackup",
+        JSON.stringify(parsedSuppliers)
+      );
+      return parsedSuppliers;
+    }
+    localStorage.setItem("proveedores", JSON.stringify(getSuppliers));
+    localStorage.setItem("proveedoresBackup", JSON.stringify(getSuppliers));
+    return getSuppliers;
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      setClients(getClients);
+      setSuppliers(loadSuppliers());
       setLoading(false);
     }, 1000);
     return () => clearTimeout(timer);
@@ -29,12 +58,115 @@ const GetSupliers = () => {
 
   if (loading) return <Spinners />;
 
+  const handleAddClick = () => setShowModal(true);
+  const handleCloseModal = () => setShowModal(false);
+
+  // Manejar cambios en el formulario
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  // Manejar envío del formulario
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    // Crear nuevo cliente con id único
+    const newClient = {
+      id: Date.now(),
+      ...form,
+    };
+    const updatedClients = [...suppliers, newClient];
+    setSuppliers(updatedClients);
+    localStorage.setItem("proveedores", JSON.stringify(updatedClients));
+    localStorage.setItem("proveedoresBackup", JSON.stringify(updatedClients));
+    setShowModal(false);
+    // Limpiar formulario
+    setForm({
+      nombre: "",
+      telefono: "",
+      direccion: "",
+      correo: "",
+    });
+  };
+
   return (
     <>
-      <h1 className="text-center mt-3 mb-5">Lista de proveedores</h1>
-      <button className="btn btn-success mb-3">Añadir proveedor</button>
+      <h1 className="text-center mt-3 mb-5">Listado de proveedores</h1>
+      <button className="btn btn-success mb-4 ms-3" onClick={handleAddClick}>
+        Añadir Proveedor
+      </button>
+      {showModal && (
+        <div
+          className="modal d-block"
+          tabIndex="-1"
+          style={{ background: "rgba(0,0,0,0.5)" }}
+        >
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title w-100 text-center">
+                  Añadir Proveedor
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={handleCloseModal}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <form onSubmit={handleSubmit}>
+                  <div className="row">
+                    <div className="col-md-4 mb-2"></div>
+                  </div>
+                  <fieldset className="mb-3">
+                    <div className="row">
+                      <div className="col-md-4 mb-2">
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Nombre"
+                          name="nombre"
+                          value={form.nombre}
+                          onChange={handleChange}
+                          required
+                        />
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Teléfono"
+                          name="telefono"
+                          value={form.telefono}
+                          onChange={handleChange}
+                        />
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Dirección"
+                          name="direccion"
+                          value={form.direccion}
+                          onChange={handleChange}
+                        />
+                        <input
+                          type="email"
+                          className="form-control"
+                          placeholder="Correo"
+                          name="correo"
+                          value={form.correo}
+                          onChange={handleChange}
+                        />
+                      </div>
+                    </div>
+                  </fieldset>
 
-      <div className={`fade-init${fadeIn ? " fade-in" : ""}`}>
+                  <button type="submit" className="btn btn-primary mt-2">
+                    Añadir
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      <div className={`fade-init${fadeIn ? " fade-in" : ""} ms-3`}>
         <table className="table table-responsive table-hover align-middle shadow">
           <thead className="table-primary sticky-top">
             <tr>
@@ -45,7 +177,7 @@ const GetSupliers = () => {
             </tr>
           </thead>
           <tbody>
-            {clients.map((client) => (
+            {suppliers.map((client) => (
               <tr key={client.id}>
                 <td className="text-start">{client.nombre}</td>
                 <td className="text-start">{client.direccion}</td>

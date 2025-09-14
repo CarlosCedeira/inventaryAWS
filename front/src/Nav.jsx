@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import GetProducts from "./components/products/getProducts.jsx";
 import GetClients from "./components/clients/getClients.jsx";
 import GetSupliers from "./components/suppliers/getSuppliers.jsx";
+import GetPurchases from "./components/purchases/purchases.jsx";
 // Importa aquí tus otros componentes de página
 // import Clientes from "./components/Clientes";
 // import Ventas from "./components/Ventas";
@@ -26,8 +27,8 @@ function Nav() {
         return <GetClients />;
       // case "ventas":
       //   return <Ventas />;
-      // case "compras":
-      //   return <Compras />;
+      case "compras":
+        return <GetPurchases />;
       case "proveedores":
         return <GetSupliers />;
       // case "movimientos":

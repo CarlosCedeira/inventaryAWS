@@ -1,4 +1,3 @@
-import { useState } from "react";
 import Nav from "./Nav";
 
 function App() {
