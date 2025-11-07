@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
-import getProducts from "./getData.js";
 import Spinners from "../spiners";
 import "./getProducts.css";
-import CardLayout from "../CardLayout";
+import CardLayout from "../cardLayout/CardLayout";
 
 const GetProducts = () => {
   const [loading, setLoading] = useState(true);
@@ -14,26 +13,25 @@ const GetProducts = () => {
   const [showCard, setShowCard] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
 
-  // Función para obtener productos desde localStorage o getData.js
-  const loadProducts = () => {
-    const localProducts = localStorage.getItem("productos");
-    if (localProducts) {
-      const parsedProducts = JSON.parse(localProducts);
-      localStorage.setItem("productos", JSON.stringify(parsedProducts));
-      localStorage.setItem("productosBackup", JSON.stringify(parsedProducts));
-      return parsedProducts;
+  // Función para obtener productos desde la API
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch("http://localhost:3000/productos");
+      if (!response.ok) {
+        throw new Error("Error al obtener los productos");
+      }
+      const data = await response.json();
+      console.log(data);
+      setProducts(data);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    } finally {
+      setLoading(false);
     }
-    localStorage.setItem("productos", JSON.stringify(getProducts));
-    localStorage.setItem("productosBackup", JSON.stringify(getProducts));
-    return getProducts;
   };
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setProducts(loadProducts());
-      setLoading(false);
-    }, 1000);
-    return () => clearTimeout(timer);
+    fetchProducts();
   }, []);
 
   // Activa el fade-in solo cuando loading pasa a false
@@ -121,13 +119,10 @@ const GetProducts = () => {
           <thead className="table-primary sticky-top">
             <tr>
               <th className="text-start">Nombre</th>
-              <th className="text-start">Categoría</th>
               <th className="text-start">Cantidad</th>
               <th className="text-start">Precio de Compra</th>
               <th className="text-start">Caducidad</th>
-              <th className="text-start">Ubicación</th>
-              {/*<th className="text-start">Unidad de medida</th> */}
-              {/* <th className="text-start">Cantidad de medida</th> */}
+              <th className="text-start">Publicado</th>
             </tr>
           </thead>
           <tbody>
@@ -138,12 +133,6 @@ const GetProducts = () => {
                   onClick={() => handleTdClick(product)}
                 >
                   {product.nombre}
-                </td>
-                <td
-                  className="text-start"
-                  onClick={() => handleTdClick(product)}
-                >
-                  {product.id_categoria}
                 </td>
                 <td
                   className="text-center"
@@ -167,20 +156,8 @@ const GetProducts = () => {
                   className="text-start"
                   onClick={() => handleTdClick(product)}
                 >
-                  {product.ubicacion}
+                  {product.publicado}
                 </td>
-                {/*<td
-                  className="text-start"
-                  onClick={() => handleTdClick(product)}
-                >
-                  {product.unidad_medida}
-                </td>
-                <td
-                  className="text-start"
-                  onClick={() => handleTdClick(product)}
-                >
-                  {product.cantidad_medida}
-                </td> */}
               </tr>
             ))}
           </tbody>

@@ -1,39 +1,78 @@
+/* --- Sidebar en escritorio (vertical a la izquierda) --- */
 .sidebar-sticky {
-    position: sticky;
+  position: sticky;
   top: 0;
+  left: 0;
   height: 100vh;
-  z-index: 1020;
-  
-  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  will-change: width;
+  background-color: #212529;
+  color: white;
+  transition: width 0.4s ease;
   overflow-x: hidden;
+  z-index: 1020;
 }
 
-.sidebar-sticky[style*="width: 0"] > *:not(button) {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s;
+
+/* --- Botón para abrir/cerrar menú --- */
+.navbar-toggler {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 2000;
+  padding: 0;
+  border-radius: 0 0 1.5rem 0;
+  width: 48px;
+  height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-.sidebar-sticky > *:not(button) {
-  opacity: 1;
-  transition: opacity 0.2s;
-}
 
-.sidebar-sticky .sidebar-content {
-  opacity: 1;
-  transition: opacity 0.2s;
-}
+/* --- Estilos para pantallas móviles (navbar superior horizontal) --- */
+@media (max-width: 668px) {
 
-.sidebar-sticky.collapsed .sidebar-content {
-  opacity: 0;
-  pointer-events: none;
-}
 
-.nav-link:hover, .nav-link:focus {
-  background-color: #343a40; /* Fondo más oscuro */
-  color: #ffc107 !important; /* Texto amarillo Bootstrap */
-  border-radius: 0.375rem;
-  transition: background 0.2s, color 0.2s;
-}
  
+  
+  .sidebar-sticky {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 668px !important;
+    height: 100px;
+    flex-direction: row;
+    justify-content: space-around;
+    align-items: center;
+    border-bottom: 2px solid #ffc107;
+    padding: 0.5rem;
+    z-index: 1050;
+  }
+
+  .sidebar-content {
+    display: flex;
+    width: 100%;
+    padding: 0;
+  }
+
+
+  .main-content {
+    margin-left: 0;
+    margin-top: 70px; /* deja espacio para el navbar superior */
+  }
+
+  .btn.btn-light.mb-5.mt-3.w-15 {
+    font-size: 1rem;      /* texto más pequeño */
+    width: 70px  !important;        /* botón más pequeño */
+    height: 70px !important;
+    padding: 0.25rem 0.5rem; /* menos espacio interno */
+    margin-top: 0.5rem !important;
+    margin-bottom: 0.5rem !important;
+    width: auto;            /* deja que se ajuste al contenido */
+  }
+
+  .nav-item {
+    display: flex;
+  }
+ 
+}

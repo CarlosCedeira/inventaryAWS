@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import getClients from "./getData.js";
 import Spinners from "../spiners.jsx";
 
 const GetClients = () => {
@@ -7,6 +6,23 @@ const GetClients = () => {
   const [clients, setClients] = useState([]);
   const [fadeIn, setFadeIn] = useState(false);
   const [showModal, setShowModal] = useState(false);
+
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const response = await fetch("http://localhost:3000/clientes");
+        if (!response.ok) throw new Error("Error al obtener los clientes");
+        const data = await response.json();
+        setClients(data);
+      } catch (error) {
+        console.error("Error en la solicitud:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClients();
+  }, []);
 
   // Estado para el formulario
   const [form, setForm] = useState({
@@ -18,28 +34,6 @@ const GetClients = () => {
     correo: "",
     anadido_por: "",
   });
-
-  // Función para obtener clientes desde localStorage o getData.js
-  const loadClients = () => {
-    const localClients = localStorage.getItem("clientes");
-    if (localClients) {
-      const parsedClients = JSON.parse(localClients);
-      localStorage.setItem("clientes", JSON.stringify(parsedClients));
-      localStorage.setItem("clientesBackup", JSON.stringify(parsedClients));
-      return parsedClients;
-    }
-    localStorage.setItem("clientes", JSON.stringify(getClients));
-    localStorage.setItem("clientesBackup", JSON.stringify(getClients));
-    return getClients;
-  };
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setClients(loadClients());
-      setLoading(false);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, []);
 
   useEffect(() => {
     if (!loading) {
@@ -70,8 +64,6 @@ const GetClients = () => {
     };
     const updatedClients = [...clients, newClient];
     setClients(updatedClients);
-    localStorage.setItem("clientes", JSON.stringify(updatedClients));
-    localStorage.setItem("clientesBackup", JSON.stringify(updatedClients));
     setShowModal(false);
     // Limpiar formulario
     setForm({
@@ -129,17 +121,6 @@ const GetClients = () => {
                         <input
                           type="text"
                           className="form-control"
-                          placeholder="Tipo de cliente"
-                          name="tipo_cliente"
-                          value={form.tipo_cliente}
-                          onChange={handleChange}
-                          required
-                        />
-                      </div>
-                      <div className="col-md-4 mb-2">
-                        <input
-                          type="text"
-                          className="form-control"
                           placeholder="Documento"
                           name="documento"
                           value={form.documento}
@@ -184,16 +165,6 @@ const GetClients = () => {
                       </div>
                     </div>
                   </fieldset>
-                  <div className="mb-2">
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="Añadido por"
-                      name="anadido_por"
-                      value={form.anadido_por}
-                      onChange={handleChange}
-                    />
-                  </div>
                   <button type="submit" className="btn btn-primary mt-2">
                     Añadir
                   </button>
@@ -211,18 +182,15 @@ const GetClients = () => {
               <th className="text-start">Direccion</th>
               <th className="text-start">Correo</th>
               <th className="text-start">Telefono</th>
-              <th className="text-start">Tipo de cleinte</th>
             </tr>
           </thead>
           <tbody>
-            {console.log(clients)}
             {clients.map((client) => (
               <tr key={client.id}>
                 <td className="text-start">{client.nombre}</td>
                 <td className="text-start">{client.direccion}</td>
-                <td className="text-center">{client.correo}</td>
+                <td className="text-center">{client.correo_electronico}</td>
                 <td className="text-center">{client.telefono}</td>
-                <td className="text-start">{client.tipo_cliente}</td>
               </tr>
             ))}
           </tbody>

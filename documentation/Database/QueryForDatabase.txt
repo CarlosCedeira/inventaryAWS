@@ -1,103 +1,182 @@
-CREATE TABLE Categoria (
-  id INT PRIMARY KEY NOT NULL,
-  nombre VARCHAR(100) NOT NULL,
-  descripcion TEXT,
-  padre_id INT,
-  nieto_id INT,
-  FOREIGN KEY (padre_id) REFERENCES Categoria(id),
-  FOREIGN KEY (nieto_id) REFERENCES Categoria(id)
+SCRIPT SQL – Versión mejorada y modular
+
+--- Esquema SQL simplificado para un MVP SaaS local
+-- Tienda online + Inventario + Punto de Venta (multi-tenant básico)
+-- Motor: MySQL (InnoDB, utf8mb4)
+
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- =====================================
+-- Tabla principal: tenants (negocios / clientes)
+-- =====================================
+
+CREATE TABLE tenants (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(150) NOT NULL,
+  contacto_email VARCHAR(150) NULL,
+  tarifa INT NOT NULL,
+  activo BOOLEAN DEFAULT TRUE,
+  fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =====================================
+-- Usuarios (multi-tenant)
+-- =====================================
+
+CREATE TABLE usuarios (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  id_tenant INT NOT NULL,
+  nombre VARCHAR(150) NOT NULL,
+  email VARCHAR(150) NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  rol ENUM('admin','vendedor') DEFAULT 'vendedor',
+  activo BOOLEAN DEFAULT TRUE,
+  fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (id_tenant) REFERENCES tenants(id) ON DELETE CASCADE,
+  UNIQUE KEY uq_usuario_email_tenant (id_tenant, email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =====================================
+-- Clientes (para pedidos online o POS)
+-- =====================================
+
+CREATE TABLE clientes (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  id_tenant INT NOT NULL,
+  nombre VARCHAR(200) NOT NULL,
+  email VARCHAR(150) NULL,
+  telefono VARCHAR(50) NULL,
+  direccion VARCHAR(255) NULL,
+  ciudad VARCHAR(100) NULL,
+  provincia VARCHAR(100) NULL,
+  codigo_postal VARCHAR(20) NULL,
+  pais VARCHAR(100) DEFAULT 'España',
+  notas TEXT NULL,
+  fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (id_tenant) REFERENCES tenants(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- =====================================
+-- Categorías
+-- =====================================
+
+CREATE TABLE categorias (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  id_tenant INT NOT NULL,
+  nombre VARCHAR(150) NOT NULL,
+  descripcion TEXT NULL,
+  FOREIGN KEY (id_tenant) REFERENCES tenants(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =====================================
+-- Productos
+-- =====================================
+
+CREATE TABLE productos (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  id_tenant INT NOT NULL,
+  nombre VARCHAR(200) NOT NULL,
+  descripcion TEXT NULL,
+  categoria_id INT NULL,
+  publicado BOOLEAN DEFAULT FALSE,
+  destacado BOOLEAN DEFAULT FALSE,
+  sku VARCHAR(100) NULL,
+  fecha_caducidad DATE
+  fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (id_tenant) REFERENCES tenants(id) ON DELETE CASCADE,
+  FOREIGN KEY (categoria_id) REFERENCES categorias(id) ON DELETE SET NULL
 );
 
-CREATE TABLE Usuarios (
-  id INT PRIMARY KEY,
-  rol VARCHAR(50) NOT NULL,
-  nombre VARCHAR(50) NOT NULL
+
+CREATE TABLE inventario (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  id_tenant INT NOT NULL,
+  producto_id INT NOT NULL,
+  cantidad INT DEFAULT 0,
+  stock_minimo INT DEFAULT 0,
+  precio_compra DECIMAL(10,2) DEFAULT 0.00,
+  precio_venta DECIMAL(10,2) DEFAULT 0.00,
+  ultima_actualizacion DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (id_tenant) REFERENCES tenants(id) ON DELETE CASCADE,
+  FOREIGN KEY (producto_id) REFERENCES productos(id) ON DELETE CASCADE
 );
 
-CREATE TABLE Producto (
-  id INT PRIMARY KEY,
-  nombre VARCHAR(100) NOT NULL,
-  descripcion TEXT,
-  id_categoria INT NOT NULL,
+
+-- =====================================
+-- Imagenes 
+-- =====================================
+
+CREATE TABLE imagenes (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  id_tenant INT NOT NULL,
+  entidad_id INT NOT NULL,
+  url_imagen VARCHAR(1000) NOT NULL,
+  alt_text VARCHAR(255) NULL,
+  es_principal BOOLEAN DEFAULT FALSE,
+  orden INT DEFAULT 0,
+  fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (id_tenant) REFERENCES tenants(id) ON DELETE CASCADE,
+  INDEX idx_imagen_entidad (entidad_tipo, entidad_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =====================================
+-- Pedidos (tienda online)
+-- =====================================
+
+CREATE TABLE pedidos (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  id_tenant INT NOT NULL,
+  cliente_id INT NULL,
+  estado ENUM('pendiente','completado','cancelado') DEFAULT 'pendiente',
+  total DECIMAL(12,2) DEFAULT 0.00,
+  metodo_pago VARCHAR(100) NULL,
+  fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (id_tenant) REFERENCES tenants(id) ON DELETE CASCADE,
+  FOREIGN KEY (usuario_cliente_id) REFERENCES usuarios(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE pedidos_items (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  pedido_id INT NOT NULL,
+  producto_id INT NULL,
+  nombre VARCHAR(300) NULL,
   cantidad INT NOT NULL,
-  precio_compra DECIMAL(10,2) NOT NULL,
-  fecha_entrada DATE NOT NULL,
-  caducidad DATE NOT NULL,
-  ubicacion VARCHAR(100),
-  unidad_medida VARCHAR(50),
-  cantidad_medida DECIMAL(10,2),
-  codigo_barras VARCHAR(50),
-  eliminado BOOLEAN DEFAULT FALSE,
-  FOREIGN KEY (id_categoria) REFERENCES Categoria(id)
-);
+  precio_unit DECIMAL(10,2) DEFAULT 0.00,
+  total DECIMAL(10,2) DEFAULT 0.00,
+  FOREIGN KEY (pedido_id) REFERENCES pedidos(id) ON DELETE CASCADE,
+  FOREIGN KEY (producto_id) REFERENCES productos(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE Proveedores (
-  id INT PRIMARY KEY,
-  nombre VARCHAR(100) NOT NULL,
-  direccion TEXT NOT NULL,
-  telefono VARCHAR(20) NOT NULL,
-  correo VARCHAR(100) NOT NULL
-);
+-- =====================================
+-- Ventas POS (punto de venta simple)
+-- =====================================
+CREATE TABLE ventas_pos (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  id_tenant INT NOT NULL,
+  usuario_id INT NULL,
+  total DECIMAL(12,2) DEFAULT 0.00,
+  metodo_pagoENUM('efectivo','tarjeta'),
+  fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (id_tenant) REFERENCES tenants(id) ON DELETE CASCADE,
+  FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE ProductoProveedor (
-  id INT PRIMARY KEY,
-  id_producto INT NOT NULL,
-  id_proveedor INT NOT NULL,
-  precio_unitario DECIMAL(10,2) NOT NULL,
-  tiempo_entrega_estimado INT,
-  FOREIGN KEY (id_producto) REFERENCES Producto(id),
-  FOREIGN KEY (id_proveedor) REFERENCES Proveedores(id)
-);
-
-CREATE TABLE Compras (
-  id INT PRIMARY KEY,
-  id_producto INT NOT NULL,
-  id_proveedor INT NOT NULL,
-  fecha DATE NOT NULL,
+CREATE TABLE ventas_pos_items (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  venta_pos_id INT NOT NULL,
+  producto_id INT NULL,
+  nombre VARCHAR(300) NULL,
   cantidad INT NOT NULL,
-  precio_unitario DECIMAL(10,2) NOT NULL, 
-  precio_total DECIMAL(10,2) NOT NULL,
-  numero_factura VARCHAR(50),
-  FOREIGN KEY (id_producto) REFERENCES Producto(id),
-  FOREIGN KEY (id_proveedor) REFERENCES Proveedores(id)
-);
+  precio_unit DECIMAL(10,2) DEFAULT 0.00,
+  total DECIMAL(10,2) DEFAULT 0.00,
+  FOREIGN KEY (venta_pos_id) REFERENCES ventas_pos(id) ON DELETE CASCADE,
+  FOREIGN KEY (producto_id) REFERENCES productos(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE Clientes (
-  id INT PRIMARY KEY,
-  nombre VARCHAR(100) NOT NULL,
-  direccion TEXT NOT NULL,
-  telefono VARCHAR(20) NOT NULL,
-  correo VARCHAR(100) NOT NULL,
-  documento VARCHAR(50),
-  tipo_cliente VARCHAR(50),
-  añadido_por INT NOT NULL,
-  FOREIGN KEY (añadido_por) REFERENCES Usuarios(id)
-);
-
-CREATE TABLE Ventas (
-  id INT PRIMARY KEY,
-  id_producto INT NOT NULL,
-  id_cliente INT NOT NULL,
-  cantidad INT NOT NULL,
-  precio_unitario DECIMAL(10,2) NOT NULL,
-  precio_total DECIMAL(10,2) NOT NULL,
-  fecha_salida DATE,
-  descuentos DECIMAL(10,2),
-  impuestos DECIMAL(10,2) NOT NULL,
-  id_comercial INT NOT NULL,
-  numero_factura VARCHAR(50),
-  FOREIGN KEY (id_producto) REFERENCES Producto(id),
-  FOREIGN KEY (id_cliente) REFERENCES Clientes(id),
-  FOREIGN KEY (id_comercial) REFERENCES Usuarios(id)
-);
-
-CREATE TABLE Movimientos (
-  id INT PRIMARY KEY,
-  id_producto INT NOT NULL,
-  tipo_movimiento VARCHAR(10) NOT NULL, -- entrada, salida
-  motivo VARCHAR(50) NOT NULL, -- caducado, roto, devolución, otros
-  cantidad INT NOT NULL,
-  descripcion TEXT NOT NULL,
-  fecha_salida DATE NOT NULL,
-  FOREIGN KEY (id_producto) REFERENCES Producto(id)
-);
+-- =====================================
+-- Notas y recomendaciones:
+-- 1) MySQL es una buena opción para este MVP (fácil de desplegar y escalar).
+-- 2) La multi-tenencia es a nivel de fila (id_tenant en cada tabla).
+-- 3) Puedes montar este esquema en un único contenedor local de MySQL sin problemas.
+-- 4) Si el proyecto crece, considera pasar a PostgreSQL por sus funciones JSONB y CTE más potentes.
