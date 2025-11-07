@@ -83,9 +83,8 @@ const GetProducts = () => {
   return (
     <>
       <h1 className="text-center mt-3 mb-5">Listado de productos</h1>
-      <div className="d-flex align-items-center justify-content-right mb-3 ms-3 sticky-top">
-        {" "}
-        <div className="mb-3 d-flex justify-content-right">
+      <div className="d-flex align-items-center justify-content-right ms-5 sticky-top w-90">
+        <div className="m-2 d-flex justify-content-right">
           <input
             type="text"
             className="form-control w-100 "
@@ -94,7 +93,7 @@ const GetProducts = () => {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="mb-3 mx-5 d-flex align-items-center">
+        <div className="m-2 mx-5 d-flex align-items-center">
           <select
             className="form-select w-auto mx-2"
             value={sortField}
@@ -114,13 +113,15 @@ const GetProducts = () => {
           </select>
         </div>
       </div>
-      <div className={`fade-init${fadeIn ? " fade-in" : ""} ms-3`}>
+      <div className={`fade-init${fadeIn ? " fade-in" : ""} ms-5`}>
         <table className="table table-responsive table-hover align-middle shadow">
-          <thead className="table-primary sticky-top">
+          <thead className="table-primary sticky-top ">
             <tr>
               <th className="text-start">Nombre</th>
+              <th className="text-start">Categoria</th>
               <th className="text-start">Cantidad</th>
               <th className="text-start">Precio de Compra</th>
+              <th className="text-start">Precio de venta</th>
               <th className="text-start">Caducidad</th>
               <th className="text-start">Publicado</th>
             </tr>
@@ -134,14 +135,21 @@ const GetProducts = () => {
                 >
                   {product.nombre}
                 </td>
+
                 <td
-                  className="text-center"
+                  className="text-start"
+                  onClick={() => handleTdClick(product)}
+                >
+                  categorai
+                </td>
+                <td
+                  className="text-start"
                   onClick={() => handleTdClick(product)}
                 >
                   {product.cantidad}
                 </td>
                 <td
-                  className="text-center"
+                  className="text-start"
                   onClick={() => handleTdClick(product)}
                 >
                   {product.precio_compra}
@@ -150,13 +158,39 @@ const GetProducts = () => {
                   className="text-start"
                   onClick={() => handleTdClick(product)}
                 >
-                  {product.caducidad}
+                  {product.precio_venta}
                 </td>
                 <td
                   className="text-start"
                   onClick={() => handleTdClick(product)}
                 >
-                  {product.publicado}
+                  {product.caducidad}
+                </td>
+                <td
+                  className="text-center"
+                  onClick={() => handleTdClick(product)}
+                >
+                  {product.publicado ? (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      height="34px"
+                      viewBox="0 -960 960 960"
+                      width="34px"
+                      fill="#75FB4C"
+                    >
+                      <path d="M280-240q-100 0-170-70T40-480q0-100 70-170t170-70h400q100 0 170 70t70 170q0 100-70 170t-170 70H280Zm0-80h400q66 0 113-47t47-113q0-66-47-113t-113-47H280q-66 0-113 47t-47 113q0 66 47 113t113 47Zm400-40q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35ZM480-480Z" />
+                    </svg>
+                  ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      height="24px"
+                      viewBox="0 -960 960 960"
+                      width="24px"
+                      fill="#EA3323"
+                    >
+                      <path d="M280-240q-100 0-170-70T40-480q0-100 70-170t170-70h400q100 0 170 70t70 170q0 100-70 170t-170 70H280Zm0-80h400q66 0 113-47t47-113q0-66-47-113t-113-47H280q-66 0-113 47t-47 113q0 66 47 113t113 47Zm0-40q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35Zm200-120Z" />
+                    </svg>
+                  )}
                 </td>
               </tr>
             ))}
