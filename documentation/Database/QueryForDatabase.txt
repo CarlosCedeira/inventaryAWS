@@ -25,15 +25,15 @@ CREATE TABLE tenants (
 
 CREATE TABLE usuarios (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  id_tenant INT NOT NULL,
+  tenant_id INT NOT NULL,
   nombre VARCHAR(150) NOT NULL,
   email VARCHAR(150) NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
   rol ENUM('admin','vendedor') DEFAULT 'vendedor',
   activo BOOLEAN DEFAULT TRUE,
   fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (id_tenant) REFERENCES tenants(id) ON DELETE CASCADE,
-  UNIQUE KEY uq_usuario_email_tenant (id_tenant, email)
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+  UNIQUE KEY uq_usuario_email_tenant (tenant_id, email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =====================================
@@ -42,7 +42,7 @@ CREATE TABLE usuarios (
 
 CREATE TABLE clientes (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  id_tenant INT NOT NULL,
+  tenant_id INT NOT NULL,
   nombre VARCHAR(200) NOT NULL,
   email VARCHAR(150) NULL,
   telefono VARCHAR(50) NULL,
@@ -53,7 +53,7 @@ CREATE TABLE clientes (
   pais VARCHAR(100) DEFAULT 'España',
   notas TEXT NULL,
   fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (id_tenant) REFERENCES tenants(id) ON DELETE CASCADE
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
@@ -63,11 +63,25 @@ CREATE TABLE clientes (
 
 CREATE TABLE categorias (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  id_tenant INT NOT NULL,
   nombre VARCHAR(150) NOT NULL,
-  descripcion TEXT NULL,
-  FOREIGN KEY (id_tenant) REFERENCES tenants(id) ON DELETE CASCADE
+  descripcion TEXT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =====================================
+-- Variantes
+-- =====================================
+
+CREATE TABLE tipos_variantes (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE valores_variantes (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  id_tipo INT NOT NULL,
+  valor VARCHAR(100) NOT NULL,
+  FOREIGN KEY (id_tipo) REFERENCES tipos_variantes(id)
+);
 
 -- =====================================
 -- Productos
@@ -75,33 +89,54 @@ CREATE TABLE categorias (
 
 CREATE TABLE productos (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  id_tenant INT NOT NULL,
+  tenant_id INT NOT NULL,
   nombre VARCHAR(200) NOT NULL,
   descripcion TEXT NULL,
-  categoria_id INT NULL,
   publicado BOOLEAN DEFAULT FALSE,
   destacado BOOLEAN DEFAULT FALSE,
-  sku VARCHAR(100) NULL,
   fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (id_tenant) REFERENCES tenants(id) ON DELETE CASCADE,
-  FOREIGN KEY (categoria_id) REFERENCES categorias(id) ON DELETE SET NULL
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
 );
+
+CREATE TABLE producto_variantes (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  id_producto INT NOT NULL,
+  id_valor_variantes INT NOT NULL,
+  FOREIGN KEY (id_producto) REFERENCES productos(id) ON DELETE CASCADE,
+  FOREIGN KEY (id_valor_variantes) REFERENCES valores_variantes(id) ON DELETE CASCADE
+);
+
 
 
 CREATE TABLE inventario (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  id_tenant INT NOT NULL,
+  tenant_id INT NOT NULL,
   producto_id INT NOT NULL,
+  categoria_id INT NOT NULL,
+  variante_id INT NOT NULL,
   cantidad INT DEFAULT 0,
   stock_minimo INT DEFAULT 0,
   precio_compra DECIMAL(10,2) DEFAULT 0.00,
   precio_venta DECIMAL(10,2) DEFAULT 0.00,
   fecha_caducidad DATE,
   codigo_barras INT,
+  numero_lote INT,
+  sku VARCHAR(100) NULL,
   ultima_actualizacion DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (id_tenant) REFERENCES tenants(id) ON DELETE CASCADE,
-  FOREIGN KEY (producto_id) REFERENCES productos(id) ON DELETE CASCADE
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+  FOREIGN KEY (producto_id) REFERENCES productos(id) ON DELETE CASCADE,
+  FOREIGN KEY (categoria_id) REFERENCES categorias(id) ON DELETE CASCADE,
+  FOREIGN KEY (variante_id) REFERENCES variantes(id) ON DELETE CASCADE
 );
+
+CREATE TABLE inventario_variantes (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  id_inventario INT NOT NULL,
+  id_valor_variantes INT NOT NULL,
+  FOREIGN KEY (id_inventario) REFERENCES inventario(id) ON DELETE CASCADE,
+  FOREIGN KEY (id_valor_variantes) REFERENCES valores_variantes(id) ON DELETE CASCADE
+);
+
 
 
 -- =====================================
@@ -110,16 +145,16 @@ CREATE TABLE inventario (
 
 CREATE TABLE imagenes_productos (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  id_producto INT,
-  id_tenant INT NOT NULL,
+  producto_id INT,
+  tenant_id INT NOT NULL,
   entidad_id INT NOT NULL,
   url_imagen VARCHAR(1000) NOT NULL,
   alt_text VARCHAR(255) NULL,
   es_principal BOOLEAN DEFAULT FALSE,
   orden INT DEFAULT 0,
   fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (id_producto) REFERENCES productos(id) ON DELETE CASCADE,
-  FOREIGN KEY (id_tenant) REFERENCES tenants(id) ON DELETE CASCADE,
+  FOREIGN KEY (producto_id) REFERENCES productos(id) ON DELETE CASCADE,
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
   INDEX idx_imagen_entidad (entidad_tipo, entidad_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -129,13 +164,13 @@ CREATE TABLE imagenes_productos (
 
 CREATE TABLE pedidos (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  id_tenant INT NOT NULL,
+  tenant_id INT NOT NULL,
   cliente_id INT NULL,
   estado ENUM('pendiente','completado','cancelado') DEFAULT 'pendiente',
   total DECIMAL(12,2) DEFAULT 0.00,
   metodo_pago VARCHAR(100) NULL,
   fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (id_tenant) REFERENCES tenants(id) ON DELETE CASCADE,
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
   FOREIGN KEY (usuario_cliente_id) REFERENCES usuarios(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -156,12 +191,12 @@ CREATE TABLE pedidos_items (
 -- =====================================
 CREATE TABLE ventas_pos (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  id_tenant INT NOT NULL,
+  tenant_id INT NOT NULL,
   usuario_id INT NULL,
   total DECIMAL(12,2) DEFAULT 0.00,
   metodo_pagoENUM('efectivo','tarjeta'),
   fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (id_tenant) REFERENCES tenants(id) ON DELETE CASCADE,
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
   FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
