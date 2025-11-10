@@ -2,10 +2,11 @@ import React, { useEffect, useState } from "react";
 import Spinners from "../spiners";
 import "./getProducts.css";
 import CardLayout from "../cardLayout/CardLayout";
+import Publicado from "./publicado/putPublicado";
 
 const GetProducts = () => {
   const [loading, setLoading] = useState(true);
-  const [products, setProducts] = useState([]);
+  const [items, setItems] = useState([]);
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState("predefinido");
   const [sortOrder, setSortOrder] = useState("asc");
@@ -14,25 +15,26 @@ const GetProducts = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
 
   // Función para obtener productos desde la API
-  const fetchProducts = async () => {
-    try {
-      const response = await fetch("http://localhost:3000/productos");
-      if (!response.ok) {
-        throw new Error("Error al obtener los productos");
-      }
-      const data = await response.json();
-      console.log(data);
-      setProducts(data);
-    } catch (error) {
-      console.error("Error fetching products:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const response = await fetch("http://localhost:3000/productos");
+        if (!response.ok) {
+          throw new Error("Error al obtener los productos");
+        }
+
+        const data = await response.json();
+        console.log(data);
+        setItems(data);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchProducts();
-  }, []);
+  }, []); // 👈 solo se ejecuta una vez al montar el componente
 
   // Activa el fade-in solo cuando loading pasa a false
   useEffect(() => {
@@ -61,11 +63,12 @@ const GetProducts = () => {
     setSelectedProduct(product);
     setShowCard(true);
   };
+
   const handleCloseCard = () => setShowCard(false);
 
-  const filteredProducts = products
+  const filteredProducts = items
     .filter((product) =>
-      product.nombre.toLowerCase().includes(search.toLowerCase())
+      product.producto_nombre.toLowerCase().includes(search.toLowerCase())
     )
     .sort((a, b) => {
       if (sortField === "predefinido") {
@@ -127,71 +130,28 @@ const GetProducts = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredProducts.map((product) => (
-              <tr key={product.id}>
-                <td
-                  className="text-start"
-                  onClick={() => handleTdClick(product)}
-                >
-                  {product.nombre}
+            {filteredProducts.map((item) => (
+              <tr key={`${item.producto_id}-${item.inventario_id || 0}`}>
+                <td className="text-start" onClick={() => handleTdClick(item)}>
+                  {item.producto_nombre}
                 </td>
 
-                <td
-                  className="text-start"
-                  onClick={() => handleTdClick(product)}
-                >
-                  categorai
+                <td className="text-start" onClick={() => handleTdClick(item)}>
+                  {item.producto_categoria}
                 </td>
-                <td
-                  className="text-start"
-                  onClick={() => handleTdClick(product)}
-                >
-                  {product.cantidad}
+                <td className="text-start" onClick={() => handleTdClick(item)}>
+                  {item.cantidad}
                 </td>
-                <td
-                  className="text-start"
-                  onClick={() => handleTdClick(product)}
-                >
-                  {product.precio_compra}
+                <td className="text-start" onClick={() => handleTdClick(item)}>
+                  {item.precio_compra}
                 </td>
-                <td
-                  className="text-start"
-                  onClick={() => handleTdClick(product)}
-                >
-                  {product.precio_venta}
+                <td className="text-start" onClick={() => handleTdClick(item)}>
+                  {item.precio_venta}
                 </td>
-                <td
-                  className="text-start"
-                  onClick={() => handleTdClick(product)}
-                >
-                  {product.caducidad}
+                <td className="text-start" onClick={() => handleTdClick(item)}>
+                  {item.caducidad}
                 </td>
-                <td
-                  className="text-center"
-                  onClick={() => handleTdClick(product)}
-                >
-                  {product.publicado ? (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      height="34px"
-                      viewBox="0 -960 960 960"
-                      width="34px"
-                      fill="#75FB4C"
-                    >
-                      <path d="M280-240q-100 0-170-70T40-480q0-100 70-170t170-70h400q100 0 170 70t70 170q0 100-70 170t-170 70H280Zm0-80h400q66 0 113-47t47-113q0-66-47-113t-113-47H280q-66 0-113 47t-47 113q0 66 47 113t113 47Zm400-40q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35ZM480-480Z" />
-                    </svg>
-                  ) : (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      height="24px"
-                      viewBox="0 -960 960 960"
-                      width="24px"
-                      fill="#EA3323"
-                    >
-                      <path d="M280-240q-100 0-170-70T40-480q0-100 70-170t170-70h400q100 0 170 70t70 170q0 100-70 170t-170 70H280Zm0-80h400q66 0 113-47t47-113q0-66-47-113t-113-47H280q-66 0-113 47t-47 113q0 66 47 113t113 47Zm0-40q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35Zm200-120Z" />
-                    </svg>
-                  )}
-                </td>
+                <Publicado producto={item} publicado={item.publicado} />
               </tr>
             ))}
           </tbody>
@@ -205,34 +165,3 @@ const GetProducts = () => {
 };
 
 export default GetProducts;
-
-{
-  /*const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    // Fetch data from the API
-    const fetchProducts = async () => {
-      try {
-        const response = await fetch(
-          "https://76ywzcxwjf7oz4a6ag5eqo3ncq0nljiu.lambda-url.eu-west-1.on.aws/"
-        );
-        if (!response.ok) {
-          throw new Error("Error fetching data");
-        }
-        const data = await response.json();
-        setProducts(data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProducts();
-  }, []);
-
-  if (loading) return <p>Loading...</p>;
-  if (error) return <p>Error: {error}</p>;
-*/
-}

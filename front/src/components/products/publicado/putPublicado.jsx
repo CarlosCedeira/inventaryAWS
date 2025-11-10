@@ -1,0 +1,62 @@
+import { useState } from "react";
+
+const Publicado = (item) => {
+  console.log(item, "item en publicado");
+  const [publish, setPublish] = useState(item.producto.publicado);
+
+  const putPublish = async () => {
+    try {
+      const response = await fetch(
+        `http://localhost:3000/publicar/${item.producto.producto_id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      console.log("response", response);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Error al guardar los datos");
+      }
+
+      const result = await response.json();
+      setPublish(publish === 1 ? 0 : 1);
+      console.log("✅ Datos guardados con éxito:", result);
+      console.log(publish, "onClick");
+    } catch (error) {
+      console.error("❌ Error al enviar los datos:", error);
+      alert("Ocurrió un error al guardar los datos");
+    }
+  };
+
+  return (
+    <td className="text-center" onClick={putPublish}>
+      {publish === 1 ? (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          height="34px"
+          viewBox="0 -960 960 960"
+          width="34px"
+          fill="#75FB4C"
+        >
+          <path d="M280-240q-100 0-170-70T40-480q0-100 70-170t170-70h400q100 0 170 70t70 170q0 100-70 170t-170 70H280Zm0-80h400q66 0 113-47t47-113q0-66-47-113t-113-47H280q-66 0-113 47t-47 113q0 66 47 113t113 47Zm400-40q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35ZM480-480Z" />
+        </svg>
+      ) : (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          height="34px"
+          viewBox="0 -960 960 960"
+          width="34px"
+          fill="#EA3323"
+        >
+          <path d="M280-240q-100 0-170-70T40-480q0-100 70-170t170-70h400q100 0 170 70t70 170q0 100-70 170t-170 70H280Zm0-80h400q66 0 113-47t47-113q0-66-47-113t-113-47H280q-66 0-113 47t-47 113q0 66 47 113t113 47Zm0-40q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35Zm200-120Z" />
+        </svg>
+      )}
+    </td>
+  );
+};
+
+export default Publicado;

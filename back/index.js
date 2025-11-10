@@ -15,21 +15,85 @@ const dbConfig = {
   host: "localhost",
   user: "root", // Cambia esto según tu configuración
   password: "root", // Cambia esto según tu configuración
-  database: "tienda_local", // Asegúrate de que la base de datos exista
+  database: "tienda_local_prueba", // Asegúrate de que la base de datos exista
 };
 
 app.get("/productos", async (req, res) => {
+  console.log("Solicitud recibida en /productos");
   let connection;
   try {
     connection = await mysql.createConnection(dbConfig);
     const [rows] = await connection.execute(`
-  SELECT p.*, i.*
-  FROM productos p
-  INNER JOIN inventario i ON p.id = i.id_producto
+      SELECT 
+  i.id AS inventario_id,
+  i.tenant_id,
+  i.producto_id,
+  p.nombre AS producto_nombre,
+  p.descripcion AS producto_descripcion,
+  c.nombre AS producto_categoria,
+  c.id AS categoria_id,
+  tv.nombre AS tipo_variante,       -- Ejemplo: "Talla", "Color"
+  tv.id AS tipo_variante_id,       
+  vv.valor AS valor_variante,       -- Ejemplo: "M", "Rojo"
+  vv.id AS valor_variante_id,       
+  i.cantidad,
+  i.stock_minimo,
+  i.precio_compra,
+  i.precio_venta,
+  i.fecha_caducidad,
+  i.codigo_barras,
+  i.numero_lote,
+  i.sku,
+  i.ultima_actualizacion,
+  p.publicado,
+  p.destacado,
+  p.recomendado,
+  p.ranking,
+  p.fecha_creacion
+FROM inventario i
+INNER JOIN productos p ON i.producto_id = p.id
+LEFT JOIN categorias c ON p.categoria_id = c.id
+LEFT JOIN tipos_variantes tv ON i.tipo_variante_id = tv.id
+LEFT JOIN valores_variantes vv ON i.valor_variante_id = vv.id;
+
+
 `);
     res.json(rows);
+    console.log("Datos enviados correctamente");
   } catch (error) {
     console.error("Error al consultar la base de datos:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  } finally {
+    if (connection) await connection.end();
+  }
+});
+
+app.put("/actualizar/:producto_id", async (req, res) => {
+  const { producto_id } = req.params;
+  console.log("Headers recibidos:", req.headers);
+  console.log("ID recibido:", producto_id);
+
+  // Aquí deberías hacer la lógica de actualización...
+
+  // ✅ Envía respuesta para cerrar la petición
+  res.json({ message: "Producto actualizado correctamente" });
+});
+
+app.put("/publicar/:producto_id", async (req, res) => {
+  const { producto_id } = req.params;
+  let connection;
+  console.log("ID recibido para publicar/despublicar:", producto_id);
+  try {
+    connection = await mysql.createConnection(dbConfig);
+
+    await connection.execute(
+      "UPDATE productos SET publicado = NOT publicado WHERE id = ?",
+      [producto_id]
+    );
+
+    res.json({ message: "Producto actualizado correctamente" });
+  } catch (error) {
+    console.error("Error al actualizar el estado de publicación:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   } finally {
     if (connection) await connection.end();

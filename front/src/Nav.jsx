@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import GetProducts from "./components/products/getProducts.jsx";
 import GetClients from "./components/clients/getClients.jsx";
-import GetSupliers from "./components/suppliers/getSuppliers.jsx";
 import GetPurchases from "./components/purchases/purchases.jsx";
 import PointOfSale from "./components/point of sales/puntoVenta.jsx";
 import GetSales from "./components/sales/sales.jsx";
