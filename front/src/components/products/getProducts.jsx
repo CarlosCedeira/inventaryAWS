@@ -1,97 +1,74 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
+import { ProductContext } from "../../context/ProductContext";
 import Spinners from "../spiners";
-import "./getProducts.css";
 import CardLayout from "../cardLayout/CardLayout";
 import Publicado from "./publicado/putPublicado";
+import "./getProducts.css";
 
 const GetProducts = () => {
-  const [loading, setLoading] = useState(true);
-  const [items, setItems] = useState([]);
+  const {
+    items,
+    setItems,
+    loading,
+    fetchProducts,
+    selectedProduct,
+    setSelectedProduct,
+  } = useContext(ProductContext);
+
   const [search, setSearch] = useState("");
+  const [showCard, setShowCard] = useState(false);
   const [sortField, setSortField] = useState("predefinido");
   const [sortOrder, setSortOrder] = useState("asc");
   const [fadeIn, setFadeIn] = useState(false);
-  const [showCard, setShowCard] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState(null);
 
-  // Función para obtener productos desde la API
-  const fetchProducts = async () => {
-    try {
-      const response = await fetch(`http://localhost:3000/productos`);
-      if (!response.ok) throw new Error("Error al obtener los productos");
-
-      const data = await response.json();
-      setItems(data);
-      console.log(items, "items en getProducts");
-    } catch (error) {
-      console.error("Error fetching products:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const productsSearch = useEffect(() => {
+  // 🔹 Cargar productos al montar el componente
+  useEffect(() => {
     fetchProducts();
   }, []);
 
-  // Activa el fade-in solo cuando loading pasa a false
+  // 🔹 Efecto para el fade-in cuando termina de cargar
   useEffect(() => {
     if (!loading) {
-      // Pequeño timeout para asegurar que el DOM se actualiza antes de aplicar la clase
-      const fadeTimer = setTimeout(() => setFadeIn(true), 10);
-      return () => clearTimeout(fadeTimer);
+      const timer = setTimeout(() => setFadeIn(true), 10);
+      return () => clearTimeout(timer);
     } else {
       setFadeIn(false);
     }
   }, [loading]);
 
+  // 🔹 Control del scroll del body cuando se abre el modal
   useEffect(() => {
-    if (showCard) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    // Limpieza por si el componente se desmonta con el modal abierto
-    return () => {
-      document.body.style.overflow = "";
-    };
+    document.body.style.overflow = showCard ? "hidden" : "";
+    return () => (document.body.style.overflow = "");
   }, [showCard]);
 
+  // 🔹 Mostrar modal con el producto seleccionado
   const handleTdClick = (product) => {
     setSelectedProduct(product);
     setShowCard(true);
   };
 
+  // 🔹 Cerrar modal
   const handleCloseCard = () => setShowCard(false);
 
-  // Modificación de la función handleSearch en GetProducts.jsx [2]
+  // 🔹 Buscar productos por nombre
   const handleSearch = async (e) => {
-    // 1. Capturar el valor inmediatamente.
     const searchValue = e.target.value;
     setSearch(searchValue);
 
-    // 2. Determinar la ruta correcta. Si hay un valor, usa /productos/:name.
-    let url;
-    if (searchValue.trim() !== "") {
-      // Uso de Path Parameter (CORRECTO para la ruta definida en el backend /productos/:name)
-      url = `http://localhost:3000/productos/${searchValue}`;
-    } else {
-      // Si la búsqueda está vacía, cargar todos los productos
-      url = `http://localhost:3000/productos`; // [3]
-    }
+    const url =
+      searchValue.trim() !== ""
+        ? `http://localhost:3000/productos/${searchValue}`
+        : `http://localhost:3000/productos`;
 
     try {
-      const response = await fetch(url); // Uso de la URL corregida
-
-      if (!response.ok) throw new Error("Error al obtener los productos");
-
-      const data = await response.json();
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Error al obtener los productos");
+      const data = await res.json();
       setItems(data);
-      console.log(data, "items recibidos desde backend");
     } catch (error) {
-      console.error("Error fetching products:", error);
+      console.error("Error al buscar productos:", error);
     }
-    // Nota: El setLoading(false) debería ocurrir solo si loading fue true antes del fetch.
   };
 
   if (loading) return <Spinners />;
@@ -99,16 +76,19 @@ const GetProducts = () => {
   return (
     <>
       <h1 className="text-center mt-3 mb-5">Listado de productos</h1>
+
+      {/* 🔹 Barra de búsqueda y ordenamiento */}
       <div className="d-flex align-items-center justify-content-right ms-5 sticky-top w-90">
         <div className="m-2 d-flex justify-content-right">
           <input
             type="text"
-            className="form-control w-100 "
+            className="form-control w-100"
             placeholder="Buscar por nombre..."
             value={search}
-            onChange={(e) => handleSearch(e)}
+            onChange={handleSearch}
           />
         </div>
+
         <div className="m-2 mx-5 d-flex align-items-center">
           <select
             className="form-select w-auto mx-2"
@@ -129,15 +109,17 @@ const GetProducts = () => {
           </select>
         </div>
       </div>
+
+      {/* 🔹 Tabla de productos */}
       <div className={`fade-init${fadeIn ? " fade-in" : ""} ms-5`}>
         <table className="table table-responsive table-hover align-middle shadow">
-          <thead className="table-primary sticky-top ">
+          <thead className="table-primary sticky-top">
             <tr>
               <th className="text-start">Nombre</th>
-              <th className="text-start">Categoria</th>
+              <th className="text-start">Categoría</th>
               <th className="text-start">Cantidad</th>
               <th className="text-start">Precio de Compra</th>
-              <th className="text-start">Precio de venta</th>
+              <th className="text-start">Precio de Venta</th>
               <th className="text-start">Caducidad</th>
               <th className="text-start">Publicado</th>
             </tr>
@@ -145,31 +127,26 @@ const GetProducts = () => {
           <tbody>
             {items.map((item) => (
               <tr key={item.producto_id}>
-                <td className="text-start" onClick={() => handleTdClick(item)}>
+                <td onClick={() => handleTdClick(item)}>
                   {item.producto_nombre}
                 </td>
-
-                <td className="text-start" onClick={() => handleTdClick(item)}>
+                <td onClick={() => handleTdClick(item)}>
                   {item.producto_categoria}
                 </td>
-                <td className="text-start" onClick={() => handleTdClick(item)}>
-                  {item.cantidad}
-                </td>
-                <td className="text-start" onClick={() => handleTdClick(item)}>
+                <td onClick={() => handleTdClick(item)}>{item.cantidad}</td>
+                <td onClick={() => handleTdClick(item)}>
                   {item.precio_compra}
                 </td>
-                <td className="text-start" onClick={() => handleTdClick(item)}>
-                  {item.precio_venta}
-                </td>
-                <td className="text-start" onClick={() => handleTdClick(item)}>
-                  {item.caducidad}
-                </td>
+                <td onClick={() => handleTdClick(item)}>{item.precio_venta}</td>
+                <td onClick={() => handleTdClick(item)}>{item.caducidad}</td>
                 <Publicado producto={item} publicado={item.publicado} />
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* 🔹 Modal con detalles del producto */}
       {showCard && selectedProduct && (
         <CardLayout product={selectedProduct} onClose={handleCloseCard} />
       )}

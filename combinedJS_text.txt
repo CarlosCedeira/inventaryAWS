@@ -1,182 +1,166 @@
 
 
-===== index.js =====
+===== db.js =====
 
-const express = require("express");
-const mysql = require("mysql2/promise"); // Asegúrate de instalar mysql2
-const cors = require("cors"); // Importa cors
-const app = express();
-const PORT = process.env.PORT || 3000;
+// db.js
+const mysql = require("mysql2/promise");
 
-// Middleware para habilitar CORS
-app.use(cors());
-
-// Middleware para parsear el cuerpo de las solicitudes
-app.use(express.json());
-
-// Configuración de la conexión a la base de datos
 const dbConfig = {
   host: "localhost",
-  user: "root", // Cambia esto según tu configuración
-  password: "root", // Cambia esto según tu configuración
-  database: "tienda_local_prueba", // Asegúrate de que la base de datos exista
+  user: "root",
+  password: "root",
+  database: "tienda_local_prueba",
 };
 
-app.get("/productos", async (req, res) => {
+async function getConnection() {
+  return mysql.createConnection(dbConfig);
+}
+
+module.exports = { getConnection };
+
+
+===== clientes.js =====
+
+// routes/clientes.js
+const express = require("express");
+const router = express.Router();
+const { getConnection } = require("../db");
+
+router.get("/", async (req, res) => {
+  let connection;
+  try {
+    connection = await getConnection();
+    const [rows] = await connection.execute("SELECT * FROM clientes");
+    res.json(rows);
+  } catch (error) {
+    console.error("Error al obtener clientes:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  } finally {
+    if (connection) await connection.end();
+  }
+});
+
+module.exports = router;
+
+
+===== productos.js =====
+
+// routes/productos.js
+const express = require("express");
+const router = express.Router();
+const { getConnection } = require("../db");
+
+// Obtener todos los productos
+router.get("/", async (req, res) => {
   console.log("Solicitud recibida en /productos");
   let connection;
   try {
-    connection = await mysql.createConnection(dbConfig);
+    connection = await getConnection();
     const [rows] = await connection.execute(`
       SELECT 
-  i.id AS inventario_id,
-  i.tenant_id,
-  i.producto_id,
-  p.nombre AS producto_nombre,
-  p.descripcion AS producto_descripcion,
-  c.nombre AS producto_categoria,
-  c.id AS categoria_id,
-  tv.nombre AS tipo_variante,       -- Ejemplo: "Talla", "Color"
-  tv.id AS tipo_variante_id,       
-  vv.valor AS valor_variante,       -- Ejemplo: "M", "Rojo"
-  vv.id AS valor_variante_id,       
-  i.cantidad,
-  i.stock_minimo,
-  i.precio_compra,
-  i.precio_venta,
-  i.fecha_caducidad,
-  i.codigo_barras,
-  i.numero_lote,
-  i.sku,
-  i.ultima_actualizacion,
-  p.publicado,
-  p.destacado,
-  p.recomendado,
-  p.ranking,
-  p.fecha_creacion
-FROM inventario i
-INNER JOIN productos p ON i.producto_id = p.id
-LEFT JOIN categorias c ON p.categoria_id = c.id
-LEFT JOIN tipos_variantes tv ON i.tipo_variante_id = tv.id
-LEFT JOIN valores_variantes vv ON i.valor_variante_id = vv.id;
-
-
-`);
+        i.id AS inventario_id,
+        i.tenant_id,
+        i.producto_id,
+        p.nombre AS producto_nombre,
+        p.descripcion AS producto_descripcion,
+        c.nombre AS producto_categoria,
+        c.id AS categoria_id,
+        tv.nombre AS tipo_variante,
+        tv.id AS tipo_variante_id,
+        vv.valor AS valor_variante,
+        vv.id AS valor_variante_id,
+        i.cantidad,
+        i.stock_minimo,
+        i.precio_compra,
+        i.precio_venta,
+        i.fecha_caducidad,
+        i.codigo_barras,
+        i.numero_lote,
+        i.sku,
+        i.ultima_actualizacion,
+        p.publicado,
+        p.destacado,
+        p.recomendado,
+        p.ranking,
+        p.fecha_creacion
+      FROM inventario i
+      INNER JOIN productos p ON i.producto_id = p.id
+      LEFT JOIN categorias c ON p.categoria_id = c.id
+      LEFT JOIN tipos_variantes tv ON i.tipo_variante_id = tv.id
+      LEFT JOIN valores_variantes vv ON i.valor_variante_id = vv.id
+    `);
     res.json(rows);
-    console.log("Datos enviados correctamente");
   } catch (error) {
-    console.error("Error al consultar la base de datos:", error);
+    console.error("Error al consultar productos:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   } finally {
     if (connection) await connection.end();
   }
 });
 
-app.get("/productos/:name", async (req, res) => {
-  console.log("Solicitud recibida en /productos/name");
-  console.log("Parámetros de consulta:", req.params);
-
+// Buscar producto por nombre
+router.get("/:name", async (req, res) => {
   let connection;
-
   try {
-    connection = await mysql.createConnection(dbConfig);
+    connection = await getConnection();
     const [rows] = await connection.execute(
       `
       SELECT 
-  i.id AS inventario_id,
-  i.tenant_id,
-  i.producto_id,
-  p.nombre AS producto_nombre,
-  p.descripcion AS producto_descripcion,
-  c.nombre AS producto_categoria,
-  c.id AS categoria_id,
-  tv.nombre AS tipo_variante,       -- Ejemplo: "Talla", "Color"
-  tv.id AS tipo_variante_id,       
-  vv.valor AS valor_variante,       -- Ejemplo: "M", "Rojo"
-  vv.id AS valor_variante_id,       
-  i.cantidad,
-  i.stock_minimo,
-  i.precio_compra,
-  i.precio_venta,
-  i.fecha_caducidad,
-  i.codigo_barras,
-  i.numero_lote,
-  i.sku,
-  i.ultima_actualizacion,
-  p.publicado,
-  p.destacado,
-  p.recomendado,
-  p.ranking,
-  p.fecha_creacion
-FROM inventario i
-INNER JOIN productos p ON i.producto_id = p.id
-LEFT JOIN categorias c ON p.categoria_id = c.id
-LEFT JOIN tipos_variantes tv ON i.tipo_variante_id = tv.id
-LEFT JOIN valores_variantes vv ON i.valor_variante_id = vv.id
-WHERE p.nombre LIKE CONCAT('%', ?, '%')`,
+        i.id AS inventario_id,
+        p.nombre AS producto_nombre,
+        p.descripcion,
+        c.nombre AS producto_categoria,
+        i.precio_venta,
+        i.cantidad
+      FROM inventario i
+      INNER JOIN productos p ON i.producto_id = p.id
+      LEFT JOIN categorias c ON p.categoria_id = c.id
+      WHERE p.nombre LIKE CONCAT('%', ?, '%')
+      `,
       [req.params.name]
     );
     res.json(rows);
-    console.log("Datos enviados correctamente");
   } catch (error) {
-    console.error("Error al consultar la base de datos:", error);
+    console.error("Error en búsqueda:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   } finally {
     if (connection) await connection.end();
   }
 });
 
-app.put("/actualizar/:producto_id", async (req, res) => {
-  const { producto_id } = req.params;
-  console.log("Headers recibidos:", req.headers);
-  console.log("ID recibido:", producto_id);
-
-  // Aquí deberías hacer la lógica de actualización...
-
-  // ✅ Envía respuesta para cerrar la petición
-  res.json({ message: "Producto actualizado correctamente" });
-});
-
-app.put("/publicar/:producto_id", async (req, res) => {
-  const { producto_id } = req.params;
+// Publicar o despublicar producto
+router.put("/publicar/:producto_id", async (req, res) => {
   let connection;
-  console.log("ID recibido para publicar/despublicar:", producto_id);
   try {
-    connection = await mysql.createConnection(dbConfig);
-
+    connection = await getConnection();
     await connection.execute(
       "UPDATE productos SET publicado = NOT publicado WHERE id = ?",
-      [producto_id]
+      [req.params.producto_id]
     );
-
-    res.json({ message: "Producto actualizado correctamente" });
+    res.json({ message: "Estado de publicación actualizado" });
   } catch (error) {
-    console.error("Error al actualizar el estado de publicación:", error);
+    console.error("Error al publicar/despublicar:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   } finally {
     if (connection) await connection.end();
   }
 });
 
-app.get("/clientes", async (req, res) => {
+module.exports = router;
+
+
+===== ventas.js =====
+
+// routes/ventas.js
+const express = require("express");
+const router = express.Router();
+const { getConnection } = require("../db");
+
+// Listar ventas
+router.get("/", async (req, res) => {
   let connection;
   try {
-    connection = await mysql.createConnection(dbConfig);
-    const [rows] = await connection.execute(` SELECT *  FROM clientes`);
-    res.json(rows);
-  } catch (error) {
-    console.error("Error al consultar la base de datos:", error);
-    res.status(500).json({ error: "Error interno del servidor" });
-  } finally {
-    if (connection) await connection.end();
-  }
-});
-
-app.get("/ventas", async (req, res) => {
-  let connection;
-  try {
-    connection = await mysql.createConnection(dbConfig);
-
+    connection = await getConnection();
     const [rows] = await connection.execute(`
       SELECT 
         v.id,
@@ -194,29 +178,25 @@ app.get("/ventas", async (req, res) => {
       LEFT JOIN clientes c ON v.id_cliente = c.id
       ORDER BY v.fecha DESC
     `);
-
     res.json(rows);
   } catch (error) {
-    console.error("Error al consultar las ventas:", error);
+    console.error("Error al obtener ventas:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   } finally {
     if (connection) await connection.end();
   }
 });
 
-app.post("/ventas", async (req, res) => {
+// Crear venta
+router.post("/", async (req, res) => {
   let connection;
   try {
     const { id_producto, cantidad, precio_venta } = req.body;
-
     if (!id_producto || !cantidad || !precio_venta) {
       return res.status(400).json({ error: "Faltan campos obligatorios" });
     }
 
-    // ✅ Crear conexión
-    connection = await mysql.createConnection(dbConfig);
-
-    // ✅ Insertar venta
+    connection = await getConnection();
     const [result] = await connection.execute(
       `INSERT INTO ventas (id_producto, id_cliente, cantidad, precio_venta, metodo_pago)
        VALUES (?, ?, ?, ?, ?)`,
@@ -225,14 +205,34 @@ app.post("/ventas", async (req, res) => {
 
     res.status(201).json({ id: result.insertId, message: "Venta registrada" });
   } catch (error) {
-    console.error("Error al registrar la venta:", error);
-    res.status(500).json({ error: "Error al registrar la venta" });
+    console.error("Error al registrar venta:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
   } finally {
     if (connection) await connection.end();
   }
 });
 
-// Iniciar el servidor
+module.exports = router;
+
+
+===== server.js =====
+
+// server.js
+const express = require("express");
+const cors = require("cors");
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Rutas
+app.use("/productos", require("./routes/productos"));
+app.use("/clientes", require("./routes/clientes"));
+app.use("/ventas", require("./routes/ventas"));
+
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });

@@ -2,10 +2,10 @@
 const mysql = require("mysql2/promise");
 
 const dbConfig = {
-  host: "localhost",
-  user: "root",
-  password: "root",
-  database: "tienda_local_prueba",
+  host: process.env.DB_HOST,
+  database: process.env.DATABASE,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
 };
 
 async function getConnection() {
