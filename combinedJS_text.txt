@@ -1,3 +1,7 @@
+
+
+===== index.js =====
+
 const express = require("express");
 const mysql = require("mysql2/promise"); // Asegúrate de instalar mysql2
 const cors = require("cors"); // Importa cors

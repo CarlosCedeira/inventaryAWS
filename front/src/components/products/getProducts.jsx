@@ -15,26 +15,24 @@ const GetProducts = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
 
   // Función para obtener productos desde la API
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await fetch("http://localhost:3000/productos");
-        if (!response.ok) {
-          throw new Error("Error al obtener los productos");
-        }
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch(`http://localhost:3000/productos`);
+      if (!response.ok) throw new Error("Error al obtener los productos");
 
-        const data = await response.json();
-        console.log(data);
-        setItems(data);
-      } catch (error) {
-        console.error("Error fetching products:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+      const data = await response.json();
+      setItems(data);
+      console.log(items, "items en getProducts");
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  const productsSearch = useEffect(() => {
     fetchProducts();
-  }, []); // 👈 solo se ejecuta una vez al montar el componente
+  }, []);
 
   // Activa el fade-in solo cuando loading pasa a false
   useEffect(() => {
@@ -66,20 +64,25 @@ const GetProducts = () => {
 
   const handleCloseCard = () => setShowCard(false);
 
-  const filteredProducts = items
-    .filter((product) =>
-      product.producto_nombre.toLowerCase().includes(search.toLowerCase())
-    )
-    .sort((a, b) => {
-      if (sortField === "predefinido") {
-        return;
+  const handleSearch = (e) => {
+    setSearch(e.target.value);
+    async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:3000/productos?search=${search}`
+        );
+        if (!response.ok) throw new Error("Error al obtener los productos");
+
+        const data = await response.json();
+        setItems(data);
+        console.log(data, "items recibidos desde backend");
+      } catch (error) {
+        console.error("Error fetching products:", error);
+      } finally {
+        setLoading(false);
       }
-      if (sortOrder === "asc") {
-        return a[sortField] - b[sortField];
-      } else {
-        return b[sortField] - a[sortField];
-      }
-    });
+    };
+  };
 
   if (loading) return <Spinners />;
 
@@ -93,7 +96,7 @@ const GetProducts = () => {
             className="form-control w-100 "
             placeholder="Buscar por nombre..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearch(e)}
           />
         </div>
         <div className="m-2 mx-5 d-flex align-items-center">
@@ -130,8 +133,8 @@ const GetProducts = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredProducts.map((item) => (
-              <tr key={`${item.producto_id}-${item.inventario_id || 0}`}>
+            {items.map((item) => (
+              <tr key={item.producto_id}>
                 <td className="text-start" onClick={() => handleTdClick(item)}>
                   {item.producto_nombre}
                 </td>

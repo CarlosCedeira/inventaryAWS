@@ -2,7 +2,7 @@ import React from "react";
 import Publicado from "../products/publicado/putPublicado";
 import "./cardLayout.css";
 
-const CardLayout = ({ product, onClose, onSave }) => {
+const CardLayout = ({ product, onClose }) => {
   const [formData, setFormData] = React.useState(product);
   console.log("producto desde cardlayout", product.producto_id);
   console.log("onclose", onClose);

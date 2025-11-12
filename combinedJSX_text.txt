@@ -1,0 +1,1428 @@
+
+
+===== App.jsx =====
+
+import Nav from "./Nav";
+
+function App() {
+  return (
+    <>
+      <Nav />
+    </>
+  );
+}
+
+export default App;
+
+
+===== CardLayout.jsx =====
+
+import React from "react";
+import Publicado from "../products/publicado/putPublicado";
+import "./cardLayout.css";
+
+const CardLayout = ({ product, onClose }) => {
+  const [formData, setFormData] = React.useState(product);
+  console.log("producto desde cardlayout", product.producto_id);
+  console.log("onclose", onClose);
+
+  // 🔹 Formatear fecha ISO -> YYYY-MM-DD (para mostrar en input type="date")
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toISOString().split("T")[0];
+  };
+
+  // 🔹 Actualiza los valores del formulario
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData({
+      ...formData,
+      [name]: type === "checkbox" ? checked : value,
+    });
+  };
+
+  // 🔹 Al guardar, convierte la fecha al formato ISO
+  const handleSubmit = async (e) => {
+    console.log("on close desde handlesubmit", onClose);
+    e.preventDefault();
+
+    const updatedData = {
+      ...formData,
+      caducidad: formData.caducidad
+        ? new Date(formData.caducidad).toISOString()
+        : null,
+      fecha_creacion: formData.fecha_creacion
+        ? new Date(formData.fecha_creacion).toISOString()
+        : null,
+    };
+
+    try {
+      console.log("feeeeechingggg");
+      const response = await fetch(
+        `http://localhost:3000/actualizar/${product.producto_id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(updatedData),
+        }
+      );
+      console.log("response", response);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Error al guardar los datos");
+      }
+
+      const result = await response.json();
+      console.log("✅ Datos guardados con éxito:", result);
+
+      // ✅ Cierra el modal automáticamente después de guardar
+      if (onClose) {
+        onClose();
+      }
+    } catch (error) {
+      console.error("❌ Error al enviar los datos:", error);
+      alert("Ocurrió un error al guardar los datos");
+    }
+  };
+
+  return (
+    <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center product-modal-backdrop">
+      <div
+        className="card shadow product-modal-card"
+        style={{ maxHeight: "90vh", display: "flex", flexDirection: "column" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="card-body position-relative overflow-auto">
+          <article className="modal-content">
+            <button
+              type="button"
+              className="btn-close position-absolute top-0 end-0"
+              onClick={onClose}
+            ></button>
+
+            <header className="modal-header justify-content-start mb-4 ms-5">
+              <Publicado producto={product} />
+
+              {formData.destacado ? (
+                <>
+                  <label>Destacado</label>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    height="34px"
+                    viewBox="0 -960 960 960"
+                    width="34px"
+                    fill="#75FB4C"
+                  >
+                    <path d="M280-240q-100 0-170-70T40-480q0-100 70-170t170-70h400q100 0 170 70t70 170q0 100-70 170t-170 70H280Zm0-80h400q66 0 113-47t47-113q0-66-47-113t-113-47H280q-66 0-113 47t-47 113q0 66 47 113t113 47Zm400-40q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35ZM480-480Z" />
+                  </svg>
+                </>
+              ) : (
+                <>
+                  <label className="ms-4">Destacado</label>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    height="34px"
+                    viewBox="0 -960 960 960"
+                    width="34px"
+                    fill="#EA3323"
+                  >
+                    <path d="M280-240q-100 0-170-70T40-480q0-100 70-170t170-70h400q100 0 170 70t70 170q0 100-70 170t-170 70H280Zm0-80h400q66 0 113-47t47-113q0-66-47-113t-113-47H280q-66 0-113 47t-47 113q0 66 47 113t113 47Zm0-40q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35Zm200-120Z" />
+                  </svg>
+                </>
+              )}
+              {formData.destacado ? (
+                <>
+                  <label>Recomendado</label>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    height="34px"
+                    viewBox="0 -960 960 960"
+                    width="34px"
+                    fill="#75FB4C"
+                  >
+                    <path d="M280-240q-100 0-170-70T40-480q0-100 70-170t170-70h400q100 0 170 70t70 170q0 100-70 170t-170 70H280Zm0-80h400q66 0 113-47t47-113q0-66-47-113t-113-47H280q-66 0-113 47t-47 113q0 66 47 113t113 47Zm400-40q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35ZM480-480Z" />
+                  </svg>
+                </>
+              ) : (
+                <>
+                  <label className="ms-4">Recomendado</label>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    height="34px"
+                    viewBox="0 -960 960 960"
+                    width="34px"
+                    fill="#EA3323"
+                  >
+                    <path d="M280-240q-100 0-170-70T40-480q0-100 70-170t170-70h400q100 0 170 70t70 170q0 100-70 170t-170 70H280Zm0-80h400q66 0 113-47t47-113q0-66-47-113t-113-47H280q-66 0-113 47t-47 113q0 66 47 113t113 47Zm0-40q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35Zm200-120Z" />
+                  </svg>
+                </>
+              )}
+              {formData.ranking ? <>Ranking {formData.ranking}</> : "Ranking 0"}
+            </header>
+
+            <form onSubmit={handleSubmit}>
+              <div className="container-fluid">
+                {/* Nombre */}
+                <div className="mb-3 row align-items-center">
+                  <label className="col-sm-3 col-form-label text-nowrap">
+                    Nombre
+                  </label>
+                  <div className="col-sm-9">
+                    <input
+                      type="text"
+                      name="nombre"
+                      value={formData.producto_nombre || ""}
+                      onChange={handleChange}
+                      className="form-control"
+                    />
+                  </div>
+                </div>
+
+                {/* Descripción */}
+                <div className="mb-3 row align-items-center">
+                  <label className="col-sm-3 col-form-label text-nowrap">
+                    Descripción
+                  </label>
+                  <div className="col-sm-9">
+                    <textarea
+                      name="descripcion"
+                      value={formData.producto_descripcion || ""}
+                      onChange={handleChange}
+                      className="form-control"
+                      rows="2"
+                    />
+                  </div>
+                </div>
+
+                <div className="row">
+                  {/* Columna 1 */}
+                  <div className="col-md-6">
+                    {[
+                      ["categoría", "producto_categoria", "text"],
+                      ["Variante", "tipo_variante", "text"],
+                      ["Valor", "valor_variante", "text"],
+                      ["Cantidad", "cantidad", "number"],
+                      ["Precio de compra", "precio_compra", "number"],
+                      ["Precio de venta", "precio_venta", "number"],
+                    ].map(([label, name, type]) => (
+                      <div className="mb-3 row align-items-center" key={name}>
+                        <label className="col-sm-6 col-form-label text-nowrap">
+                          {label}
+                        </label>
+                        <div className="col-sm-6">
+                          <input
+                            type={type}
+                            name={name}
+                            value={formData[name] || ""}
+                            onChange={handleChange}
+                            className="form-control"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Columna 2 */}
+                  <div className="col-md-6">
+                    {/* Fecha de caducidad */}
+                    <div className="mb-3 row align-items-center">
+                      <label className="col-sm-6 col-form-label text-nowrap">
+                        Caducidad
+                      </label>
+                      <div className="col-sm-6">
+                        <input
+                          type="date"
+                          name="caducidad"
+                          value={formatDate(formData.fecha_caducidad)}
+                          onChange={handleChange}
+                          className="form-control"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Fecha de creación */}
+                    <div className="mb-3 row align-items-center">
+                      <label className="col-sm-6 col-form-label text-nowrap">
+                        Fecha de creación
+                      </label>
+                      <div className="col-sm-6">
+                        <input
+                          type="date"
+                          name="fecha_creacion"
+                          value={formatDate(formData.fecha_creacion)}
+                          disabled
+                          className="form-control"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Código de barras */}
+                    <div className="mb-3 row align-items-center">
+                      <label className="col-sm-6 col-form-label text-nowrap">
+                        Código de barras
+                      </label>
+                      <div className="col-sm-6">
+                        <input
+                          type="text"
+                          name="codigo_barras"
+                          value={formData.codigo_barras || ""}
+                          onChange={handleChange}
+                          className="form-control"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mb-3 row align-items-center">
+                      <label className="col-sm-6 col-form-label text-nowrap">
+                        Numero de lote
+                      </label>
+                      <div className="col-sm-6">
+                        <input
+                          type="text"
+                          name="codigo_barras"
+                          value={formData.numero_lote || ""}
+                          onChange={handleChange}
+                          className="form-control"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mb-3 row align-items-center">
+                      <label className="col-sm-6 col-form-label text-nowrap">
+                        Codigo SKU
+                      </label>
+                      <div className="col-sm-6">
+                        <input
+                          type="text"
+                          name="codigo_barras"
+                          value={formData.sku || ""}
+                          onChange={handleChange}
+                          className="form-control"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mb-3 row align-items-center">
+                      <label className="col-sm-6 col-form-label text-nowrap">
+                        Estock mínimo
+                      </label>
+                      <div className="col-sm-6">
+                        <input
+                          type="text"
+                          name="codigo_barras"
+                          value={formData.stock_minimo || ""}
+                          onChange={handleChange}
+                          className="form-control"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="d-flex justify-content-end pt-5 gap-5">
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={onClose}
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        className="btn btn-primary"
+                        onClick={handleSubmit}
+                      >
+                        Guardar cambios
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </article>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CardLayout;
+
+
+===== getClients.jsx =====
+
+import { useEffect, useState } from "react";
+import Spinners from "../spiners.jsx";
+
+const GetClients = () => {
+  const [loading, setLoading] = useState(true);
+  const [clients, setClients] = useState([]);
+  const [fadeIn, setFadeIn] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const response = await fetch("http://localhost:3000/clientes");
+        if (!response.ok) throw new Error("Error al obtener los clientes");
+        const data = await response.json();
+        setClients(data);
+      } catch (error) {
+        console.error("Error en la solicitud:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClients();
+  }, []);
+
+  // Estado para el formulario
+  const [form, setForm] = useState({
+    nombre: "",
+    tipo_cliente: "",
+    documento: "",
+    telefono: "",
+    direccion: "",
+    correo: "",
+    anadido_por: "",
+  });
+
+  useEffect(() => {
+    if (!loading) {
+      const fadeTimer = setTimeout(() => setFadeIn(true), 10);
+      return () => clearTimeout(fadeTimer);
+    } else {
+      setFadeIn(false);
+    }
+  }, [loading]);
+
+  if (loading) return <Spinners />;
+
+  const handleAddClick = () => setShowModal(true);
+  const handleCloseModal = () => setShowModal(false);
+
+  // Manejar cambios en el formulario
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  // Manejar envío del formulario
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    // Crear nuevo cliente con id único
+    const newClient = {
+      id: Date.now(),
+      ...form,
+    };
+    const updatedClients = [...clients, newClient];
+    setClients(updatedClients);
+    setShowModal(false);
+    // Limpiar formulario
+    setForm({
+      nombre: "",
+      tipo_cliente: "",
+      documento: "",
+      telefono: "",
+      direccion: "",
+      correo: "",
+      anadido_por: "",
+    });
+  };
+
+  return (
+    <>
+      <h1 className="text-center mt-3 mb-5">Lista de clientes</h1>
+      <button className="btn btn-success mb-4 ms-3" onClick={handleAddClick}>
+        Añadir cliente
+      </button>
+      {showModal && (
+        <div
+          className="modal d-block"
+          tabIndex="-1"
+          style={{ background: "rgba(0,0,0,0.5)" }}
+        >
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title w-100 text-center">
+                  Añadir cliente
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={handleCloseModal}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <form onSubmit={handleSubmit}>
+                  <fieldset className="mb-3">
+                    <legend className="fs-6">Datos del cliente</legend>
+                    <div className="row">
+                      <div className="col-md-4 mb-2">
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Nombre"
+                          name="nombre"
+                          value={form.nombre}
+                          onChange={handleChange}
+                          required
+                        />
+                      </div>
+                      <div className="col-md-4 mb-2">
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Documento"
+                          name="documento"
+                          value={form.documento}
+                          onChange={handleChange}
+                          required
+                        />
+                      </div>
+                    </div>
+                  </fieldset>
+                  <fieldset className="mb-3">
+                    <legend className="fs-6">Contacto</legend>
+                    <div className="row">
+                      <div className="col-md-4 mb-2">
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Teléfono"
+                          name="telefono"
+                          value={form.telefono}
+                          onChange={handleChange}
+                        />
+                      </div>
+                      <div className="col-md-4 mb-2">
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Dirección"
+                          name="direccion"
+                          value={form.direccion}
+                          onChange={handleChange}
+                        />
+                      </div>
+                      <div className="col-md-4 mb-2">
+                        <input
+                          type="email"
+                          className="form-control"
+                          placeholder="Correo"
+                          name="correo"
+                          value={form.correo}
+                          onChange={handleChange}
+                        />
+                      </div>
+                    </div>
+                  </fieldset>
+                  <button type="submit" className="btn btn-primary mt-2">
+                    Añadir
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      <div className={`fade-init${fadeIn ? " fade-in" : ""} ms-3`}>
+        <table className="table table-responsive table-hover align-middle shadow">
+          <thead className="table-primary sticky-top">
+            <tr>
+              <th className="text-start">Nombre</th>
+              <th className="text-start">Direccion</th>
+              <th className="text-start">Correo</th>
+              <th className="text-start">Telefono</th>
+            </tr>
+          </thead>
+          <tbody>
+            {clients.map((client) => (
+              <tr key={client.id}>
+                <td className="text-start">{client.nombre}</td>
+                <td className="text-start">{client.direccion}</td>
+                <td className="text-center">{client.correo_electronico}</td>
+                <td className="text-center">{client.telefono}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+};
+
+export default GetClients;
+{
+  /*const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    // Fetch data from the API
+    const fetchProducts = async () => {
+      try {
+        const response = await fetch(
+          "https://76ywzcxwjf7oz4a6ag5eqo3ncq0nljiu.lambda-url.eu-west-1.on.aws/"
+        );
+        if (!response.ok) {
+          throw new Error("Error fetching data");
+        }
+        const data = await response.json();
+        setProducts(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p>Error: {error}</p>;
+*/
+}
+
+
+===== puntoVenta.jsx =====
+
+import React, { useState, useEffect } from "react";
+
+const PointOfSale = () => {
+  const [products, setProducts] = useState([]);
+  const [selectedProductId, setSelectedProductId] = useState("");
+  const [quantity, setQuantity] = useState(1);
+  const [cart, setCart] = useState([]);
+
+  // ✅ Cargar productos desde la API
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const res = await fetch("http://localhost:3000/productos");
+        const data = await res.json();
+        setProducts(data);
+      } catch (error) {
+        console.error("Error al cargar los productos:", error);
+      }
+    };
+    fetchProducts();
+  }, []);
+
+  // ✅ Agregar producto seleccionado al carrito
+  const handleAddToCart = () => {
+    if (selectedProductId && quantity > 0) {
+      const product = products.find(
+        (p) => p.id === parseInt(selectedProductId)
+      );
+      if (product) {
+        setCart([
+          ...cart,
+          {
+            id: product.id,
+            nombre: product.nombre,
+            precio_venta: parseFloat(product.precio_venta),
+            cantidad: parseInt(quantity),
+          },
+        ]);
+        setSelectedProductId("");
+        setQuantity(1);
+      }
+    }
+  };
+
+  // ✅ Calcular total
+  const total = cart.reduce(
+    (acc, item) => acc + item.precio_venta * item.cantidad,
+    0
+  );
+
+  // ✅ Procesar venta (enviar al backend)
+  const handleSale = async () => {
+    try {
+      for (const item of cart) {
+        const venta = {
+          id_producto: item.id,
+          cantidad: item.cantidad,
+          precio_venta: item.precio_venta,
+        };
+
+        const res = await fetch("http://localhost:3000/ventas", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(venta),
+        });
+
+        if (!res.ok) {
+          throw new Error(
+            `Error al registrar venta de producto ${item.nombre}`
+          );
+        }
+      }
+
+      alert(`✅ Venta completada. Total: €${total.toFixed(2)}`);
+      setCart([]);
+    } catch (error) {
+      console.error("Error al procesar la venta:", error);
+      alert("❌ Ocurrió un error al registrar la venta.");
+    }
+  };
+
+  return (
+    <div className="container mt-4">
+      <h2 className="mb-3 text-center">🧾 Punto de Venta</h2>
+
+      {/* Selección de producto */}
+      <div className="input-group mb-3">
+        <select
+          className="form-select"
+          value={selectedProductId}
+          onChange={(e) => setSelectedProductId(e.target.value)}
+        >
+          <option value="">Selecciona un producto...</option>
+          {products.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.nombre} (€{p.precio_venta})
+            </option>
+          ))}
+        </select>
+
+        <input
+          type="number"
+          className="form-control"
+          placeholder="Cantidad"
+          min="1"
+          value={quantity}
+          onChange={(e) => setQuantity(e.target.value)}
+        />
+
+        <button className="btn btn-primary" onClick={handleAddToCart}>
+          Agregar al carrito
+        </button>
+      </div>
+
+      {/* Carrito */}
+      <h3>🛒 Carrito</h3>
+      {cart.length === 0 ? (
+        <p>No hay productos en el carrito.</p>
+      ) : (
+        <ul className="list-group mb-3">
+          {cart.map((item, index) => (
+            <li
+              key={index}
+              className="list-group-item d-flex justify-content-between align-items-center"
+            >
+              <div>
+                {item.nombre} - Cantidad: {item.cantidad}
+              </div>
+              <span>€{(item.precio_venta * item.cantidad).toFixed(2)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Total y acción */}
+      <div className="d-flex justify-content-between align-items-center">
+        <h4>Total: €{total.toFixed(2)}</h4>
+        <button
+          className="btn btn-success"
+          onClick={handleSale}
+          disabled={cart.length === 0}
+        >
+          Realizar Venta
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default PointOfSale;
+
+
+===== getProducts.jsx =====
+
+import React, { useEffect, useState } from "react";
+import Spinners from "../spiners";
+import "./getProducts.css";
+import CardLayout from "../cardLayout/CardLayout";
+import Publicado from "./publicado/putPublicado";
+
+const GetProducts = () => {
+  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState([]);
+  const [search, setSearch] = useState("");
+  const [sortField, setSortField] = useState("predefinido");
+  const [sortOrder, setSortOrder] = useState("asc");
+  const [fadeIn, setFadeIn] = useState(false);
+  const [showCard, setShowCard] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+
+  // Función para obtener productos desde la API
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch(`http://localhost:3000/productos`);
+      if (!response.ok) throw new Error("Error al obtener los productos");
+
+      const data = await response.json();
+      setItems(data);
+      console.log(items, "items en getProducts");
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const productsSearch = useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  // Activa el fade-in solo cuando loading pasa a false
+  useEffect(() => {
+    if (!loading) {
+      // Pequeño timeout para asegurar que el DOM se actualiza antes de aplicar la clase
+      const fadeTimer = setTimeout(() => setFadeIn(true), 10);
+      return () => clearTimeout(fadeTimer);
+    } else {
+      setFadeIn(false);
+    }
+  }, [loading]);
+
+  useEffect(() => {
+    if (showCard) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    // Limpieza por si el componente se desmonta con el modal abierto
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showCard]);
+
+  const handleTdClick = (product) => {
+    setSelectedProduct(product);
+    setShowCard(true);
+  };
+
+  const handleCloseCard = () => setShowCard(false);
+
+  const handleSearch = (e) => {
+    setSearch(e.target.value);
+    async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:3000/productos?search=${search}`
+        );
+        if (!response.ok) throw new Error("Error al obtener los productos");
+
+        const data = await response.json();
+        setItems(data);
+        console.log(data, "items recibidos desde backend");
+      } catch (error) {
+        console.error("Error fetching products:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+  };
+
+  if (loading) return <Spinners />;
+
+  return (
+    <>
+      <h1 className="text-center mt-3 mb-5">Listado de productos</h1>
+      <div className="d-flex align-items-center justify-content-right ms-5 sticky-top w-90">
+        <div className="m-2 d-flex justify-content-right">
+          <input
+            type="text"
+            className="form-control w-100 "
+            placeholder="Buscar por nombre..."
+            value={search}
+            onChange={(e) => handleSearch(e)}
+          />
+        </div>
+        <div className="m-2 mx-5 d-flex align-items-center">
+          <select
+            className="form-select w-auto mx-2"
+            value={sortField}
+            onChange={(e) => setSortField(e.target.value)}
+          >
+            <option value="predefinido">Ordenar por</option>
+            <option value="cantidad">Cantidad</option>
+            <option value="precio_compra">Precio</option>
+          </select>
+          <select
+            className="form-select w-auto mx-2"
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+          >
+            <option value="asc">Menor</option>
+            <option value="desc">Mayor</option>
+          </select>
+        </div>
+      </div>
+      <div className={`fade-init${fadeIn ? " fade-in" : ""} ms-5`}>
+        <table className="table table-responsive table-hover align-middle shadow">
+          <thead className="table-primary sticky-top ">
+            <tr>
+              <th className="text-start">Nombre</th>
+              <th className="text-start">Categoria</th>
+              <th className="text-start">Cantidad</th>
+              <th className="text-start">Precio de Compra</th>
+              <th className="text-start">Precio de venta</th>
+              <th className="text-start">Caducidad</th>
+              <th className="text-start">Publicado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((item) => (
+              <tr key={item.producto_id}>
+                <td className="text-start" onClick={() => handleTdClick(item)}>
+                  {item.producto_nombre}
+                </td>
+
+                <td className="text-start" onClick={() => handleTdClick(item)}>
+                  {item.producto_categoria}
+                </td>
+                <td className="text-start" onClick={() => handleTdClick(item)}>
+                  {item.cantidad}
+                </td>
+                <td className="text-start" onClick={() => handleTdClick(item)}>
+                  {item.precio_compra}
+                </td>
+                <td className="text-start" onClick={() => handleTdClick(item)}>
+                  {item.precio_venta}
+                </td>
+                <td className="text-start" onClick={() => handleTdClick(item)}>
+                  {item.caducidad}
+                </td>
+                <Publicado producto={item} publicado={item.publicado} />
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {showCard && selectedProduct && (
+        <CardLayout product={selectedProduct} onClose={handleCloseCard} />
+      )}
+    </>
+  );
+};
+
+export default GetProducts;
+
+
+===== putPublicado.jsx =====
+
+import { useState } from "react";
+
+const Publicado = (item) => {
+  console.log(item, "item en publicado");
+  const [publish, setPublish] = useState(item.producto.publicado);
+
+  const putPublish = async () => {
+    try {
+      const response = await fetch(
+        `http://localhost:3000/publicar/${item.producto.producto_id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      console.log("response", response);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Error al guardar los datos");
+      }
+
+      const result = await response.json();
+      setPublish(publish === 1 ? 0 : 1);
+      console.log("✅ Datos guardados con éxito:", result);
+      console.log(publish, "onClick");
+    } catch (error) {
+      console.error("❌ Error al enviar los datos:", error);
+      alert("Ocurrió un error al guardar los datos");
+    }
+  };
+
+  return (
+    <td className="text-center" onClick={putPublish}>
+      {publish === 1 ? (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          height="34px"
+          viewBox="0 -960 960 960"
+          width="34px"
+          fill="#75FB4C"
+        >
+          <path d="M280-240q-100 0-170-70T40-480q0-100 70-170t170-70h400q100 0 170 70t70 170q0 100-70 170t-170 70H280Zm0-80h400q66 0 113-47t47-113q0-66-47-113t-113-47H280q-66 0-113 47t-47 113q0 66 47 113t113 47Zm400-40q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35ZM480-480Z" />
+        </svg>
+      ) : (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          height="34px"
+          viewBox="0 -960 960 960"
+          width="34px"
+          fill="#EA3323"
+        >
+          <path d="M280-240q-100 0-170-70T40-480q0-100 70-170t170-70h400q100 0 170 70t70 170q0 100-70 170t-170 70H280Zm0-80h400q66 0 113-47t47-113q0-66-47-113t-113-47H280q-66 0-113 47t-47 113q0 66 47 113t113 47Zm0-40q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35Zm200-120Z" />
+        </svg>
+      )}
+    </td>
+  );
+};
+
+export default Publicado;
+
+
+===== purchases.jsx =====
+
+import { useEffect, useState } from "react";
+import getPurchases from "./getData.js";
+import Spinners from "../spiners.jsx";
+
+const GetPurchases = () => {
+  const [loading, setLoading] = useState(true);
+  const [purchases, setPurchases] = useState([]);
+
+  const [fadeIn, setFadeIn] = useState(false);
+
+  // Función para obtener proveedores desde localStorage o getData.js
+  const loadPurchases = () => {
+    const localPurchases = localStorage.getItem("purchases");
+    if (localPurchases) {
+      const parsedPurchases = JSON.parse(localPurchases);
+      localStorage.setItem("purchases", JSON.stringify(parsedPurchases));
+      localStorage.setItem("purchasesBackup", JSON.stringify(parsedPurchases));
+      return parsedPurchases;
+    }
+    localStorage.setItem("purchases", JSON.stringify(getPurchases));
+    localStorage.setItem("purchasesBackup", JSON.stringify(getPurchases));
+    return getPurchases;
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPurchases(loadPurchases());
+      setLoading(false);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Activa el fade-in solo cuando loading pasa a false
+  useEffect(() => {
+    if (!loading) {
+      // Pequeño timeout para asegurar que el DOM se actualiza antes de aplicar la clase
+      const fadeTimer = setTimeout(() => setFadeIn(true), 10);
+      return () => clearTimeout(fadeTimer);
+    } else {
+      setFadeIn(false);
+    }
+  }, [loading]);
+
+  if (loading) return <Spinners />;
+
+  return (
+    <>
+      <h1 className="text-center mt-3 mb-5">Lista de compras</h1>
+      <button className="btn btn-success mb-4">Añadir compra</button>
+
+      <div className={`fade-init${fadeIn ? " fade-in" : ""}`}>
+        <table className="table table-responsive table-hover align-middle shadow">
+          <thead className="table-primary sticky-top">
+            <tr>
+              <th className="text-start">Nombre producto</th>
+              <th className="text-start">Nombre proveedor</th>
+              <th className="text-start">Fecha</th>
+              <th className="text-start">Cantidad</th>
+              <th className="text-start">Precio unitario</th>
+              <th className="text-start">Precio total</th>
+              <th className="text-start">Numero de factura</th>
+            </tr>
+          </thead>
+          {/*  <tbody>
+              {purchases.map((purchase) => (
+                <tr key={purchase.id}>
+                  <td className="text-start">{purchase.fecha}</td>
+                  <td className="text-start">{purchase.precioUnitario}</td>
+                  <td className="text-center">{purchase.precioTotal}</td>
+                  <td className="text-center">{purchase.numeroFactura}</td>
+                </tr>
+              ))}
+            </tbody>*/}
+        </table>
+      </div>
+    </>
+  );
+};
+
+export default GetPurchases;
+
+
+===== sales.jsx =====
+
+import { useEffect, useState } from "react";
+import Spinners from "../spiners.jsx";
+
+const GetSales = () => {
+  const [loading, setLoading] = useState(true);
+  const [sales, setSales] = useState([]);
+  const [fadeIn, setFadeIn] = useState(false);
+
+  useEffect(() => {
+    if (!loading) {
+      const fadeTimer = setTimeout(() => setFadeIn(true), 10);
+      return () => clearTimeout(fadeTimer);
+    } else {
+      setFadeIn(false);
+    }
+  }, [loading]);
+
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const response = await fetch("http://localhost:3000/ventas");
+        if (!response.ok) throw new Error("Error al obtener los clientes");
+        const data = await response.json();
+        setSales(data);
+      } catch (error) {
+        console.error("Error en la solicitud:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    console.log(sales);
+    fetchClients();
+  }, []);
+
+  return (
+    <>
+      <h1 className="text-center mt-3 mb-5">Ventas</h1>
+
+      <div className={`fade-init${fadeIn ? " fade-in" : ""}`}>
+        <table className="table table-responsive table-hover align-middle shadow">
+          <thead className="table-primary sticky-top">
+            <tr>
+              <th className="text-start">Nombre producto</th>
+              <th className="text-start">Nombre cliente</th>
+              <th className="text-start">Precio venta</th>
+              <th className="text-start">Cantidad</th>
+              <th className="text-start">Precio total</th>
+              <th className="text-start">metodo de pago</th>
+              <th className="text-start">Fecha</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sales.map((sale) => (
+              <tr key={sale.id}>
+                <td className="text-start">{sale.nombre_producto}</td>
+                <td className="text-start">{sale.nombre_cliente}</td>
+                <td className="text-center">{sale.precio_venta}</td>
+                <td className="text-center">{sale.cantidad}</td>
+                <td className="text-center">{sale.total}</td>
+                <td className="text-center">{sale.metodo_pago}</td>
+                <td className="text-center">{sale.fecha}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+};
+
+export default GetSales;
+
+
+===== spiners.jsx =====
+
+import React from "react";
+import "./spiners.css"; // Asegúrate de que aquí esté la clase .reverse-spin
+
+const Spinners = () => (
+  <div
+    className="d-flex justify-content-center align-items-center flex-column"
+    style={{ minHeight: "100vh", position: "relative" }}
+  >
+    <div style={{ position: "relative", marginBottom: "2rem" }}>
+      {/* Spinner grande */}
+      <div
+        className="spinner-border text-primary"
+        role="status"
+        style={{ width: "7rem", height: "7rem" }}
+      >
+        <span className="visually-hidden">Loading...</span>
+      </div>
+      {/* Spinner pequeño, centrado encima y girando al revés */}
+      <div
+        className="spinner-border text-dark reverse-spin"
+        role="status"
+        style={{
+          width: "3.5rem",
+          height: "3.5rem",
+          position: "absolute",
+          left: "50%",
+          top: "50%",
+          marginLeft: "-1.75rem",
+          marginTop: "-1.75rem",
+        }}
+      >
+        <span className="visually-hidden">Loading...</span>
+      </div>
+    </div>
+  </div>
+);
+
+export default Spinners;
+
+
+===== main.jsx =====
+
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import App from "./App.jsx";
+
+import "bootstrap/dist/css/bootstrap.min.css";
+import "bootstrap/dist/js/bootstrap.bundle.min.js";
+
+createRoot(document.getElementById("root")).render(
+  <StrictMode>
+    <App />
+  </StrictMode>
+);
+
+
+===== Nav.jsx =====
+
+import React, { useState } from "react";
+import GetProducts from "./components/products/getProducts.jsx";
+import GetClients from "./components/clients/getClients.jsx";
+import GetPurchases from "./components/purchases/purchases.jsx";
+import PointOfSale from "./components/point of sales/puntoVenta.jsx";
+import GetSales from "./components/sales/sales.jsx";
+
+import "bootstrap/dist/css/bootstrap.min.css";
+import "bootstrap/dist/js/bootstrap.bundle.min.js";
+import "./nav.css";
+
+function Nav() {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [activePage, setActivePage] = useState("inicio");
+
+  const toggleSidebar = () => setIsCollapsed(!isCollapsed);
+
+  // Renderiza el componente según la página activa
+  const renderContent = () => {
+    switch (activePage) {
+      case "productos":
+        return <GetProducts />;
+      case "clientes":
+        return <GetClients />;
+      case "ventas":
+        return <GetSales />;
+      case "compras":
+        return <GetPurchases />;
+      case "proveedores":
+        return <GetSupliers />;
+      // case "movimientos":
+      //   return <Movimientos />;
+      // case "configuracion":
+      //   return <Configuracion />;
+      default:
+        return <PointOfSale />;
+    }
+  };
+
+  return (
+    <div className="d-flex">
+      {/* Botón flotante para mostrar menú */}
+      {isCollapsed && (
+        <button
+          className="navbar-toggler border-0 bg-dark"
+          type="button"
+          onClick={toggleSidebar}
+          style={{}}
+        >
+          {/* SVG de solapa/flecha oscura */}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="28"
+            height="28"
+            fill="currentColor"
+            className="text-white"
+            viewBox="0 0 16 16"
+          >
+            <circle cx="8" cy="8" r="8" fill="#212529" />
+            <path
+              fillRule="evenodd"
+              d="M6 4l4 4-4 4"
+              stroke="#fff"
+              strokeWidth="2"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      )}
+      {/* Sidebar */}
+      <div
+        className={`bg-dark text-black sidebar-sticky${
+          isCollapsed ? " collapsed" : ""
+        }`}
+        style={{
+          width: isCollapsed ? "0" : "180px",
+          padding: isCollapsed ? "0" : "0.1rem 0.1rem",
+          overflowX: "hidden",
+          transition:
+            "width 0.4s cubic-bezier(0.4, 0, 0.2, 1), padding 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+        }}
+      >
+        <div className="sidebar-content">
+          <div className="d-flex justify-content-center">
+            <button
+              className="btn btn-light mb-5 mt-3 w-15"
+              onClick={toggleSidebar}
+            >
+              {isCollapsed ? "" : "Ocultar menú"}
+            </button>
+          </div>
+          <ul className="nav flex-md-row">
+            {" "}
+            <li className="nav-item">
+              <a
+                className={`nav-link text-white ${
+                  activePage === "inicio" ? "active" : ""
+                }`}
+                href="#"
+                onClick={() => setActivePage("inicio")}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  height="25px"
+                  viewBox="0 -960 960 960"
+                  width="25px"
+                  fill="#FFFFFF"
+                >
+                  <path d="M260-630q-24.75 0-42.37-17.63Q200-665.25 200-690v-130q0-24.75 17.63-42.38Q235.25-880 260-880h440q24.75 0 42.38 17.62Q760-844.75 760-820v130q0 24.75-17.62 42.37Q724.75-630 700-630H260Zm0-60h440v-130H260v130ZM140-80q-24.75 0-42.37-17.63Q80-115.25 80-140v-70h800v70q0 24.75-17.62 42.37Q844.75-80 820-80H140ZM80-240l145-324q8-16 22.6-26 14.61-10 31.4-10h402q16.79 0 31.4 10 14.6 10 22.6 26l145 324H80Zm260-80h40q8 0 14-6t6-14q0-8-6-14t-14-6h-40q-8 0-14 6t-6 14q0 8 6 14t14 6Zm0-80h40q8 0 14-6t6-14q0-8-6-14t-14-6h-40q-8 0-14 6t-6 14q0 8 6 14t14 6Zm0-80h40q8 0 14-6t6-14q0-8-6-14t-14-6h-40q-8 0-14 6t-6 14q0 8 6 14t14 6Zm120 160h40q8 0 14-6t6-14q0-8-6-14t-14-6h-40q-8 0-14 6t-6 14q0 8 6 14t14 6Zm0-80h40q8 0 14-6t6-14q0-8-6-14t-14-6h-40q-8 0-14 6t-6 14q0 8 6 14t14 6Zm0-80h40q8 0 14-6t6-14q0-8-6-14t-14-6h-40q-8 0-14 6t-6 14q0 8 6 14t14 6Zm120 160h40q8 0 14-6t6-14q0-8-6-14t-14-6h-40q-8 0-14 6t-6 14q0 8 6 14t14 6Zm0-80h40q8 0 14-6t6-14q0-8-6-14t-14-6h-40q-8 0-14 6t-6 14q0 8 6 14t14 6Zm0-80h40q8 0 14-6t6-14q0-8-6-14t-14-6h-40q-8 0-14 6t-6 14q0 8 6 14t14 6Z" />
+                </svg>
+                <span className="d-none d-md-inline ms-2">Punto de venta</span>{" "}
+              </a>
+            </li>
+            <li className="nav-item">
+              <a
+                className={`nav-link text-white ${
+                  activePage === "productos" ? "active" : ""
+                }`}
+                href="#"
+                onClick={() => setActivePage("productos")}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  height="25px"
+                  viewBox="0 -960 960 960"
+                  width="25px"
+                  fill="#FFFFFF"
+                >
+                  <path d="M620-159 460-319l43-43 117 117 239-239 43 43-282 282Zm220-414h-60v-207h-60v90H240v-90h-60v600h251v60H180q-26 0-43-17t-17-43v-600q0-26 17-43t43-17h202q7-35 34.5-57.5T480-920q36 0 63.5 22.5T578-840h202q26 0 43 17t17 43v207ZM480-780q17 0 28.5-11.5T520-820q0-17-11.5-28.5T480-860q-17 0-28.5 11.5T440-820q0 17 11.5 28.5T480-780Z" />
+                </svg>
+                <span className="d-none d-md-inline ms-2">Productos</span>
+              </a>
+            </li>
+            <li className="nav-item">
+              <a
+                className={`nav-link text-white ${
+                  activePage === "clientes" ? "active" : ""
+                }`}
+                href="#"
+                onClick={() => setActivePage("clientes")}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  height="24px"
+                  viewBox="0 -960 960 960"
+                  width="24px"
+                  fill="#FFFFFF"
+                >
+                  <path d="M185-80q-17 0-29.5-12.5T143-122v-105q0-90 56-159t144-88q-40 28-62 70.5T259-312v190q0 11 3 22t10 20h-87Zm147 0q-17 0-29.5-12.5T290-122v-190q0-70 49.5-119T459-480h189q70 0 119 49t49 119v64q0 70-49 119T648-80H332Zm148-484q-66 0-112-46t-46-112q0-66 46-112t112-46q66 0 112 46t46 112q0 66-46 112t-112 46Z" />
+                </svg>
+                <span className="d-none d-md-inline ms-2">Clientes</span>
+              </a>
+            </li>
+            <li className="nav-item">
+              <a
+                className={`nav-link text-white ${
+                  activePage === "ventas" ? "active" : ""
+                }`}
+                href="#"
+                onClick={() => setActivePage("ventas")}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  height="24px"
+                  viewBox="0 -960 960 960"
+                  width="24px"
+                  fill="#FFFFFF"
+                >
+                  <path d="M856-390 570-104q-12 12-27 18t-30 6q-15 0-30-6t-27-18L103-457q-11-11-17-25.5T80-513v-287q0-33 23.5-56.5T160-880h287q16 0 31 6.5t26 17.5l352 353q12 12 17.5 27t5.5 30q0 15-5.5 29.5T856-390ZM513-160l286-286-353-354H160v286l353 354ZM260-640q25 0 42.5-17.5T320-700q0-25-17.5-42.5T260-760q-25 0-42.5 17.5T200-700q0 25 17.5 42.5T260-640Zm220 160Z" />
+                </svg>
+                <span className="d-none d-md-inline ms-2"> Ventas</span>
+              </a>
+            </li>
+            <li className="nav-item">
+              <a
+                className={`nav-link text-white ${
+                  activePage === "movimientos" ? "active" : ""
+                }`}
+                href="#"
+                onClick={() => setActivePage("movimientos")}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  height="24px"
+                  viewBox="0 -960 960 960"
+                  width="24px"
+                  fill="#FFFFFF"
+                >
+                  <path d="M280-120 80-320l200-200 57 56-104 104h607v80H233l104 104-57 56Zm400-320-57-56 104-104H120v-80h607L623-784l57-56 200 200-200 200Z" />
+                </svg>
+                <span className="d-none d-md-inline ms-2">movimientos</span>
+              </a>
+            </li>
+            <li className="nav-item">
+              <a
+                className={`nav-link text-white ${
+                  activePage === "configuracion" ? "active" : ""
+                }`}
+                href="#"
+                onClick={() => setActivePage("configuracion")}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  height="24px"
+                  viewBox="0 -960 960 960"
+                  width="24px"
+                  fill="#FFFFFF"
+                >
+                  <path d="m370-80-16-128q-13-5-24.5-12T307-235l-119 50L78-375l103-78q-1-7-1-13.5v-27q0-6.5 1-13.5L78-585l110-190 119 50q11-8 23-15t24-12l16-128h220l16 128q13 5 24.5 12t22.5 15l119-50 110 190-103 78q1 7 1 13.5v27q0 6.5-2 13.5l103 78-110 190-118-50q-11 8-23 15t-24 12L590-80H370Zm70-80h79l14-106q31-8 57.5-23.5T639-327l99 41 39-68-86-65q5-14 7-29.5t2-31.5q0-16-2-31.5t-7-29.5l86-65-39-68-99 42q-22-23-48.5-38.5T533-694l-13-106h-79l-14 106q-31 8-57.5 23.5T321-633l-99-41-39 68 86 64q-5 15-7 30t-2 32q0 16 2 31t7 30l-86 65 39 68 99-42q22 23 48.5 38.5T427-266l13 106Zm42-180q58 0 99-41t41-99q0-58-41-99t-99-41q-59 0-99.5 41T342-480q0 58 40.5 99t99.5 41Zm-2-140Z" />
+                </svg>
+                <span className="d-none d-md-inline ms-2">Ajustes</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      {/* Contenido principal */}
+      <div className="flex-grow-1 p-3">{renderContent()}</div>
+    </div>
+  );
+}
+
+export default Nav;

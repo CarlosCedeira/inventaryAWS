@@ -1,26 +1,12 @@
 import { useEffect, useState } from "react";
-import getPurchases from "./getData.js";
 import Spinners from "../spiners.jsx";
 
 const GetPurchases = () => {
   const [loading, setLoading] = useState(true);
-  const [purchases, setPurchases] = useState([]);
 
   const [fadeIn, setFadeIn] = useState(false);
 
   // Función para obtener proveedores desde localStorage o getData.js
-  const loadPurchases = () => {
-    const localPurchases = localStorage.getItem("purchases");
-    if (localPurchases) {
-      const parsedPurchases = JSON.parse(localPurchases);
-      localStorage.setItem("purchases", JSON.stringify(parsedPurchases));
-      localStorage.setItem("purchasesBackup", JSON.stringify(parsedPurchases));
-      return parsedPurchases;
-    }
-    localStorage.setItem("purchases", JSON.stringify(getPurchases));
-    localStorage.setItem("purchasesBackup", JSON.stringify(getPurchases));
-    return getPurchases;
-  };
 
   useEffect(() => {
     const timer = setTimeout(() => {
