@@ -64,24 +64,34 @@ const GetProducts = () => {
 
   const handleCloseCard = () => setShowCard(false);
 
-  const handleSearch = (e) => {
-    setSearch(e.target.value);
-    async () => {
-      try {
-        const response = await fetch(
-          `http://localhost:3000/productos?search=${search}`
-        );
-        if (!response.ok) throw new Error("Error al obtener los productos");
+  // Modificación de la función handleSearch en GetProducts.jsx [2]
+  const handleSearch = async (e) => {
+    // 1. Capturar el valor inmediatamente.
+    const searchValue = e.target.value;
+    setSearch(searchValue);
 
-        const data = await response.json();
-        setItems(data);
-        console.log(data, "items recibidos desde backend");
-      } catch (error) {
-        console.error("Error fetching products:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    // 2. Determinar la ruta correcta. Si hay un valor, usa /productos/:name.
+    let url;
+    if (searchValue.trim() !== "") {
+      // Uso de Path Parameter (CORRECTO para la ruta definida en el backend /productos/:name)
+      url = `http://localhost:3000/productos/${searchValue}`;
+    } else {
+      // Si la búsqueda está vacía, cargar todos los productos
+      url = `http://localhost:3000/productos`; // [3]
+    }
+
+    try {
+      const response = await fetch(url); // Uso de la URL corregida
+
+      if (!response.ok) throw new Error("Error al obtener los productos");
+
+      const data = await response.json();
+      setItems(data);
+      console.log(data, "items recibidos desde backend");
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    }
+    // Nota: El setLoading(false) debería ocurrir solo si loading fue true antes del fetch.
   };
 
   if (loading) return <Spinners />;

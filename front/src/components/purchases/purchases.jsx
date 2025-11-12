@@ -10,7 +10,6 @@ const GetPurchases = () => {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      setPurchases(loadPurchases());
       setLoading(false);
     }, 1000);
     return () => clearTimeout(timer);
