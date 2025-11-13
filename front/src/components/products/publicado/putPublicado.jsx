@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { useContext, useEffect, useState } from "react";
+import { ProductContext } from "../../../context/ProductContext";
 
-const Publicado = (item) => {
-  console.log(item, "item en publicado");
-  const [publish, setPublish] = useState(item.producto.publicado);
+const Publicado = ({ id, publicado }) => {
+  const [itspublish, setItspublish] = useState(publicado);
+
+  console.log("id en putPublicadocontext", itspublish);
 
   const putPublish = async () => {
     try {
       const response = await fetch(
-        `http://localhost:3000/publicar/${item.producto.producto_id}`,
+        `http://localhost:3000/productos/publicar/${id}`,
         {
           method: "PUT",
           headers: {
@@ -23,18 +25,22 @@ const Publicado = (item) => {
       }
 
       const result = await response.json();
-      setPublish(publish === 1 ? 0 : 1);
+      if (itspublish === 1) {
+        setItspublish(0);
+      } else {
+        setItspublish(1);
+      }
+
       console.log("✅ Datos guardados con éxito:", result);
-      console.log(publish, "onClick");
     } catch (error) {
       console.error("❌ Error al enviar los datos:", error);
       alert("Ocurrió un error al guardar los datos");
     }
   };
-
+  console.log("publicado en putPublicado", publicado);
   return (
     <td className="text-center" onClick={putPublish}>
-      {publish === 1 ? (
+      {itspublish === 1 ? (
         <svg
           xmlns="http://www.w3.org/2000/svg"
           height="34px"

@@ -17,5 +17,5 @@ app.use("/clientes", require("./routes/clientes"));
 app.use("/ventas", require("./routes/ventas"));
 
 app.listen(PORT, () => {
-  console.log(`Servidor corriendo en  ${HOST} ${PORT}`);
+  console.log(`Servidor corriendo en  http://localhost:${PORT}`);
 });

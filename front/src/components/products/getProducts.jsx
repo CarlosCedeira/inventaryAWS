@@ -1,29 +1,38 @@
-import React, { useContext, useState, useEffect } from "react";
-import { ProductContext } from "../../context/ProductContext";
+import { useState, useEffect, useContext } from "react";
 import Spinners from "../spiners";
 import CardLayout from "../cardLayout/CardLayout";
 import Publicado from "./publicado/putPublicado";
+import { ProductContext } from "../../context/ProductContext";
 import "./getProducts.css";
 
 const GetProducts = () => {
-  const {
-    items,
-    setItems,
-    loading,
-    fetchProducts,
-    selectedProduct,
-    setSelectedProduct,
-  } = useContext(ProductContext);
-
+  const [items, setItems] = useState([]);
   const [search, setSearch] = useState("");
   const [showCard, setShowCard] = useState(false);
   const [sortField, setSortField] = useState("predefinido");
   const [sortOrder, setSortOrder] = useState("asc");
   const [fadeIn, setFadeIn] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
   // 🔹 Cargar productos al montar el componente
   useEffect(() => {
-    fetchProducts();
+    const fetchClients = async () => {
+      try {
+        const response = await fetch("http://localhost:3000/productos");
+        if (!response.ok) throw new Error("Error al obtener los clientes");
+        const data = await response.json();
+        setItems(data);
+        console.log("Productos cargados:", data);
+        console.log("publicado en getProducts useEffect", data.publicado);
+      } catch (error) {
+        console.error("Error en la solicitud:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClients();
   }, []);
 
   // 🔹 Efecto para el fade-in cuando termina de cargar
@@ -58,7 +67,7 @@ const GetProducts = () => {
 
     const url =
       searchValue.trim() !== ""
-        ? `http://localhost:3000/productos/${searchValue}`
+        ? `http://localhost:3000/productos/buscar/${searchValue}`
         : `http://localhost:3000/productos`;
 
     try {
@@ -139,7 +148,8 @@ const GetProducts = () => {
                 </td>
                 <td onClick={() => handleTdClick(item)}>{item.precio_venta}</td>
                 <td onClick={() => handleTdClick(item)}>{item.caducidad}</td>
-                <Publicado producto={item} publicado={item.publicado} />
+                <Publicado id={item.producto_id} publicado={item.publicado} />
+                {console.log("publicado en getProducts", item.publicado)}
               </tr>
             ))}
           </tbody>
@@ -148,7 +158,11 @@ const GetProducts = () => {
 
       {/* 🔹 Modal con detalles del producto */}
       {showCard && selectedProduct && (
-        <CardLayout product={selectedProduct} onClose={handleCloseCard} />
+        <CardLayout
+          product={selectedProduct}
+          onClose={handleCloseCard}
+          id={selectedProduct.inventario_id}
+        />
       )}
     </>
   );

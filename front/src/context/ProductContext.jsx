@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect } from "react";
+import { createContext, useState } from "react";
 
 export const ProductContext = createContext();
 
@@ -6,23 +6,9 @@ export const ProductProvider = ({ children }) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [itsPublish, setItsPublish] = useState(false);
 
-  // Fetch general
-  const fetchProducts = async () => {
-    try {
-      const res = await fetch("http://localhost:3000/productos");
-      const data = await res.json();
-      setItems(data);
-    } catch (error) {
-      console.error("Error fetching products:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchProducts();
-  }, []);
+  // 🔹 Función que acepta un id opcional
 
   return (
     <ProductContext.Provider
@@ -33,7 +19,8 @@ export const ProductProvider = ({ children }) => {
         setLoading,
         selectedProduct,
         setSelectedProduct,
-        fetchProducts,
+        itsPublish,
+        setItsPublish,
       }}
     >
       {children}

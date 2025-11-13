@@ -1,11 +1,31 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import Spinners from "../spiners";
 import Publicado from "../products/publicado/putPublicado";
 import "./cardLayout.css";
 
-const CardLayout = ({ product, onClose }) => {
-  const [formData, setFormData] = React.useState(product);
-  console.log("producto desde cardlayout", product.producto_id);
-  console.log("onclose", onClose);
+const CardLayout = ({ onClose, id }) => {
+  const [formData, setFormData] = useState({});
+  console.log("id en cardLayout", id);
+
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const response = await fetch(`http://localhost:3000/productos/${id}`);
+        if (!response.ok) throw new Error("Error al obtener los clientes");
+        const data = await response.json();
+        setFormData(data[0]);
+      } catch (error) {
+        console.error("Error en la solicitud:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClients();
+  }, []);
+  console.log("formdata desde layout", formData.producto_nombre);
 
   // 🔹 Formatear fecha ISO -> YYYY-MM-DD (para mostrar en input type="date")
   const formatDate = (dateString) => {
@@ -41,7 +61,7 @@ const CardLayout = ({ product, onClose }) => {
     try {
       console.log("feeeeechingggg");
       const response = await fetch(
-        `http://localhost:3000/actualizar/${product.producto_id}`,
+        `http://localhost:3000/actualizar/${formData.producto_id}`,
         {
           method: "PUT",
           headers: {
@@ -70,6 +90,8 @@ const CardLayout = ({ product, onClose }) => {
     }
   };
 
+  if (loading) return <Spinners />;
+  console.log("formdata fuera del loading", formData.publicado);
   return (
     <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center product-modal-backdrop">
       <div
@@ -86,7 +108,10 @@ const CardLayout = ({ product, onClose }) => {
             ></button>
 
             <header className="modal-header justify-content-start mb-4 ms-5">
-              <Publicado producto={product} />
+              <Publicado
+                publicado={formData.publicado}
+                id={formData.producto_id}
+              />
 
               {formData.destacado ? (
                 <>
@@ -155,7 +180,7 @@ const CardLayout = ({ product, onClose }) => {
                   <div className="col-sm-9">
                     <input
                       type="text"
-                      name="nombre"
+                      name="producto_nombre"
                       value={formData.producto_nombre || ""}
                       onChange={handleChange}
                       className="form-control"
@@ -170,7 +195,7 @@ const CardLayout = ({ product, onClose }) => {
                   </label>
                   <div className="col-sm-9">
                     <textarea
-                      name="descripcion"
+                      name="producto_descripcion"
                       value={formData.producto_descripcion || ""}
                       onChange={handleChange}
                       className="form-control"
@@ -264,7 +289,7 @@ const CardLayout = ({ product, onClose }) => {
                       <div className="col-sm-6">
                         <input
                           type="text"
-                          name="codigo_barras"
+                          name="numero_lote"
                           value={formData.numero_lote || ""}
                           onChange={handleChange}
                           className="form-control"
@@ -279,7 +304,7 @@ const CardLayout = ({ product, onClose }) => {
                       <div className="col-sm-6">
                         <input
                           type="text"
-                          name="codigo_barras"
+                          name="sku"
                           value={formData.sku || ""}
                           onChange={handleChange}
                           className="form-control"
@@ -293,8 +318,8 @@ const CardLayout = ({ product, onClose }) => {
                       </label>
                       <div className="col-sm-6">
                         <input
-                          type="text"
-                          name="codigo_barras"
+                          type="number"
+                          name="stock_minimo"
                           value={formData.stock_minimo || ""}
                           onChange={handleChange}
                           className="form-control"
