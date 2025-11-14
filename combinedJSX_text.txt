@@ -22,14 +22,34 @@ export default App;
 
 ===== CardLayout.jsx =====
 
-import React from "react";
+import React, { useEffect, useState } from "react";
+import Spinners from "../spiners";
 import Publicado from "../products/publicado/putPublicado";
 import "./cardLayout.css";
 
-const CardLayout = ({ product, onClose }) => {
-  const [formData, setFormData] = React.useState(product);
-  console.log("producto desde cardlayout", product.producto_id);
-  console.log("onclose", onClose);
+const CardLayout = ({ onClose, id }) => {
+  const [formData, setFormData] = useState({});
+  console.log("id en cardLayout", id);
+
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const response = await fetch(`http://localhost:3000/productos/${id}`);
+        if (!response.ok) throw new Error("Error al obtener los clientes");
+        const data = await response.json();
+        setFormData(data[0]);
+      } catch (error) {
+        console.error("Error en la solicitud:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClients();
+  }, []);
+  console.log("formdata desde layout", formData.producto_nombre);
 
   // 🔹 Formatear fecha ISO -> YYYY-MM-DD (para mostrar en input type="date")
   const formatDate = (dateString) => {
@@ -65,7 +85,7 @@ const CardLayout = ({ product, onClose }) => {
     try {
       console.log("feeeeechingggg");
       const response = await fetch(
-        `http://localhost:3000/actualizar/${product.producto_id}`,
+        `http://localhost:3000/actualizar/${formData.producto_id}`,
         {
           method: "PUT",
           headers: {
@@ -94,6 +114,8 @@ const CardLayout = ({ product, onClose }) => {
     }
   };
 
+  if (loading) return <Spinners />;
+  console.log("formdata fuera del loading", formData.publicado);
   return (
     <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center product-modal-backdrop">
       <div
@@ -110,7 +132,10 @@ const CardLayout = ({ product, onClose }) => {
             ></button>
 
             <header className="modal-header justify-content-start mb-4 ms-5">
-              <Publicado producto={product} />
+              <Publicado
+                publicado={formData.publicado}
+                id={formData.producto_id}
+              />
 
               {formData.destacado ? (
                 <>
@@ -179,7 +204,7 @@ const CardLayout = ({ product, onClose }) => {
                   <div className="col-sm-9">
                     <input
                       type="text"
-                      name="nombre"
+                      name="producto_nombre"
                       value={formData.producto_nombre || ""}
                       onChange={handleChange}
                       className="form-control"
@@ -194,7 +219,7 @@ const CardLayout = ({ product, onClose }) => {
                   </label>
                   <div className="col-sm-9">
                     <textarea
-                      name="descripcion"
+                      name="producto_descripcion"
                       value={formData.producto_descripcion || ""}
                       onChange={handleChange}
                       className="form-control"
@@ -288,7 +313,7 @@ const CardLayout = ({ product, onClose }) => {
                       <div className="col-sm-6">
                         <input
                           type="text"
-                          name="codigo_barras"
+                          name="numero_lote"
                           value={formData.numero_lote || ""}
                           onChange={handleChange}
                           className="form-control"
@@ -303,7 +328,7 @@ const CardLayout = ({ product, onClose }) => {
                       <div className="col-sm-6">
                         <input
                           type="text"
-                          name="codigo_barras"
+                          name="sku"
                           value={formData.sku || ""}
                           onChange={handleChange}
                           className="form-control"
@@ -317,8 +342,8 @@ const CardLayout = ({ product, onClose }) => {
                       </label>
                       <div className="col-sm-6">
                         <input
-                          type="text"
-                          name="codigo_barras"
+                          type="number"
+                          name="stock_minimo"
                           value={formData.stock_minimo || ""}
                           onChange={handleChange}
                           className="form-control"
@@ -748,32 +773,41 @@ export default PointOfSale;
 
 ===== getProducts.jsx =====
 
-import React, { useContext, useState, useEffect } from "react";
-import { ProductContext } from "../../context/ProductContext";
+import { useState, useEffect, useContext } from "react";
 import Spinners from "../spiners";
 import CardLayout from "../cardLayout/CardLayout";
 import Publicado from "./publicado/putPublicado";
+import { ProductContext } from "../../context/ProductContext";
 import "./getProducts.css";
 
 const GetProducts = () => {
-  const {
-    items,
-    setItems,
-    loading,
-    fetchProducts,
-    selectedProduct,
-    setSelectedProduct,
-  } = useContext(ProductContext);
-
+  const [items, setItems] = useState([]);
   const [search, setSearch] = useState("");
   const [showCard, setShowCard] = useState(false);
   const [sortField, setSortField] = useState("predefinido");
   const [sortOrder, setSortOrder] = useState("asc");
   const [fadeIn, setFadeIn] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
   // 🔹 Cargar productos al montar el componente
   useEffect(() => {
-    fetchProducts();
+    const fetchClients = async () => {
+      try {
+        const response = await fetch("http://localhost:3000/productos");
+        if (!response.ok) throw new Error("Error al obtener los clientes");
+        const data = await response.json();
+        setItems(data);
+        console.log("Productos cargados:", data);
+        console.log("publicado en getProducts useEffect", data.publicado);
+      } catch (error) {
+        console.error("Error en la solicitud:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClients();
   }, []);
 
   // 🔹 Efecto para el fade-in cuando termina de cargar
@@ -808,7 +842,7 @@ const GetProducts = () => {
 
     const url =
       searchValue.trim() !== ""
-        ? `http://localhost:3000/productos/${searchValue}`
+        ? `http://localhost:3000/productos/buscar/${searchValue}`
         : `http://localhost:3000/productos`;
 
     try {
@@ -889,7 +923,8 @@ const GetProducts = () => {
                 </td>
                 <td onClick={() => handleTdClick(item)}>{item.precio_venta}</td>
                 <td onClick={() => handleTdClick(item)}>{item.caducidad}</td>
-                <Publicado producto={item} publicado={item.publicado} />
+                <Publicado id={item.producto_id} publicado={item.publicado} />
+                {console.log("publicado en getProducts", item.publicado)}
               </tr>
             ))}
           </tbody>
@@ -898,7 +933,11 @@ const GetProducts = () => {
 
       {/* 🔹 Modal con detalles del producto */}
       {showCard && selectedProduct && (
-        <CardLayout product={selectedProduct} onClose={handleCloseCard} />
+        <CardLayout
+          product={selectedProduct}
+          onClose={handleCloseCard}
+          id={selectedProduct.inventario_id}
+        />
       )}
     </>
   );
@@ -909,16 +948,18 @@ export default GetProducts;
 
 ===== putPublicado.jsx =====
 
-import { useState } from "react";
+import { useContext, useEffect, useState } from "react";
+import { ProductContext } from "../../../context/ProductContext";
 
-const Publicado = (item) => {
-  console.log(item, "item en publicado");
-  const [publish, setPublish] = useState(item.producto.publicado);
+const Publicado = ({ id, publicado }) => {
+  const [itspublish, setItspublish] = useState(publicado);
+
+  console.log("id en putPublicadocontext", itspublish);
 
   const putPublish = async () => {
     try {
       const response = await fetch(
-        `http://localhost:3000/publicar/${item.producto.producto_id}`,
+        `http://localhost:3000/productos/publicar/${id}`,
         {
           method: "PUT",
           headers: {
@@ -934,18 +975,22 @@ const Publicado = (item) => {
       }
 
       const result = await response.json();
-      setPublish(publish === 1 ? 0 : 1);
+      if (itspublish === 1) {
+        setItspublish(0);
+      } else {
+        setItspublish(1);
+      }
+
       console.log("✅ Datos guardados con éxito:", result);
-      console.log(publish, "onClick");
     } catch (error) {
       console.error("❌ Error al enviar los datos:", error);
       alert("Ocurrió un error al guardar los datos");
     }
   };
-
+  console.log("publicado en putPublicado", publicado);
   return (
     <td className="text-center" onClick={putPublish}>
-      {publish === 1 ? (
+      {itspublish === 1 ? (
         <svg
           xmlns="http://www.w3.org/2000/svg"
           height="34px"
@@ -1161,7 +1206,7 @@ export default Spinners;
 
 ===== ProductContext.jsx =====
 
-import { createContext, useState, useEffect } from "react";
+import { createContext, useState } from "react";
 
 export const ProductContext = createContext();
 
@@ -1169,23 +1214,9 @@ export const ProductProvider = ({ children }) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [itsPublish, setItsPublish] = useState(false);
 
-  // Fetch general
-  const fetchProducts = async () => {
-    try {
-      const res = await fetch("http://localhost:3000/productos");
-      const data = await res.json();
-      setItems(data);
-    } catch (error) {
-      console.error("Error fetching products:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchProducts();
-  }, []);
+  // 🔹 Función que acepta un id opcional
 
   return (
     <ProductContext.Provider
@@ -1196,7 +1227,8 @@ export const ProductProvider = ({ children }) => {
         setLoading,
         selectedProduct,
         setSelectedProduct,
-        fetchProducts,
+        itsPublish,
+        setItsPublish,
       }}
     >
       {children}
