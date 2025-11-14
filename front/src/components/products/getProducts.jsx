@@ -15,24 +15,24 @@ const GetProducts = () => {
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
 
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch("http://localhost:3000/productos");
+      if (!response.ok) throw new Error("Error al obtener los clientes");
+      const data = await response.json();
+      setItems(data);
+      console.log("Productos cargados:", data);
+      console.log("publicado en getProducts useEffect", data.publicado);
+    } catch (error) {
+      console.error("Error en la solicitud:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 🔹 Cargar productos al montar el componente
   useEffect(() => {
-    const fetchClients = async () => {
-      try {
-        const response = await fetch("http://localhost:3000/productos");
-        if (!response.ok) throw new Error("Error al obtener los clientes");
-        const data = await response.json();
-        setItems(data);
-        console.log("Productos cargados:", data);
-        console.log("publicado en getProducts useEffect", data.publicado);
-      } catch (error) {
-        console.error("Error en la solicitud:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchClients();
+    fetchProducts();
   }, []);
 
   // 🔹 Efecto para el fade-in cuando termina de cargar
@@ -58,7 +58,10 @@ const GetProducts = () => {
   };
 
   // 🔹 Cerrar modal
-  const handleCloseCard = () => setShowCard(false);
+  const handleCloseCard = () => {
+    setShowCard(false);
+    fetchProducts();
+  };
 
   // 🔹 Buscar productos por nombre
   const handleSearch = async (e) => {

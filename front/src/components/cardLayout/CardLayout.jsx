@@ -5,12 +5,13 @@ import "./cardLayout.css";
 
 const CardLayout = ({ onClose, id }) => {
   const [formData, setFormData] = useState({});
+  const [disabled, setDisabled] = useState(true);
   console.log("id en cardLayout", id);
 
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchClients = async () => {
+    const fetchProductsID = async () => {
       try {
         const response = await fetch(`http://localhost:3000/productos/${id}`);
         if (!response.ok) throw new Error("Error al obtener los clientes");
@@ -23,9 +24,9 @@ const CardLayout = ({ onClose, id }) => {
       }
     };
 
-    fetchClients();
+    fetchProductsID();
   }, []);
-  console.log("formdata desde layout", formData.producto_nombre);
+  console.log("formdata desde layout", formData);
 
   // 🔹 Formatear fecha ISO -> YYYY-MM-DD (para mostrar en input type="date")
   const formatDate = (dateString) => {
@@ -61,7 +62,7 @@ const CardLayout = ({ onClose, id }) => {
     try {
       console.log("feeeeechingggg");
       const response = await fetch(
-        `http://localhost:3000/actualizar/${formData.producto_id}`,
+        `http://localhost:3000/productos/actualizar/${id}`,
         {
           method: "PUT",
           headers: {
@@ -168,6 +169,7 @@ const CardLayout = ({ onClose, id }) => {
                 </>
               )}
               {formData.ranking ? <>Ranking {formData.ranking}</> : "Ranking 0"}
+              <button onClick={() => setDisabled(!disabled)}>Editar</button>
             </header>
 
             <form onSubmit={handleSubmit}>
@@ -184,6 +186,7 @@ const CardLayout = ({ onClose, id }) => {
                       value={formData.producto_nombre || ""}
                       onChange={handleChange}
                       className="form-control"
+                      disabled={disabled}
                     />
                   </div>
                 </div>
@@ -200,6 +203,7 @@ const CardLayout = ({ onClose, id }) => {
                       onChange={handleChange}
                       className="form-control"
                       rows="2"
+                      disabled={disabled}
                     />
                   </div>
                 </div>
@@ -226,6 +230,7 @@ const CardLayout = ({ onClose, id }) => {
                             value={formData[name] || ""}
                             onChange={handleChange}
                             className="form-control"
+                            disabled={disabled}
                           />
                         </div>
                       </div>
@@ -246,6 +251,7 @@ const CardLayout = ({ onClose, id }) => {
                           value={formatDate(formData.fecha_caducidad)}
                           onChange={handleChange}
                           className="form-control"
+                          disabled={disabled}
                         />
                       </div>
                     </div>
@@ -260,8 +266,8 @@ const CardLayout = ({ onClose, id }) => {
                           type="date"
                           name="fecha_creacion"
                           value={formatDate(formData.fecha_creacion)}
-                          disabled
                           className="form-control"
+                          disabled
                         />
                       </div>
                     </div>
@@ -278,6 +284,7 @@ const CardLayout = ({ onClose, id }) => {
                           value={formData.codigo_barras || ""}
                           onChange={handleChange}
                           className="form-control"
+                          disabled={disabled}
                         />
                       </div>
                     </div>
@@ -293,6 +300,7 @@ const CardLayout = ({ onClose, id }) => {
                           value={formData.numero_lote || ""}
                           onChange={handleChange}
                           className="form-control"
+                          disabled={disabled}
                         />
                       </div>
                     </div>
@@ -308,6 +316,7 @@ const CardLayout = ({ onClose, id }) => {
                           value={formData.sku || ""}
                           onChange={handleChange}
                           className="form-control"
+                          disabled={disabled}
                         />
                       </div>
                     </div>
@@ -323,6 +332,7 @@ const CardLayout = ({ onClose, id }) => {
                           value={formData.stock_minimo || ""}
                           onChange={handleChange}
                           className="form-control"
+                          disabled={disabled}
                         />
                       </div>
                     </div>

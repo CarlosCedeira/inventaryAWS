@@ -1,5 +1,4 @@
-import { useContext, useEffect, useState } from "react";
-import { ProductContext } from "../../../context/ProductContext";
+import { useState } from "react";
 
 const Publicado = ({ id, publicado }) => {
   const [itspublish, setItspublish] = useState(publicado);
