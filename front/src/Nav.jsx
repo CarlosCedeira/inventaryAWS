@@ -63,7 +63,7 @@ function Nav() {
         <div className="sidebar-content">
           <div className="d-flex justify-content-center">
             <button
-              className="btn btn-light mb-5 mt-3 w-15"
+              className="btn btn-light mb-5 mt-5 w-15"
               onClick={toggleSidebar}
             >
               {isCollapsed ? "" : "Ocultar menú"}
@@ -71,12 +71,13 @@ function Nav() {
           </div>
 
           <ul className="nav flex-md-row">
-            <li className="nav-item">
+            <li className="nav-item ">
               <Link
                 to="/"
                 className={`nav-link text-white ${
                   location.pathname === "/" ? "active" : ""
                 }`}
+                onClick={() => setIsCollapsed(!isCollapsed)}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -90,12 +91,13 @@ function Nav() {
                 Punto de venta
               </Link>
             </li>
-            <li className="nav-item">
+            <li className="nav-item mt-2">
               <Link
                 to="/productos"
                 className={`nav-link text-white ${
                   location.pathname === "/productos" ? "active" : ""
                 }`}
+                onClick={() => setIsCollapsed(!isCollapsed)}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -109,12 +111,13 @@ function Nav() {
                 Productos
               </Link>
             </li>
-            <li className="nav-item">
+            <li className="nav-item mt-2">
               <Link
                 to="/clientes"
                 className={`nav-link text-white ${
                   location.pathname === "/clientes" ? "active" : ""
                 }`}
+                onClick={() => setIsCollapsed(!isCollapsed)}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -128,12 +131,13 @@ function Nav() {
                 Clientes
               </Link>
             </li>
-            <li className="nav-item">
+            <li className="nav-item mt-2">
               <Link
                 to="/ventas"
                 className={`nav-link text-white ${
                   location.pathname === "/ventas" ? "active" : ""
                 }`}
+                onClick={() => setIsCollapsed(!isCollapsed)}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"

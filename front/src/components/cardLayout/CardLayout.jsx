@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Spinners from "../spiners";
 import Publicado from "../products/publicado/putPublicado";
 import "./cardLayout.css";
@@ -26,7 +26,6 @@ const CardLayout = ({ onClose, id }) => {
 
     fetchProductsID();
   }, []);
-  console.log("formdata desde layout", formData);
 
   // 🔹 Formatear fecha ISO -> YYYY-MM-DD (para mostrar en input type="date")
   const formatDate = (dateString) => {
@@ -42,6 +41,7 @@ const CardLayout = ({ onClose, id }) => {
       ...formData,
       [name]: type === "checkbox" ? checked : value,
     });
+    console.log("form data desde onchange", formData);
   };
 
   // 🔹 Al guardar, convierte la fecha al formato ISO
@@ -51,13 +51,14 @@ const CardLayout = ({ onClose, id }) => {
 
     const updatedData = {
       ...formData,
-      caducidad: formData.caducidad
-        ? new Date(formData.caducidad).toISOString()
+      fecha_caducidad: formData.fecha_caducidad
+        ? new Date(formData.fecha_caducidad).toISOString()
         : null,
       fecha_creacion: formData.fecha_creacion
         ? new Date(formData.fecha_creacion).toISOString()
         : null,
     };
+    console.log("fecha cambiada a estring ", updatedData);
 
     try {
       console.log("feeeeechingggg");
@@ -109,10 +110,20 @@ const CardLayout = ({ onClose, id }) => {
             ></button>
 
             <header className="modal-header justify-content-start mb-4 ms-5">
-              <Publicado
-                publicado={formData.publicado}
-                id={formData.producto_id}
-              />
+              <button
+                className="btn btn-warning"
+                onClick={() => setDisabled(!disabled)}
+              >
+                Editar
+              </button>
+              <>
+                <label>Publicado</label>
+                <Publicado
+                  publicado={formData.publicado}
+                  id={formData.producto_id}
+                  className="mr-1"
+                />
+              </>
 
               {formData.destacado ? (
                 <>
@@ -168,8 +179,18 @@ const CardLayout = ({ onClose, id }) => {
                   </svg>
                 </>
               )}
-              {formData.ranking ? <>Ranking {formData.ranking}</> : "Ranking 0"}
-              <button onClick={() => setDisabled(!disabled)}>Editar</button>
+              {formData.ranking ? (
+                <input
+                  type="text"
+                  name="producto_nombre"
+                  value={formData.ranking || ""}
+                  onChange={handleChange}
+                  className="form-control w-25 "
+                  disabled={disabled}
+                />
+              ) : (
+                "Ranking 0"
+              )}
             </header>
 
             <form onSubmit={handleSubmit}>
@@ -247,7 +268,7 @@ const CardLayout = ({ onClose, id }) => {
                       <div className="col-sm-6">
                         <input
                           type="date"
-                          name="caducidad"
+                          name="fecha_caducidad"
                           value={formatDate(formData.fecha_caducidad)}
                           onChange={handleChange}
                           className="form-control"

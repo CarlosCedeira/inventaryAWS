@@ -30,6 +30,7 @@
 
 
 /* --- Estilos para pantallas móviles (navbar superior horizontal) --- */
+
 @media (max-width: 668px) {
 
 
@@ -39,40 +40,15 @@
     position: fixed;
     top: 0;
     left: 0;
-    width: 668px !important;
-    height: 100px;
-    flex-direction: row;
-    justify-content: space-around;
-    align-items: center;
-    border-bottom: 2px solid #ffc107;
-    padding: 0.5rem;
+    height: 100%;
     z-index: 1050;
   }
 
-  .sidebar-content {
-    display: flex;
-    width: 100%;
-    padding: 0;
-  }
 
 
-  .main-content {
-    margin-left: 0;
-    margin-top: 70px; /* deja espacio para el navbar superior */
-  }
 
-  .btn.btn-light.mb-5.mt-3.w-15 {
-    font-size: 1rem;      /* texto más pequeño */
-    width: 70px  !important;        /* botón más pequeño */
-    height: 70px !important;
-    padding: 0.25rem 0.5rem; /* menos espacio interno */
-    margin-top: 0.5rem !important;
-    margin-bottom: 0.5rem !important;
-    width: auto;            /* deja que se ajuste al contenido */
-  }
-
-  .nav-item {
-    display: flex;
-  }
  
+
+  
+
 }

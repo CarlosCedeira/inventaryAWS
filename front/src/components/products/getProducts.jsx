@@ -1,8 +1,7 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect } from "react";
 import Spinners from "../spiners";
 import CardLayout from "../cardLayout/CardLayout";
 import Publicado from "./publicado/putPublicado";
-import { ProductContext } from "../../context/ProductContext";
 import "./getProducts.css";
 
 const GetProducts = () => {
@@ -18,7 +17,7 @@ const GetProducts = () => {
   const fetchProducts = async () => {
     try {
       const response = await fetch("http://localhost:3000/productos");
-      if (!response.ok) throw new Error("Error al obtener los clientes");
+      if (!response.ok) throw new Error("Error al obtener los productos");
       const data = await response.json();
       setItems(data);
       console.log("Productos cargados:", data);
@@ -68,13 +67,10 @@ const GetProducts = () => {
     const searchValue = e.target.value;
     setSearch(searchValue);
 
-    const url =
-      searchValue.trim() !== ""
-        ? `http://localhost:3000/productos/buscar/${searchValue}`
-        : `http://localhost:3000/productos`;
-
     try {
-      const res = await fetch(url);
+      const res = await fetch(
+        `http://localhost:3000/productos/buscar/${searchValue}`
+      );
       if (!res.ok) throw new Error("Error al obtener los productos");
       const data = await res.json();
       setItems(data);
@@ -82,6 +78,23 @@ const GetProducts = () => {
       console.error("Error al buscar productos:", error);
     }
   };
+
+  // 🔹 Ordenar productos cuando cambia sortField o sortOrder
+  useEffect(() => {
+    if (sortField === "predefinido") {
+      return; // No ordenar si está en modo predefinido
+    }
+
+    const sortedItems = [...items].sort((a, b) => {
+      const fieldA = Number(a[sortField]);
+      const fieldB = Number(b[sortField]);
+
+      if (sortOrder === "asc") return fieldA - fieldB;
+      return fieldB - fieldA;
+    });
+
+    setItems(sortedItems);
+  }, [sortField, sortOrder]);
 
   if (loading) return <Spinners />;
 
@@ -150,7 +163,9 @@ const GetProducts = () => {
                   {item.precio_compra}
                 </td>
                 <td onClick={() => handleTdClick(item)}>{item.precio_venta}</td>
-                <td onClick={() => handleTdClick(item)}>{item.caducidad}</td>
+                <td onClick={() => handleTdClick(item)}>
+                  {item.fecha_caducidad}
+                </td>
                 <Publicado id={item.producto_id} publicado={item.publicado} />
                 {console.log("publicado en getProducts", item.publicado)}
               </tr>
