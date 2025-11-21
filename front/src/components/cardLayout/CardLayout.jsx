@@ -6,6 +6,7 @@ import "./cardLayout.css";
 const CardLayout = ({ onClose, id }) => {
   const [formData, setFormData] = useState({});
   const [disabled, setDisabled] = useState(true);
+  const [categorias, setCategorias] = useState([]);
   console.log("id en cardLayout", id);
 
   const [loading, setLoading] = useState(true);
@@ -25,6 +26,25 @@ const CardLayout = ({ onClose, id }) => {
     };
 
     fetchProductsID();
+  }, []);
+
+  useEffect(() => {
+    const fetchCategorias = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:3000/productos/categorias`
+        );
+        if (!response.ok) throw new Error("Error al obtener los clientes");
+        const data = await response.json();
+        setCategorias(data);
+      } catch (error) {
+        console.error("Error en la solicitud:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategorias();
   }, []);
 
   // 🔹 Formatear fecha ISO -> YYYY-MM-DD (para mostrar en input type="date")
@@ -181,8 +201,8 @@ const CardLayout = ({ onClose, id }) => {
               )}
               {formData.ranking ? (
                 <input
-                  type="text"
-                  name="producto_nombre"
+                  type="number"
+                  name="ranking"
                   value={formData.ranking || ""}
                   onChange={handleChange}
                   className="form-control w-25 "
@@ -232,8 +252,29 @@ const CardLayout = ({ onClose, id }) => {
                 <div className="row">
                   {/* Columna 1 */}
                   <div className="col-md-6">
+                    <div className="mb-3 row align-items-center">
+                      <label className="col-sm-6 col-form-label text-nowrap">
+                        Categoria
+                      </label>
+                      <div className="col-sm-6">
+                        <select
+                          name="producto_categoria"
+                          value={formData.producto_categoria}
+                          onChange={handleChange}
+                          className="form-control"
+                          disabled={disabled}
+                        >
+                          {categorias.map((categoria) => (
+                            <option key={categoria.id} value={categoria.nombre}>
+                              {categoria.nombre}{" "}
+                              {/* ya viene capitalizado desde la API */}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
                     {[
-                      ["categoría", "producto_categoria", "text"],
                       ["Variante", "tipo_variante", "text"],
                       ["Valor", "valor_variante", "text"],
                       ["Cantidad", "cantidad", "number"],

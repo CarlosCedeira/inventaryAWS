@@ -37,6 +37,21 @@ LEFT JOIN categorias c ON p.categoria_id = c.id
   }
 });
 
+router.get("/categorias", async (req, res) => {
+  let connection;
+  console.log("categorias totaltes");
+  try {
+    connection = await getConnection();
+    const [rows] = await connection.execute("SELECT * FROM categorias");
+    res.json(rows);
+  } catch (error) {
+    console.error("Error al publicar/despublicar:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  } finally {
+    if (connection) await connection.end();
+  }
+});
+
 // Obtener todos los productos
 router.get("/:id", async (req, res) => {
   console.log("Solicitud recibida en /producto/:id", req.params.id);

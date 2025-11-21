@@ -1,0 +1,16 @@
+--------- FUncionalidades a realizar -----------
+    
+
+- Posivilidad de añadir mas margenes a los lados en ela version de escritorio y ver viavilidad en tablet.
+
+- Crean nuevos compnentes como el de publicado pero para recomendado, destacado y uno nuevo para ranking.
+
+- Añadir una vista que sea el orden que se va a representar en al pagina web para.
+
+- Eliminar filas en version movil como precio de ompra venta categoria fecha de caducidad.
+
+- Formatear las fechs tanto en la saldia coomo en la entrada.
+
+- Hacer una lsita de las rutas que tengo que sanitizar en el back front o los dos.
+
+- Pruebas básicas para el componente tabla.

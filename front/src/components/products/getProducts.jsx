@@ -68,11 +68,17 @@ const GetProducts = () => {
     setSearch(searchValue);
 
     try {
-      const res = await fetch(
-        `http://localhost:3000/productos/buscar/${searchValue}`
-      );
-      if (!res.ok) throw new Error("Error al obtener los productos");
+      let url;
+
+      if (!searchValue) {
+        url = "http://localhost:3000/productos";
+      } else {
+        url = `http://localhost:3000/productos/buscar/${searchValue}`;
+      }
+
+      const res = await fetch(url);
       const data = await res.json();
+
       setItems(data);
     } catch (error) {
       console.error("Error al buscar productos:", error);
@@ -103,7 +109,7 @@ const GetProducts = () => {
       <h1 className="text-center mt-3 mb-5">Listado de productos</h1>
 
       {/* 🔹 Barra de búsqueda y ordenamiento */}
-      <div className="d-flex align-items-center justify-content-right ms-5 sticky-top w-90">
+      <div className="d-flex align-items-center justify-content-right ms-5 me-2 sticky-top w-90">
         <div className="m-2 d-flex justify-content-right">
           <input
             type="text"
@@ -136,7 +142,7 @@ const GetProducts = () => {
       </div>
 
       {/* 🔹 Tabla de productos */}
-      <div className={`fade-init${fadeIn ? " fade-in" : ""} ms-5`}>
+      <div className={`fade-init${fadeIn ? " fade-in" : ""} ms-5 me-2`}>
         <table className="table table-responsive table-hover align-middle shadow">
           <thead className="table-primary sticky-top">
             <tr>
