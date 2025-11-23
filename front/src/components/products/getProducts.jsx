@@ -102,6 +102,17 @@ const GetProducts = () => {
     setItems(sortedItems);
   }, [sortField, sortOrder]);
 
+  // 🔹 Formatear fecha ISO -> YYYY-MM-DD (para mostrar en input type="date")
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+
+    const date = new Date(dateString);
+
+    return new Intl.DateTimeFormat("es-ES", {
+      dateStyle: "medium", // puedes usar medium, short, long, full
+    }).format(date);
+  };
+
   if (loading) return <Spinners />;
 
   return (
@@ -109,7 +120,7 @@ const GetProducts = () => {
       <h1 className="text-center mt-3 mb-5">Listado de productos</h1>
 
       {/* 🔹 Barra de búsqueda y ordenamiento */}
-      <div className="d-flex align-items-center justify-content-right ms-5 me-2 sticky-top w-90">
+      <div className="d-flex align-items-center justify-content-right ms-5 me-5 sticky-top w-90">
         <div className="m-2 d-flex justify-content-right">
           <input
             type="text"
@@ -142,7 +153,7 @@ const GetProducts = () => {
       </div>
 
       {/* 🔹 Tabla de productos */}
-      <div className={`fade-init${fadeIn ? " fade-in" : ""} ms-5 me-2`}>
+      <div className={`fade-init${fadeIn ? " fade-in" : ""} ms-5 me-5`}>
         <table className="table table-responsive table-hover align-middle shadow">
           <thead className="table-primary sticky-top">
             <tr>
@@ -170,7 +181,7 @@ const GetProducts = () => {
                 </td>
                 <td onClick={() => handleTdClick(item)}>{item.precio_venta}</td>
                 <td onClick={() => handleTdClick(item)}>
-                  {item.fecha_caducidad}
+                  {formatDate(item.fecha_caducidad)}
                 </td>
                 <Publicado id={item.producto_id} publicado={item.publicado} />
                 {console.log("publicado en getProducts", item.publicado)}
@@ -184,8 +195,9 @@ const GetProducts = () => {
       {showCard && selectedProduct && (
         <CardLayout
           product={selectedProduct}
-          onClose={handleCloseCard}
+          formatDate={formatDate}
           id={selectedProduct.inventario_id}
+          onClose={handleCloseCard}
         />
       )}
     </>

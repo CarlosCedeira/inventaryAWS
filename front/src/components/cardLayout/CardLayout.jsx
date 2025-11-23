@@ -29,6 +29,7 @@ const CardLayout = ({ onClose, id }) => {
   }, []);
 
   useEffect(() => {
+    if (disabled === true) return;
     const fetchCategorias = async () => {
       try {
         const response = await fetch(
