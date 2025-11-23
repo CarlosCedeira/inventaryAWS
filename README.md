@@ -134,11 +134,3 @@
 ---
 
 ## 📝 To-Do / Future Improvements
-
-- [ ] Añadir css paara cuando este el menu visible se reduzcan las filas
-- [ ] Si no hay informacion guardada en el local storage obtenerla de los archivos JSON
-- [ ] Añadir menu amburguesa para dispositivos moviles
-- [ ] Implement API Gateway + authentication
-- [ ] Create a custom logging system
-- [ ] Add automated tests for Lambda functions
-- [ ] Set up automated deployment for frontend and backend

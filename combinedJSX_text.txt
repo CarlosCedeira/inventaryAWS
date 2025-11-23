@@ -22,19 +22,21 @@ export default App;
 
 ===== CardLayout.jsx =====
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Spinners from "../spiners";
 import Publicado from "../products/publicado/putPublicado";
 import "./cardLayout.css";
 
 const CardLayout = ({ onClose, id }) => {
   const [formData, setFormData] = useState({});
+  const [disabled, setDisabled] = useState(true);
+  const [categorias, setCategorias] = useState([]);
   console.log("id en cardLayout", id);
 
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchClients = async () => {
+    const fetchProductsID = async () => {
       try {
         const response = await fetch(`http://localhost:3000/productos/${id}`);
         if (!response.ok) throw new Error("Error al obtener los clientes");
@@ -47,9 +49,28 @@ const CardLayout = ({ onClose, id }) => {
       }
     };
 
-    fetchClients();
+    fetchProductsID();
   }, []);
-  console.log("formdata desde layout", formData.producto_nombre);
+
+  useEffect(() => {
+    if (disabled === true) return;
+    const fetchCategorias = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:3000/productos/categorias`
+        );
+        if (!response.ok) throw new Error("Error al obtener los clientes");
+        const data = await response.json();
+        setCategorias(data);
+      } catch (error) {
+        console.error("Error en la solicitud:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategorias();
+  }, []);
 
   // 🔹 Formatear fecha ISO -> YYYY-MM-DD (para mostrar en input type="date")
   const formatDate = (dateString) => {
@@ -65,6 +86,7 @@ const CardLayout = ({ onClose, id }) => {
       ...formData,
       [name]: type === "checkbox" ? checked : value,
     });
+    console.log("form data desde onchange", formData);
   };
 
   // 🔹 Al guardar, convierte la fecha al formato ISO
@@ -74,18 +96,19 @@ const CardLayout = ({ onClose, id }) => {
 
     const updatedData = {
       ...formData,
-      caducidad: formData.caducidad
-        ? new Date(formData.caducidad).toISOString()
+      fecha_caducidad: formData.fecha_caducidad
+        ? new Date(formData.fecha_caducidad).toISOString()
         : null,
       fecha_creacion: formData.fecha_creacion
         ? new Date(formData.fecha_creacion).toISOString()
         : null,
     };
+    console.log("fecha cambiada a estring ", updatedData);
 
     try {
       console.log("feeeeechingggg");
       const response = await fetch(
-        `http://localhost:3000/actualizar/${formData.producto_id}`,
+        `http://localhost:3000/productos/actualizar/${id}`,
         {
           method: "PUT",
           headers: {
@@ -132,10 +155,20 @@ const CardLayout = ({ onClose, id }) => {
             ></button>
 
             <header className="modal-header justify-content-start mb-4 ms-5">
-              <Publicado
-                publicado={formData.publicado}
-                id={formData.producto_id}
-              />
+              <button
+                className="btn btn-warning"
+                onClick={() => setDisabled(!disabled)}
+              >
+                Editar
+              </button>
+              <>
+                <label>Publicado</label>
+                <Publicado
+                  publicado={formData.publicado}
+                  id={formData.producto_id}
+                  className="mr-1"
+                />
+              </>
 
               {formData.destacado ? (
                 <>
@@ -191,7 +224,18 @@ const CardLayout = ({ onClose, id }) => {
                   </svg>
                 </>
               )}
-              {formData.ranking ? <>Ranking {formData.ranking}</> : "Ranking 0"}
+              {formData.ranking ? (
+                <input
+                  type="number"
+                  name="ranking"
+                  value={formData.ranking || ""}
+                  onChange={handleChange}
+                  className="form-control w-25 "
+                  disabled={disabled}
+                />
+              ) : (
+                "Ranking 0"
+              )}
             </header>
 
             <form onSubmit={handleSubmit}>
@@ -208,6 +252,7 @@ const CardLayout = ({ onClose, id }) => {
                       value={formData.producto_nombre || ""}
                       onChange={handleChange}
                       className="form-control"
+                      disabled={disabled}
                     />
                   </div>
                 </div>
@@ -224,6 +269,7 @@ const CardLayout = ({ onClose, id }) => {
                       onChange={handleChange}
                       className="form-control"
                       rows="2"
+                      disabled={disabled}
                     />
                   </div>
                 </div>
@@ -231,8 +277,29 @@ const CardLayout = ({ onClose, id }) => {
                 <div className="row">
                   {/* Columna 1 */}
                   <div className="col-md-6">
+                    <div className="mb-3 row align-items-center">
+                      <label className="col-sm-6 col-form-label text-nowrap">
+                        Categoria
+                      </label>
+                      <div className="col-sm-6">
+                        <select
+                          name="producto_categoria"
+                          value={formData.producto_categoria}
+                          onChange={handleChange}
+                          className="form-control"
+                          disabled={disabled}
+                        >
+                          {categorias.map((categoria) => (
+                            <option key={categoria.id} value={categoria.nombre}>
+                              {categoria.nombre}{" "}
+                              {/* ya viene capitalizado desde la API */}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
                     {[
-                      ["categoría", "producto_categoria", "text"],
                       ["Variante", "tipo_variante", "text"],
                       ["Valor", "valor_variante", "text"],
                       ["Cantidad", "cantidad", "number"],
@@ -250,6 +317,7 @@ const CardLayout = ({ onClose, id }) => {
                             value={formData[name] || ""}
                             onChange={handleChange}
                             className="form-control"
+                            disabled={disabled}
                           />
                         </div>
                       </div>
@@ -266,10 +334,11 @@ const CardLayout = ({ onClose, id }) => {
                       <div className="col-sm-6">
                         <input
                           type="date"
-                          name="caducidad"
+                          name="fecha_caducidad"
                           value={formatDate(formData.fecha_caducidad)}
                           onChange={handleChange}
                           className="form-control"
+                          disabled={disabled}
                         />
                       </div>
                     </div>
@@ -284,8 +353,8 @@ const CardLayout = ({ onClose, id }) => {
                           type="date"
                           name="fecha_creacion"
                           value={formatDate(formData.fecha_creacion)}
-                          disabled
                           className="form-control"
+                          disabled
                         />
                       </div>
                     </div>
@@ -302,6 +371,7 @@ const CardLayout = ({ onClose, id }) => {
                           value={formData.codigo_barras || ""}
                           onChange={handleChange}
                           className="form-control"
+                          disabled={disabled}
                         />
                       </div>
                     </div>
@@ -317,6 +387,7 @@ const CardLayout = ({ onClose, id }) => {
                           value={formData.numero_lote || ""}
                           onChange={handleChange}
                           className="form-control"
+                          disabled={disabled}
                         />
                       </div>
                     </div>
@@ -332,6 +403,7 @@ const CardLayout = ({ onClose, id }) => {
                           value={formData.sku || ""}
                           onChange={handleChange}
                           className="form-control"
+                          disabled={disabled}
                         />
                       </div>
                     </div>
@@ -347,6 +419,7 @@ const CardLayout = ({ onClose, id }) => {
                           value={formData.stock_minimo || ""}
                           onChange={handleChange}
                           className="form-control"
+                          disabled={disabled}
                         />
                       </div>
                     </div>
@@ -773,11 +846,10 @@ export default PointOfSale;
 
 ===== getProducts.jsx =====
 
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect } from "react";
 import Spinners from "../spiners";
 import CardLayout from "../cardLayout/CardLayout";
 import Publicado from "./publicado/putPublicado";
-import { ProductContext } from "../../context/ProductContext";
 import "./getProducts.css";
 
 const GetProducts = () => {
@@ -790,24 +862,24 @@ const GetProducts = () => {
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
 
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch("http://localhost:3000/productos");
+      if (!response.ok) throw new Error("Error al obtener los productos");
+      const data = await response.json();
+      setItems(data);
+      console.log("Productos cargados:", data);
+      console.log("publicado en getProducts useEffect", data.publicado);
+    } catch (error) {
+      console.error("Error en la solicitud:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 🔹 Cargar productos al montar el componente
   useEffect(() => {
-    const fetchClients = async () => {
-      try {
-        const response = await fetch("http://localhost:3000/productos");
-        if (!response.ok) throw new Error("Error al obtener los clientes");
-        const data = await response.json();
-        setItems(data);
-        console.log("Productos cargados:", data);
-        console.log("publicado en getProducts useEffect", data.publicado);
-      } catch (error) {
-        console.error("Error en la solicitud:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchClients();
+    fetchProducts();
   }, []);
 
   // 🔹 Efecto para el fade-in cuando termina de cargar
@@ -833,26 +905,60 @@ const GetProducts = () => {
   };
 
   // 🔹 Cerrar modal
-  const handleCloseCard = () => setShowCard(false);
+  const handleCloseCard = () => {
+    setShowCard(false);
+    fetchProducts();
+  };
 
   // 🔹 Buscar productos por nombre
   const handleSearch = async (e) => {
     const searchValue = e.target.value;
     setSearch(searchValue);
 
-    const url =
-      searchValue.trim() !== ""
-        ? `http://localhost:3000/productos/buscar/${searchValue}`
-        : `http://localhost:3000/productos`;
-
     try {
+      let url;
+
+      if (!searchValue) {
+        url = "http://localhost:3000/productos";
+      } else {
+        url = `http://localhost:3000/productos/buscar/${searchValue}`;
+      }
+
       const res = await fetch(url);
-      if (!res.ok) throw new Error("Error al obtener los productos");
       const data = await res.json();
+
       setItems(data);
     } catch (error) {
       console.error("Error al buscar productos:", error);
     }
+  };
+
+  // 🔹 Ordenar productos cuando cambia sortField o sortOrder
+  useEffect(() => {
+    if (sortField === "predefinido") {
+      return; // No ordenar si está en modo predefinido
+    }
+
+    const sortedItems = [...items].sort((a, b) => {
+      const fieldA = Number(a[sortField]);
+      const fieldB = Number(b[sortField]);
+
+      if (sortOrder === "asc") return fieldA - fieldB;
+      return fieldB - fieldA;
+    });
+
+    setItems(sortedItems);
+  }, [sortField, sortOrder]);
+
+  // 🔹 Formatear fecha ISO -> YYYY-MM-DD (para mostrar en input type="date")
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+
+    const date = new Date(dateString);
+
+    return new Intl.DateTimeFormat("es-ES", {
+      dateStyle: "medium", // puedes usar medium, short, long, full
+    }).format(date);
   };
 
   if (loading) return <Spinners />;
@@ -862,7 +968,7 @@ const GetProducts = () => {
       <h1 className="text-center mt-3 mb-5">Listado de productos</h1>
 
       {/* 🔹 Barra de búsqueda y ordenamiento */}
-      <div className="d-flex align-items-center justify-content-right ms-5 sticky-top w-90">
+      <div className="d-flex align-items-center justify-content-right ms-5 me-5 sticky-top w-90">
         <div className="m-2 d-flex justify-content-right">
           <input
             type="text"
@@ -895,7 +1001,7 @@ const GetProducts = () => {
       </div>
 
       {/* 🔹 Tabla de productos */}
-      <div className={`fade-init${fadeIn ? " fade-in" : ""} ms-5`}>
+      <div className={`fade-init${fadeIn ? " fade-in" : ""} ms-5 me-5`}>
         <table className="table table-responsive table-hover align-middle shadow">
           <thead className="table-primary sticky-top">
             <tr>
@@ -922,7 +1028,9 @@ const GetProducts = () => {
                   {item.precio_compra}
                 </td>
                 <td onClick={() => handleTdClick(item)}>{item.precio_venta}</td>
-                <td onClick={() => handleTdClick(item)}>{item.caducidad}</td>
+                <td onClick={() => handleTdClick(item)}>
+                  {formatDate(item.fecha_caducidad)}
+                </td>
                 <Publicado id={item.producto_id} publicado={item.publicado} />
                 {console.log("publicado en getProducts", item.publicado)}
               </tr>
@@ -935,8 +1043,9 @@ const GetProducts = () => {
       {showCard && selectedProduct && (
         <CardLayout
           product={selectedProduct}
-          onClose={handleCloseCard}
+          formatDate={formatDate}
           id={selectedProduct.inventario_id}
+          onClose={handleCloseCard}
         />
       )}
     </>
@@ -948,8 +1057,7 @@ export default GetProducts;
 
 ===== putPublicado.jsx =====
 
-import { useContext, useEffect, useState } from "react";
-import { ProductContext } from "../../../context/ProductContext";
+import { useState } from "react";
 
 const Publicado = ({ id, publicado }) => {
   const [itspublish, setItspublish] = useState(publicado);
@@ -989,7 +1097,7 @@ const Publicado = ({ id, publicado }) => {
   };
   console.log("publicado en putPublicado", publicado);
   return (
-    <td className="text-center" onClick={putPublish}>
+    <td className="text-center d-none d-sm-block" onClick={putPublish}>
       {itspublish === 1 ? (
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -1170,7 +1278,7 @@ import "./spiners.css"; // Asegúrate de que aquí esté la clase .reverse-spin
 const Spinners = () => (
   <div
     className="d-flex justify-content-center align-items-center flex-column"
-    style={{ minHeight: "100vh", position: "relative" }}
+    style={{ minHeight: "100vh", position: "relative", zIndex: "100" }}
   >
     <div style={{ position: "relative", marginBottom: "2rem" }}>
       {/* Spinner grande */}
@@ -1317,7 +1425,7 @@ function Nav() {
         <div className="sidebar-content">
           <div className="d-flex justify-content-center">
             <button
-              className="btn btn-light mb-5 mt-3 w-15"
+              className="btn btn-light mb-5 mt-5 w-15"
               onClick={toggleSidebar}
             >
               {isCollapsed ? "" : "Ocultar menú"}
@@ -1325,12 +1433,13 @@ function Nav() {
           </div>
 
           <ul className="nav flex-md-row">
-            <li className="nav-item">
+            <li className="nav-item ">
               <Link
                 to="/"
                 className={`nav-link text-white ${
                   location.pathname === "/" ? "active" : ""
                 }`}
+                onClick={() => setIsCollapsed(!isCollapsed)}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -1344,12 +1453,13 @@ function Nav() {
                 Punto de venta
               </Link>
             </li>
-            <li className="nav-item">
+            <li className="nav-item mt-2">
               <Link
                 to="/productos"
                 className={`nav-link text-white ${
                   location.pathname === "/productos" ? "active" : ""
                 }`}
+                onClick={() => setIsCollapsed(!isCollapsed)}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -1363,12 +1473,13 @@ function Nav() {
                 Productos
               </Link>
             </li>
-            <li className="nav-item">
+            <li className="nav-item mt-2">
               <Link
                 to="/clientes"
                 className={`nav-link text-white ${
                   location.pathname === "/clientes" ? "active" : ""
                 }`}
+                onClick={() => setIsCollapsed(!isCollapsed)}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -1382,12 +1493,13 @@ function Nav() {
                 Clientes
               </Link>
             </li>
-            <li className="nav-item">
+            <li className="nav-item mt-2">
               <Link
                 to="/ventas"
                 className={`nav-link text-white ${
                   location.pathname === "/ventas" ? "active" : ""
                 }`}
+                onClick={() => setIsCollapsed(!isCollapsed)}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
