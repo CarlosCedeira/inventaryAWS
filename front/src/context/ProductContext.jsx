@@ -6,9 +6,14 @@ export const ProductProvider = ({ children }) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [itsPublish, setItsPublish] = useState(false);
+  const [publishedStates, setPublishedStates] = useState({});
 
-  // 🔹 Función que acepta un id opcional
+  const togglePublished = (id) => {
+    setPublishedStates((prev) => ({
+      ...prev,
+      [id]: prev[id] === 1 ? 0 : 1,
+    }));
+  };
 
   return (
     <ProductContext.Provider
@@ -19,8 +24,10 @@ export const ProductProvider = ({ children }) => {
         setLoading,
         selectedProduct,
         setSelectedProduct,
-        itsPublish,
-        setItsPublish,
+
+        // 🔥 nuevo manejo GLOBAL por id
+        publishedStates,
+        togglePublished,
       }}
     >
       {children}

@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import Spinners from "../spiners";
 import Publicado from "../products/publicado/putPublicado";
 import "./cardLayout.css";
+import Destacado from "../products/destacado/Destacado";
+import Recomendado from "../products/recomendado/Recomendado";
 
 const CardLayout = ({ onClose, id }) => {
   const [formData, setFormData] = useState({});
@@ -125,98 +127,49 @@ const CardLayout = ({ onClose, id }) => {
         <div className="card-body position-relative overflow-auto">
           <article className="modal-content">
             <button
-              type="button"
-              className="btn-close position-absolute top-0 end-0"
+              className="btn-close btn-danger position-absolute top-0 end-0"
               onClick={onClose}
             ></button>
+            <button
+              className="btn btn-primary position-absolute
+            "
+              onClick={() => setDisabled(!disabled)}
+            >
+              Editar
+            </button>
 
-            <header className="modal-header justify-content-start mb-4 ms-5">
-              <button
-                className="btn btn-warning"
-                onClick={() => setDisabled(!disabled)}
-              >
-                Editar
-              </button>
-              <>
-                <label>Publicado</label>
-                <Publicado
-                  publicado={formData.publicado}
+            <div className="d-flex align-items-center justify-content-center flex-wrap">
+              <label>Publicado</label>
+              <Publicado
+                publicado={formData.publicado}
+                id={formData.producto_id}
+              />
+
+              {/* DESTACADO */}
+              <div className="d-flex align-items-center ms-2">
+                <label className="me-2">Destacado</label>
+                <Destacado
+                  destacado={formData.destacado}
                   id={formData.producto_id}
-                  className="mr-1"
                 />
-              </>
+              </div>
 
-              {formData.destacado ? (
-                <>
-                  <label>Destacado</label>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    height="34px"
-                    viewBox="0 -960 960 960"
-                    width="34px"
-                    fill="#75FB4C"
-                  >
-                    <path d="M280-240q-100 0-170-70T40-480q0-100 70-170t170-70h400q100 0 170 70t70 170q0 100-70 170t-170 70H280Zm0-80h400q66 0 113-47t47-113q0-66-47-113t-113-47H280q-66 0-113 47t-47 113q0 66 47 113t113 47Zm400-40q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35ZM480-480Z" />
-                  </svg>
-                </>
-              ) : (
-                <>
-                  <label className="ms-4">Destacado</label>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    height="34px"
-                    viewBox="0 -960 960 960"
-                    width="34px"
-                    fill="#EA3323"
-                  >
-                    <path d="M280-240q-100 0-170-70T40-480q0-100 70-170t170-70h400q100 0 170 70t70 170q0 100-70 170t-170 70H280Zm0-80h400q66 0 113-47t47-113q0-66-47-113t-113-47H280q-66 0-113 47t-47 113q0 66 47 113t113 47Zm0-40q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35Zm200-120Z" />
-                  </svg>
-                </>
-              )}
-              {formData.destacado ? (
-                <>
-                  <label>Recomendado</label>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    height="34px"
-                    viewBox="0 -960 960 960"
-                    width="34px"
-                    fill="#75FB4C"
-                  >
-                    <path d="M280-240q-100 0-170-70T40-480q0-100 70-170t170-70h400q100 0 170 70t70 170q0 100-70 170t-170 70H280Zm0-80h400q66 0 113-47t47-113q0-66-47-113t-113-47H280q-66 0-113 47t-47 113q0 66 47 113t113 47Zm400-40q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35ZM480-480Z" />
-                  </svg>
-                </>
-              ) : (
-                <>
-                  <label className="ms-4">Recomendado</label>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    height="34px"
-                    viewBox="0 -960 960 960"
-                    width="34px"
-                    fill="#EA3323"
-                  >
-                    <path d="M280-240q-100 0-170-70T40-480q0-100 70-170t170-70h400q100 0 170 70t70 170q0 100-70 170t-170 70H280Zm0-80h400q66 0 113-47t47-113q0-66-47-113t-113-47H280q-66 0-113 47t-47 113q0 66 47 113t113 47Zm0-40q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35Zm200-120Z" />
-                  </svg>
-                </>
-              )}
-              {formData.ranking ? (
-                <input
-                  type="number"
-                  name="ranking"
-                  value={formData.ranking || ""}
-                  onChange={handleChange}
-                  className="form-control w-25 "
-                  disabled={disabled}
+              {/* RECOMENDADO */}
+              <div className="d-flex align-items-center ms-2">
+                <label className="me-2">Recomendado</label>
+                <Recomendado
+                  recomendado={formData.recomendado}
+                  id={formData.producto_id}
                 />
-              ) : (
-                "Ranking 0"
-              )}
-            </header>
+              </div>
+            </div>
+
+            <header className="modal-header justify-content-start mt-5 ms-3 me-5"></header>
 
             <form onSubmit={handleSubmit}>
               <div className="container-fluid">
                 {/* Nombre */}
+
                 <div className="mb-3 row align-items-center">
                   <label className="col-sm-3 col-form-label text-nowrap">
                     Nombre
@@ -228,6 +181,20 @@ const CardLayout = ({ onClose, id }) => {
                       value={formData.producto_nombre || ""}
                       onChange={handleChange}
                       className="form-control"
+                      disabled={disabled}
+                    />
+                  </div>
+
+                  <label className="col-sm-3 col-form-label text-nowrap mt-3">
+                    Ranking
+                  </label>
+                  <div className="col-sm-9 mt-3">
+                    <input
+                      type="number"
+                      name="ranking"
+                      value={formData.ranking || ""}
+                      onChange={handleChange}
+                      className="form-control w-25"
                       disabled={disabled}
                     />
                   </div>
@@ -409,7 +376,7 @@ const CardLayout = ({ onClose, id }) => {
                         Cancelar
                       </button>
                       <button
-                        className="btn btn-primary"
+                        className="btn btn-success"
                         onClick={handleSubmit}
                       >
                         Guardar cambios

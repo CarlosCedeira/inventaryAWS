@@ -120,7 +120,7 @@ const GetProducts = () => {
       <h1 className="text-center mt-3 mb-5">Listado de productos</h1>
 
       {/* 🔹 Barra de búsqueda y ordenamiento */}
-      <div className="d-flex align-items-center justify-content-right ms-5 me-5 sticky-top w-90">
+      <div className="d-flex align-items-center justify-content-right ms-5 me-5 pt-2 pb-2 sticky-top w-90">
         <div className="m-2 d-flex justify-content-right">
           <input
             type="text"
@@ -154,10 +154,10 @@ const GetProducts = () => {
 
       {/* 🔹 Tabla de productos */}
       <div className={`fade-init${fadeIn ? " fade-in" : ""} ms-5 me-5`}>
-        <table className="table table-responsive table-hover align-middle shadow">
-          <thead className="table-primary sticky-top">
+        <table className="table table-responsive table-hover align-middle shadow ">
+          <thead className="table-primary sticky-top ">
             <tr>
-              <th className="text-start">Nombre</th>
+              <th className="text-start ">Nombre</th>
               <th className="text-start">Categoría</th>
               <th className="text-start">Cantidad</th>
               <th className="text-start">Precio de Compra</th>
@@ -183,7 +183,9 @@ const GetProducts = () => {
                 <td onClick={() => handleTdClick(item)}>
                   {formatDate(item.fecha_caducidad)}
                 </td>
-                <Publicado id={item.producto_id} publicado={item.publicado} />
+                <td>
+                  <Publicado id={item.producto_id} publicado={item.publicado} />
+                </td>
                 {console.log("publicado en getProducts", item.publicado)}
               </tr>
             ))}

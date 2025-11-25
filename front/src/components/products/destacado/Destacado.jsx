@@ -1,12 +1,12 @@
-import { useState, useContext } from "react";
+import { useState } from "react";
 
-const Publicado = ({ id, publicado }) => {
-  const [itspublish, setItspublish] = useState(Number(publicado));
+const Destacado = ({ id, destacado }) => {
+  const [estaDestacado, setEstaDestacado] = useState(Number(destacado));
 
-  const putPublish = async () => {
+  const putDestacado = async () => {
     try {
       const response = await fetch(
-        `http://localhost:3000/productos/publicar/${id}`,
+        `http://localhost:3000/productos/destacar/${id}`,
         {
           method: "PUT",
           headers: {
@@ -21,10 +21,10 @@ const Publicado = ({ id, publicado }) => {
       }
 
       const result = await response.json();
-      if (itspublish === 1) {
-        setItspublish(0);
+      if (estaDestacado === 1) {
+        setEstaDestacado(0);
       } else {
-        setItspublish(1);
+        setEstaDestacado(1);
       }
 
       console.log("✅ Datos guardados con éxito:", result);
@@ -35,9 +35,9 @@ const Publicado = ({ id, publicado }) => {
   };
   return (
     <>
-      {itspublish === 1 ? (
+      {estaDestacado === 1 ? (
         <svg
-          onClick={putPublish}
+          onClick={putDestacado}
           xmlns="http://www.w3.org/2000/svg"
           height="34px"
           viewBox="0 -960 960 960"
@@ -48,7 +48,7 @@ const Publicado = ({ id, publicado }) => {
         </svg>
       ) : (
         <svg
-          onClick={putPublish}
+          onClick={putDestacado}
           xmlns="http://www.w3.org/2000/svg"
           height="34px"
           viewBox="0 -960 960 960"
@@ -62,4 +62,4 @@ const Publicado = ({ id, publicado }) => {
   );
 };
 
-export default Publicado;
+export default Destacado;

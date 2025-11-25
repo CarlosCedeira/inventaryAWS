@@ -37,22 +37,35 @@ LEFT JOIN categorias c ON p.categoria_id = c.id
   }
 });
 
-router.get("/categorias", async (req, res) => {
+router.get("/buscar/:name", async (req, res) => {
   let connection;
-  console.log("categorias totaltes");
   try {
     connection = await getConnection();
-    const [rows] = await connection.execute("SELECT * FROM categorias");
+    const [rows] = await connection.execute(
+      `
+      SELECT 
+        i.id AS inventario_id,
+        p.nombre AS producto_nombre,
+        p.descripcion,
+        c.nombre AS producto_categoria,
+        i.precio_venta,
+        i.cantidad
+      FROM inventario i
+      INNER JOIN productos p ON i.producto_id = p.id
+      LEFT JOIN categorias c ON p.categoria_id = c.id
+      WHERE p.nombre LIKE CONCAT('%', ?, '%')
+      `,
+      [req.params.name]
+    );
     res.json(rows);
   } catch (error) {
-    console.error("Error al publicar/despublicar:", error);
+    console.error("Error en búsqueda:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   } finally {
     if (connection) await connection.end();
   }
 });
 
-// Obtener todos los productos
 router.get("/:id", async (req, res) => {
   console.log("Solicitud recibida en /producto/:id", req.params.id);
   let connection;
@@ -119,37 +132,6 @@ WHERE i.id = ?;
   }
 });
 
-// Buscar producto por nombre
-router.get("/buscar/:name", async (req, res) => {
-  let connection;
-  try {
-    connection = await getConnection();
-    const [rows] = await connection.execute(
-      `
-      SELECT 
-        i.id AS inventario_id,
-        p.nombre AS producto_nombre,
-        p.descripcion,
-        c.nombre AS producto_categoria,
-        i.precio_venta,
-        i.cantidad
-      FROM inventario i
-      INNER JOIN productos p ON i.producto_id = p.id
-      LEFT JOIN categorias c ON p.categoria_id = c.id
-      WHERE p.nombre LIKE CONCAT('%', ?, '%')
-      `,
-      [req.params.name]
-    );
-    res.json(rows);
-  } catch (error) {
-    console.error("Error en búsqueda:", error);
-    res.status(500).json({ error: "Error interno del servidor" });
-  } finally {
-    if (connection) await connection.end();
-  }
-});
-
-// Publicar o despublicar producto
 router.put("/publicar/:id", async (req, res) => {
   console.log("Solicitud recibida en /publicar/:id", req.params.id);
   let connection;
@@ -160,6 +142,42 @@ router.put("/publicar/:id", async (req, res) => {
       [req.params.id]
     );
     res.json({ message: "Estado de publicación actualizado" });
+  } catch (error) {
+    console.error("Error al publicar/despublicar:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  } finally {
+    if (connection) await connection.end();
+  }
+});
+
+router.put("/destacar/:id", async (req, res) => {
+  console.log("Solicitud recibida en destacar/:id", req.params.id);
+  let connection;
+  try {
+    connection = await getConnection();
+    await connection.execute(
+      "UPDATE productos SET destacado = NOT destacado WHERE id = ?",
+      [req.params.id]
+    );
+    res.json({ message: "Estado de publicación destacar actualizado" });
+  } catch (error) {
+    console.error("Error al publicar/despublicar:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  } finally {
+    if (connection) await connection.end();
+  }
+});
+
+router.put("/recomendar/:id", async (req, res) => {
+  console.log("Solicitud recibida en recomendar/:id", req.params.id);
+  let connection;
+  try {
+    connection = await getConnection();
+    await connection.execute(
+      "UPDATE productos SET recomendado = NOT recomendado WHERE id = ?",
+      [req.params.id]
+    );
+    res.json({ message: "Estado de publicación recomendar actualizado" });
   } catch (error) {
     console.error("Error al publicar/despublicar:", error);
     res.status(500).json({ error: "Error interno del servidor" });
@@ -236,6 +254,21 @@ router.put("/actualizar/:id", async (req, res) => {
     });
   } catch (error) {
     console.error("Error al actualizar inventario/producto:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  } finally {
+    if (connection) await connection.end();
+  }
+});
+
+router.get("/categorias", async (req, res) => {
+  let connection;
+  console.log("categorias totaltes");
+  try {
+    connection = await getConnection();
+    const [rows] = await connection.execute("SELECT * FROM categorias");
+    res.json(rows);
+  } catch (error) {
+    console.error("Error al publicar/despublicar:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   } finally {
     if (connection) await connection.end();

@@ -49,9 +49,7 @@ function Nav() {
 
       {/* Sidebar */}
       <div
-        className={`bg-dark text-black sidebar-sticky${
-          isCollapsed ? " collapsed" : ""
-        }`}
+        className={`bg-dark sidebar-sticky${isCollapsed ? " collapsed" : ""}`}
         style={{
           width: isCollapsed ? "0" : "180px",
           padding: isCollapsed ? "0" : "0.1rem 0.1rem",
