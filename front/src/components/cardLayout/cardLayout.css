@@ -7,3 +7,30 @@
 
 
 
+/* FULLSCREEN EN MÓVIL */
+@media (max-width: 576px) {
+  .product-modal-card {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+
+    margin: 3 !important;
+    border-radius: 0 !important;
+
+    box-shadow: none !important;
+  }
+
+  /* Contenido interno: sin padding extra */
+  .product-modal-card .card-body {
+    padding: 1rem !important;
+  }
+
+  /* Botón cerrar más accesible */
+  .product-modal-card .btn-close {
+    top: 10px !important;
+    right: 10px !important;
+  }
+}
+
+
+

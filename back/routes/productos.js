@@ -188,6 +188,7 @@ router.put("/recomendar/:id", async (req, res) => {
 
 router.put("/actualizar/:id", async (req, res) => {
   console.log("Solicitud recibida en /actualizar/:id", req.params.id);
+  console.log("parametros en ctualizar", req.params);
   let connection;
 
   try {
@@ -262,11 +263,11 @@ router.put("/actualizar/:id", async (req, res) => {
 
 router.get("/categorias", async (req, res) => {
   let connection;
-  console.log("categorias totaltes");
   try {
     connection = await getConnection();
     const [rows] = await connection.execute("SELECT * FROM categorias");
     res.json(rows);
+    console.log("categorias totaltes", rows);
   } catch (error) {
     console.error("Error al publicar/despublicar:", error);
     res.status(500).json({ error: "Error interno del servidor" });

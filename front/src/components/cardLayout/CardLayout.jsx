@@ -9,67 +9,78 @@ const CardLayout = ({ onClose, id }) => {
   const [formData, setFormData] = useState({});
   const [disabled, setDisabled] = useState(true);
   const [categorias, setCategorias] = useState([]);
-  console.log("id en cardLayout", id);
 
-  const [loading, setLoading] = useState(true);
+  const [loadingProducto, setLoadingProducto] = useState(true);
+  const [loadingCategorias, setLoadingCategorias] = useState(true);
+
+  console.log("id en cardLayout", id);
 
   useEffect(() => {
     const fetchProductsID = async () => {
       try {
         const response = await fetch(`http://localhost:3000/productos/${id}`);
-        if (!response.ok) throw new Error("Error al obtener los clientes");
+        if (!response.ok) throw new Error("Error al obtener el producto");
         const data = await response.json();
         setFormData(data[0]);
+        console.log("data", data);
       } catch (error) {
-        console.error("Error en la solicitud:", error);
+        console.error("Error al obtener producto:", error);
       } finally {
-        setLoading(false);
+        setLoadingProducto(false);
       }
     };
 
     fetchProductsID();
-  }, []);
+  }, [id]);
 
+  // ============================
+  //   FETCH CATEGORÍAS
+  // ============================
   useEffect(() => {
-    if (disabled === true) return;
     const fetchCategorias = async () => {
       try {
         const response = await fetch(
           `http://localhost:3000/productos/categorias`
         );
-        if (!response.ok) throw new Error("Error al obtener los clientes");
+        if (!response.ok) throw new Error("Error al obtener categorías");
+
         const data = await response.json();
         setCategorias(data);
+        console.log("categorias data", data);
       } catch (error) {
-        console.error("Error en la solicitud:", error);
+        console.error("Error al obtener categorías:", error);
       } finally {
-        setLoading(false);
+        setLoadingCategorias(false);
       }
     };
 
     fetchCategorias();
   }, []);
 
-  // 🔹 Formatear fecha ISO -> YYYY-MM-DD (para mostrar en input type="date")
+  // ============================
+  //  FORMATEO DE FECHAS
+  // ============================
   const formatDate = (dateString) => {
     if (!dateString) return "";
     const date = new Date(dateString);
     return date.toISOString().split("T")[0];
   };
 
-  // 🔹 Actualiza los valores del formulario
+  // ============================
+  //  HANDLE CHANGE
+  // ============================
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       [name]: type === "checkbox" ? checked : value,
-    });
-    console.log("form data desde onchange", formData);
+    }));
   };
 
-  // 🔹 Al guardar, convierte la fecha al formato ISO
+  // ============================
+  //  SUBMIT FORMULARIO
+  // ============================
   const handleSubmit = async (e) => {
-    console.log("on close desde handlesubmit", onClose);
     e.preventDefault();
 
     const updatedData = {
@@ -81,21 +92,16 @@ const CardLayout = ({ onClose, id }) => {
         ? new Date(formData.fecha_creacion).toISOString()
         : null,
     };
-    console.log("fecha cambiada a estring ", updatedData);
 
     try {
-      console.log("feeeeechingggg");
       const response = await fetch(
         `http://localhost:3000/productos/actualizar/${id}`,
         {
           method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(updatedData),
         }
       );
-      console.log("response", response);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -103,41 +109,40 @@ const CardLayout = ({ onClose, id }) => {
       }
 
       const result = await response.json();
-      console.log("✅ Datos guardados con éxito:", result);
+      console.log("Datos guardados:", result);
 
-      // ✅ Cierra el modal automáticamente después de guardar
-      if (onClose) {
-        onClose();
-      }
+      if (onClose) onClose();
     } catch (error) {
-      console.error("❌ Error al enviar los datos:", error);
+      console.error("Error al guardar:", error);
       alert("Ocurrió un error al guardar los datos");
     }
   };
 
-  if (loading) return <Spinners />;
-  console.log("formdata fuera del loading", formData.publicado);
   return (
-    <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center product-modal-backdrop">
+    <div className="position-fixed top-0 start-0 w-90 h-100 d-flex align-items-center justify-content-center product-modal-backdrop py-5 py-md-4 py-lg-5">
       <div
-        className="card shadow product-modal-card"
-        style={{ maxHeight: "90vh", display: "flex", flexDirection: "column" }}
+        className="card shadow product-modal-card py-5 mx-md-3 mx-lg-5"
+        style={{ maxHeight: "50vh", display: "flex", flexDirection: "column" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="card-body position-relative overflow-auto">
           <article className="modal-content">
+            {loadingCategorias && loadingProducto ? <Spinners /> : null}
+            {/* Botón cerrar */}
             <button
               className="btn-close btn-danger position-absolute top-0 end-0"
               onClick={onClose}
             ></button>
+
+            {/* Botón editar */}
             <button
-              className="btn btn-primary position-absolute
-            "
+              className="btn btn-primary position-absolute"
               onClick={() => setDisabled(!disabled)}
             >
               Editar
             </button>
 
+            {/* Publicado / Destacado / Recomendado */}
             <div className="d-flex align-items-center justify-content-center flex-wrap">
               <label>Publicado</label>
               <Publicado
@@ -145,7 +150,6 @@ const CardLayout = ({ onClose, id }) => {
                 id={formData.producto_id}
               />
 
-              {/* DESTACADO */}
               <div className="d-flex align-items-center ms-2">
                 <label className="me-2">Destacado</label>
                 <Destacado
@@ -154,7 +158,6 @@ const CardLayout = ({ onClose, id }) => {
                 />
               </div>
 
-              {/* RECOMENDADO */}
               <div className="d-flex align-items-center ms-2">
                 <label className="me-2">Recomendado</label>
                 <Recomendado
@@ -166,10 +169,10 @@ const CardLayout = ({ onClose, id }) => {
 
             <header className="modal-header justify-content-start mt-5 ms-3 me-5"></header>
 
+            {/* FORMULARIO */}
             <form onSubmit={handleSubmit}>
               <div className="container-fluid">
-                {/* Nombre */}
-
+                {/* Nombre y Ranking */}
                 <div className="mb-3 row align-items-center">
                   <label className="col-sm-3 col-form-label text-nowrap">
                     Nombre
@@ -220,6 +223,7 @@ const CardLayout = ({ onClose, id }) => {
                 <div className="row">
                   {/* Columna 1 */}
                   <div className="col-md-6">
+                    {/* Categoría */}
                     <div className="mb-3 row align-items-center">
                       <label className="col-sm-6 col-form-label text-nowrap">
                         Categoria
@@ -232,16 +236,16 @@ const CardLayout = ({ onClose, id }) => {
                           className="form-control"
                           disabled={disabled}
                         >
-                          {categorias.map((categoria) => (
-                            <option key={categoria.id} value={categoria.nombre}>
-                              {categoria.nombre}{" "}
-                              {/* ya viene capitalizado desde la API */}
+                          {categorias.map((c) => (
+                            <option key={c.id} value={c.nombre}>
+                              {c.nombre}
                             </option>
                           ))}
                         </select>
                       </div>
                     </div>
 
+                    {/* Inputs dinámicos */}
                     {[
                       ["Variante", "tipo_variante", "text"],
                       ["Valor", "valor_variante", "text"],
@@ -319,6 +323,7 @@ const CardLayout = ({ onClose, id }) => {
                       </div>
                     </div>
 
+                    {/* Número de lote */}
                     <div className="mb-3 row align-items-center">
                       <label className="col-sm-6 col-form-label text-nowrap">
                         Numero de lote
@@ -335,6 +340,7 @@ const CardLayout = ({ onClose, id }) => {
                       </div>
                     </div>
 
+                    {/* SKU */}
                     <div className="mb-3 row align-items-center">
                       <label className="col-sm-6 col-form-label text-nowrap">
                         Codigo SKU
@@ -351,6 +357,7 @@ const CardLayout = ({ onClose, id }) => {
                       </div>
                     </div>
 
+                    {/* Stock mínimo */}
                     <div className="mb-3 row align-items-center">
                       <label className="col-sm-6 col-form-label text-nowrap">
                         Estock mínimo
@@ -367,6 +374,7 @@ const CardLayout = ({ onClose, id }) => {
                       </div>
                     </div>
 
+                    {/* Botones */}
                     <div className="d-flex justify-content-end pt-5 gap-5">
                       <button
                         type="button"
@@ -375,10 +383,7 @@ const CardLayout = ({ onClose, id }) => {
                       >
                         Cancelar
                       </button>
-                      <button
-                        className="btn btn-success"
-                        onClick={handleSubmit}
-                      >
+                      <button className="btn btn-success" type="submit">
                         Guardar cambios
                       </button>
                     </div>

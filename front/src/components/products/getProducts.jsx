@@ -16,7 +16,7 @@ const GetProducts = () => {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch("http://localhost:3000/productos");
+      const response = await fetch("http://192.168.0.14:3000/productos");
       if (!response.ok) throw new Error("Error al obtener los productos");
       const data = await response.json();
       setItems(data);
@@ -117,23 +117,22 @@ const GetProducts = () => {
 
   return (
     <>
-      <h1 className="text-center mt-3 mb-5">Listado de productos</h1>
+      <div className=" my-3 ms-0 ms-md-3 ms-lg-5 text-center text-md-start">
+        <h1>Listado de productos</h1>
 
-      {/* 🔹 Barra de búsqueda y ordenamiento */}
-      <div className="d-flex align-items-center justify-content-right ms-5 me-5 pt-2 pb-2 sticky-top w-90">
-        <div className="m-2 d-flex justify-content-right">
-          <input
-            type="text"
-            className="form-control w-100"
-            placeholder="Buscar por nombre..."
-            value={search}
-            onChange={handleSearch}
-          />
-        </div>
+        <input
+          type="text"
+          className="form-control w-25 my-3"
+          placeholder="Buscar producto..."
+          value={search}
+          onChange={handleSearch}
+        />
+      </div>
 
-        <div className="m-2 mx-5 d-flex align-items-center">
+      <div className="d-flex align-items-center justify-content-right pb-2 ms-0 me-0 ms-md-3 me-md-3 ms-lg-5 me-lg-5">
+        <div className="my-2  d-flex align-items-center">
           <select
-            className="form-select w-auto mx-2"
+            className="form-select w-auto "
             value={sortField}
             onChange={(e) => setSortField(e.target.value)}
           >
@@ -153,15 +152,20 @@ const GetProducts = () => {
       </div>
 
       {/* 🔹 Tabla de productos */}
-      <div className={`fade-init${fadeIn ? " fade-in" : ""} ms-5 me-5`}>
+      <div
+        className={`fade-init${
+          fadeIn ? " fade-in" : ""
+        } ms-0 me-0 ms-md-3 me-md-3 ms-lg-5 me-lg-5`}
+      >
         <table className="table table-responsive table-hover align-middle shadow ">
-          <thead className="table-primary sticky-top ">
+          <thead className="table-primary ">
             <tr>
               <th className="text-start ">Nombre</th>
-              <th className="text-start">Categoría</th>
+              <th className="text-start d-none d-md-table-cell">Categoría</th>
               <th className="text-start">Cantidad</th>
-              <th className="text-start">Precio de Compra</th>
-              <th className="text-start">Precio de Venta</th>
+              <th className="text-start d-none d-md-table-cell">
+                Precio de Compra
+              </th>
               <th className="text-start">Caducidad</th>
               <th className="text-start">Publicado</th>
             </tr>
@@ -172,14 +176,19 @@ const GetProducts = () => {
                 <td onClick={() => handleTdClick(item)}>
                   {item.producto_nombre}
                 </td>
-                <td onClick={() => handleTdClick(item)}>
+                <td
+                  className="d-none d-md-table-cell"
+                  onClick={() => handleTdClick(item)}
+                >
                   {item.producto_categoria}
                 </td>
                 <td onClick={() => handleTdClick(item)}>{item.cantidad}</td>
-                <td onClick={() => handleTdClick(item)}>
+                <td
+                  className="d-none d-md-table-cell"
+                  onClick={() => handleTdClick(item)}
+                >
                   {item.precio_compra}
                 </td>
-                <td onClick={() => handleTdClick(item)}>{item.precio_venta}</td>
                 <td onClick={() => handleTdClick(item)}>
                   {formatDate(item.fecha_caducidad)}
                 </td>

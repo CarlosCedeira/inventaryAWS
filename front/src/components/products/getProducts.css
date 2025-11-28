@@ -4,7 +4,7 @@
 
 .table th  {
   position: sticky;
-  top: 50px; /* 👈 ajusta este valor a la altura real del div sticky-top */
+  top: 0; /* 👈 ajusta este valor a la altura real del div sticky-top */
   z-index: 1;
 
 }
@@ -23,7 +23,6 @@ h1 + div {
     cursor: pointer;
 
 }
-
 
 .fade-init {
   opacity: 0;

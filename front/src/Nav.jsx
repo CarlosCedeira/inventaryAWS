@@ -10,6 +10,7 @@ import GetSales from "./components/sales/sales.jsx";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
 import "./nav.css";
+import UsersManager from "./logging.jsx";
 
 function Nav() {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -71,11 +72,10 @@ function Nav() {
           <ul className="nav flex-md-row">
             <li className="nav-item ">
               <Link
-                to="/"
+                to="/pos"
                 className={`nav-link text-white ${
-                  location.pathname === "/" ? "active" : ""
+                  location.pathname === "/pos" ? "active" : ""
                 }`}
-                onClick={() => setIsCollapsed(!isCollapsed)}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -95,7 +95,6 @@ function Nav() {
                 className={`nav-link text-white ${
                   location.pathname === "/productos" ? "active" : ""
                 }`}
-                onClick={() => setIsCollapsed(!isCollapsed)}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -115,7 +114,6 @@ function Nav() {
                 className={`nav-link text-white ${
                   location.pathname === "/clientes" ? "active" : ""
                 }`}
-                onClick={() => setIsCollapsed(!isCollapsed)}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -135,7 +133,6 @@ function Nav() {
                 className={`nav-link text-white ${
                   location.pathname === "/ventas" ? "active" : ""
                 }`}
-                onClick={() => setIsCollapsed(!isCollapsed)}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -156,7 +153,8 @@ function Nav() {
       {/* Contenido principal */}
       <div className="flex-grow-1 p-3">
         <Routes>
-          <Route path="/" element={<PointOfSale />} />
+          <Route path="/" element={<UsersManager />} />
+          <Route path="/pos" element={<PointOfSale />} />
           <Route path="/productos" element={<GetProducts />} />
           <Route path="/clientes" element={<GetClients />} />
           <Route path="/ventas" element={<GetSales />} />
