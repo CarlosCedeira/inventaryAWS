@@ -119,9 +119,14 @@ const CardLayout = ({ onClose, id }) => {
   };
 
   return (
-    <div className="position-fixed top-0 start-0 w-90 h-100 d-flex align-items-center justify-content-center product-modal-backdrop py-5 py-md-4 py-lg-5">
+    <div
+      className="position-fixed top-0 start-0     d-flex align-items-center justify-content-center product-modal-backdrop py-md-3 py-lg-5"
+      style={{
+        width: window.innerWidth < 768 ? null : "100%",
+      }}
+    >
       <div
-        className="card shadow product-modal-card py-5 mx-md-3 mx-lg-5"
+        className="card shadow product-modal-card pt-3 pb-5 py-md-0 mx-md-3 mx-lg-5"
         style={{ maxHeight: "50vh", display: "flex", flexDirection: "column" }}
         onClick={(e) => e.stopPropagation()}
       >

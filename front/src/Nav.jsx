@@ -151,7 +151,7 @@ function Nav() {
       </div>
 
       {/* Contenido principal */}
-      <div className="flex-grow-1 p-3">
+      <div className="flex-grow-1 ps-md-3">
         <Routes>
           <Route path="/" element={<UsersManager />} />
           <Route path="/pos" element={<PointOfSale />} />

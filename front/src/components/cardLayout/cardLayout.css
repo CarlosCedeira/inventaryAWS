@@ -11,8 +11,7 @@
 @media (max-width: 576px) {
   .product-modal-card {
     width: 100vw !important;
-    height: 100vh !important;
-    max-height: 100vh !important;
+    max-height: 90vh !important;
 
     margin: 3 !important;
     border-radius: 0 !important;

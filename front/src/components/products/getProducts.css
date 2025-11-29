@@ -2,12 +2,18 @@
   overflow-x: auto;
 }
 
+.prueba {
+ position: sticky;
+  top: 65px
+}
+
 .table th  {
   position: sticky;
-  top: 0; /* 👈 ajusta este valor a la altura real del div sticky-top */
+  top: 165px; /* 👈 ajusta este valor a la altura real del div sticky-top */
   z-index: 1;
 
 }
+
 
 
 
@@ -88,4 +94,18 @@ svg:hover {
   cursor: pointer;
   scale: 1.2;
   transition: all 0.3s ease-in-out;
+}
+
+/* A partir de 768px → tablets y escritorio */
+@media (min-width: 768px) {
+
+   .prueba {
+    top: 80px;
+  }
+
+  .table thead th {
+    top: 130px;
+  }
+
+ 
 }
