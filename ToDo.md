@@ -6,25 +6,32 @@
 
 - [✓] Posibilidad de añadir más márgenes a los lados en la versión de escritorio.
 
-- [] Cambiar margenes de la tabla en version tablet y movil
+- [✓] Cambiar margenes de la tabla y card layout en version tablet y movil
 
   - [✓] Tabla productos
-  - [] Card layout
+  - [✓] Card layout
 
 - [] Componente que englobe:
 
-  - [] Buscar por nombre.
+  - [] Buscar por...
+    - [] Buscar por nombre.
+    - [] Buscar por numero de lote.
+    - [] Buscar por SKU.
+    - [] Buscar por codigo de barras.
   - [] Categoria.
   - [] Cantidad.
   - [] Precio.
+  - [] Caducidad.
 
-- [] Añadir una vista que represente el orden de los elementos en la página web.
+- [] Añadir una vista predefinida que represente el orden de los elementos en la página web.
 
 - [✓] Crear nuevos componentes similares a Publicado para:
 
   - [✓] Recomendado
   - [✓] Destacado
   - [✓] Ranking
+
+- [✓] Publicado destacado y recomendado tienen que aparecer debajo de editar y cerrar.
 
 - [✓] Eliminar filas en versión móvil:
 
@@ -48,6 +55,8 @@
 ### 1.2 Nav
 
 - [] Añadir en la parte inferio del nav el nombre y la foto de avatar del usuario.
+
+- [] En dispositivos moviles el nav se tiene que ocultar al hacer click sobre un elemento.
 
 ## 2. Backend / Sanitización
 

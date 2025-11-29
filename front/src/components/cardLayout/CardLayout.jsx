@@ -131,13 +131,13 @@ const CardLayout = ({ onClose, id }) => {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="card-body position-relative overflow-auto">
+          <button
+            className="btn btn-close fs-5 position-absolute end-0"
+            onClick={onClose}
+          ></button>
           <article className="modal-content">
             {loadingCategorias && loadingProducto ? <Spinners /> : null}
             {/* Botón cerrar */}
-            <button
-              className="btn-close btn-danger position-absolute top-0 end-0"
-              onClick={onClose}
-            ></button>
 
             {/* Botón editar */}
             <button
@@ -148,14 +148,11 @@ const CardLayout = ({ onClose, id }) => {
             </button>
 
             {/* Publicado / Destacado / Recomendado */}
-            <div className="d-flex align-items-center justify-content-center flex-wrap">
-              <label>Publicado</label>
-              <Publicado
-                publicado={formData.publicado}
-                id={formData.producto_id}
-              />
 
-              <div className="d-flex align-items-center ms-2">
+            <header className="modal-header my-3 my-lg-0  ms-3 me-5"></header>
+
+            <div className="d-flex align-items-center justify-content-evenly flex-wrap my-3 ">
+              <div className="d-flex align-items-center justify-content-between ">
                 <label className="me-2">Destacado</label>
                 <Destacado
                   destacado={formData.destacado}
@@ -163,16 +160,22 @@ const CardLayout = ({ onClose, id }) => {
                 />
               </div>
 
-              <div className="d-flex align-items-center ms-2">
+              <div className="d-flex align-items-center ">
                 <label className="me-2">Recomendado</label>
                 <Recomendado
                   recomendado={formData.recomendado}
                   id={formData.producto_id}
                 />
               </div>
-            </div>
 
-            <header className="modal-header justify-content-start mt-5 ms-3 me-5"></header>
+              <div className="d-flex align-items-center ">
+                <label className="me-2">Publicado</label>
+                <Publicado
+                  publicado={formData.publicado}
+                  id={formData.producto_id}
+                />
+              </div>
+            </div>
 
             {/* FORMULARIO */}
             <form onSubmit={handleSubmit}>
