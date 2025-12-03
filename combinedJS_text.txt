@@ -16,7 +16,7 @@ async function getConnection() {
   return mysql.createConnection(dbConfig);
 }
 
-module.exports = { getConnection };
+module.exports = { getConnection };asdasdasdd
 
 
 ===== clientes.js =====
