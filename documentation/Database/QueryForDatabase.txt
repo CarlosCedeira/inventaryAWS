@@ -67,21 +67,6 @@ CREATE TABLE categorias (
   descripcion TEXT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- =====================================
--- Variantes
--- =====================================
-
-CREATE TABLE tipos_variantes (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  nombre VARCHAR(100) NOT NULL
-);
-
-CREATE TABLE valores_variantes (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  id_tipo INT NOT NULL,
-  valor VARCHAR(100) NOT NULL,
-  FOREIGN KEY (id_tipo) REFERENCES tipos_variantes(id)
-);
 
 -- =====================================
 -- Productos
@@ -98,18 +83,10 @@ CREATE TABLE productos (
   recomendado BOOLEAN DEFAULT FALSE,
   ranking INT DEFAULT 1 CHECK (ranking BETWEEN 1 AND 10),
   fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+  variantes JSON NULL,  -- NUEVO CAMPO
   FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
   FOREIGN KEY (categoria_id) REFERENCES categorias(id) ON DELETE CASCADE
-);
-
-CREATE TABLE producto_variantes (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  id_producto INT NOT NULL,
-  id_tipo_variante INT NOT NULL,
-  id_valor_variante INT NOT NULL,
-  FOREIGN KEY (id_producto) REFERENCES productos(id) ON DELETE CASCADE,
-  FOREIGN KEY (id_valor_variantes) REFERENCES valores_variantes(id) ON DELETE CASCADE
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
 

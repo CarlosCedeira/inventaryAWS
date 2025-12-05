@@ -16,7 +16,7 @@ const GetProducts = () => {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch("http://192.168.0.14:3000/productos");
+      const response = await fetch("http://192.168.0.18:3000/productos");
       if (!response.ok) throw new Error("Error al obtener los productos");
       const data = await response.json();
       setItems(data);
