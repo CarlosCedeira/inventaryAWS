@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import Spinners from "../spiners";
-import Publicado from "../products/publicado/putPublicado";
+const API_URL = import.meta.env.VITE_API_URL;
+import Spinners from "../../spiners";
 import "./cardLayout.css";
-import Destacado from "../products/destacado/Destacado";
-import Recomendado from "../products/recomendado/Recomendado";
+import Destacado from "./destacado/Destacado";
+import Recomendado from "./recomendado/Recomendado";
 
 const CardLayout = ({ onClose, id }) => {
   const [formData, setFormData] = useState({});
@@ -18,7 +18,7 @@ const CardLayout = ({ onClose, id }) => {
   useEffect(() => {
     const fetchProductsID = async () => {
       try {
-        const response = await fetch(`http://localhost:3000/productos/${id}`);
+        const response = await fetch(`${API_URL}/productos/${id}`);
         if (!response.ok) throw new Error("Error al obtener el producto");
         const data = await response.json();
         setFormData(data[0]);
@@ -30,17 +30,10 @@ const CardLayout = ({ onClose, id }) => {
       }
     };
 
-    fetchProductsID();
-  }, [id]);
-
-  // ============================
-  //   FETCH CATEGORÍAS
-  // ============================
-  useEffect(() => {
     const fetchCategorias = async () => {
       try {
         const response = await fetch(
-          `http://localhost:3000/productos/categorias`
+          `${API_URL}/productos/categorias`
         );
         if (!response.ok) throw new Error("Error al obtener categorías");
 
@@ -54,8 +47,9 @@ const CardLayout = ({ onClose, id }) => {
       }
     };
 
+    fetchProductsID();
     fetchCategorias();
-  }, []);
+  }, [id]);
 
   // ============================
   //  FORMATEO DE FECHAS
@@ -95,7 +89,7 @@ const CardLayout = ({ onClose, id }) => {
 
     try {
       const response = await fetch(
-        `http://localhost:3000/productos/actualizar/${id}`,
+        `${API_URL}/productos/actualizar/${id}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -168,13 +162,7 @@ const CardLayout = ({ onClose, id }) => {
                 />
               </div>
 
-              <div className="d-flex align-items-center ">
-                <label className="me-2">Publicado</label>
-                <Publicado
-                  publicado={formData.publicado}
-                  id={formData.producto_id}
-                />
-              </div>
+             
             </div>
 
             {/* FORMULARIO */}
@@ -189,26 +177,14 @@ const CardLayout = ({ onClose, id }) => {
                     <input
                       type="text"
                       name="producto_nombre"
-                      value={formData.producto_nombre || ""}
+                      value={id ? formData.producto_nombre || "" : ""}
                       onChange={handleChange}
                       className="form-control"
                       disabled={disabled}
                     />
                   </div>
 
-                  <label className="col-sm-3 col-form-label text-nowrap mt-3">
-                    Ranking
-                  </label>
-                  <div className="col-sm-9 mt-3">
-                    <input
-                      type="number"
-                      name="ranking"
-                      value={formData.ranking || ""}
-                      onChange={handleChange}
-                      className="form-control w-25"
-                      disabled={disabled}
-                    />
-                  </div>
+                 
                 </div>
 
                 {/* Descripción */}
@@ -245,7 +221,7 @@ const CardLayout = ({ onClose, id }) => {
                           disabled={disabled}
                         >
                           {categorias.map((c) => (
-                            <option key={c.id} value={c.nombre}>
+                            <option key={c.id} value={c.producto_categoria}>
                               {c.nombre}
                             </option>
                           ))}
@@ -255,11 +231,11 @@ const CardLayout = ({ onClose, id }) => {
 
                     {/* Inputs dinámicos */}
                     {[
-                      ["Variante", "tipo_variante", "text"],
-                      ["Valor", "valor_variante", "text"],
+                      ["Ranking", "ranking", "number"],
                       ["Cantidad", "cantidad", "number"],
                       ["Precio de compra", "precio_compra", "number"],
                       ["Precio de venta", "precio_venta", "number"],
+                      ["Stock minimo", "stock_minimo", "number"],
                     ].map(([label, name, type]) => (
                       <div className="mb-3 row align-items-center" key={name}>
                         <label className="col-sm-6 col-form-label text-nowrap">
@@ -363,27 +339,14 @@ const CardLayout = ({ onClose, id }) => {
                           disabled={disabled}
                         />
                       </div>
+
                     </div>
 
-                    {/* Stock mínimo */}
-                    <div className="mb-3 row align-items-center">
-                      <label className="col-sm-6 col-form-label text-nowrap">
-                        Estock mínimo
-                      </label>
-                      <div className="col-sm-6">
-                        <input
-                          type="number"
-                          name="stock_minimo"
-                          value={formData.stock_minimo || ""}
-                          onChange={handleChange}
-                          className="form-control"
-                          disabled={disabled}
-                        />
-                      </div>
-                    </div>
+                     
+                 
+                  </div>
 
-                    {/* Botones */}
-                    <div className="d-flex justify-content-end pt-5 gap-5">
+                  <div className="d-flex justify-content-between align-items-end gap-5">
                       <button
                         type="button"
                         className="btn btn-secondary"
@@ -395,7 +358,8 @@ const CardLayout = ({ onClose, id }) => {
                         Guardar cambios
                       </button>
                     </div>
-                  </div>
+
+                    
                 </div>
               </div>
             </form>

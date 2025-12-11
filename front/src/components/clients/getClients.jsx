@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import Spinners from "../spiners.jsx";
+const API_URL = import.meta.env.VITE_API_URL;
+
 
 const GetClients = () => {
   const [loading, setLoading] = useState(true);
@@ -10,7 +12,7 @@ const GetClients = () => {
   useEffect(() => {
     const fetchClients = async () => {
       try {
-        const response = await fetch("http://localhost:3000/clientes");
+        const response = await fetch(`${API_URL}/clientes`);
         if (!response.ok) throw new Error("Error al obtener los clientes");
         const data = await response.json();
         setClients(data);
@@ -189,7 +191,7 @@ const GetClients = () => {
               <tr key={client.id}>
                 <td className="text-start">{client.nombre}</td>
                 <td className="text-start">{client.direccion}</td>
-                <td className="text-center">{client.correo_electronico}</td>
+                <td className="text-center">{client.email}</td>
                 <td className="text-center">{client.telefono}</td>
               </tr>
             ))}

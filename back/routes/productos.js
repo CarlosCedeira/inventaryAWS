@@ -20,6 +20,7 @@ router.get("/", async (req, res) => {
   i.cantidad,
   i.precio_compra,
   i.precio_venta,
+  i.stock_minimo,
   i.fecha_caducidad,
   p.publicado
 FROM inventario i
@@ -31,6 +32,21 @@ LEFT JOIN categorias c ON p.categoria_id = c.id
     res.json(rows);
   } catch (error) {
     console.error("Error al consultar productos:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  } finally {
+    if (connection) await connection.end();
+  }
+});
+
+router.get("/categorias", async (req, res) => {
+  let connection;
+  try {
+    connection = await getConnection();
+    const [rows] = await connection.execute("SELECT * FROM categorias");
+    res.json(rows);
+    console.log("categorias totaltes", rows);
+  } catch (error) {
+    console.error("Error al publicar/despublicar:", error);
     res.status(500).json({ error: "Error interno del servidor" });
   } finally {
     if (connection) await connection.end();
@@ -86,16 +102,11 @@ router.get("/:id", async (req, res) => {
     p.recomendado,
     p.ranking,
     p.fecha_creacion,
+    p.variantes,
 
     -- CATEGORÍA
     c.id AS categoria_id,
     c.nombre AS producto_categoria,
-
-    -- VARIANTES
-    tv.id AS tipo_variante_id,
-    tv.nombre AS tipo_variante,
-    vv.id AS valor_variante_id,
-    vv.valor AS valor_variante,
 
     -- INVENTARIO
     i.cantidad,
@@ -113,10 +124,7 @@ INNER JOIN productos p
     ON i.producto_id = p.id
 LEFT JOIN categorias c 
     ON p.categoria_id = c.id
-LEFT JOIN tipos_variantes tv 
-    ON i.tipo_variante_id = tv.id
-LEFT JOIN valores_variantes vv 
-    ON i.valor_variante_id = vv.id
+
 WHERE i.id = ?;
 
       `,
@@ -261,19 +269,6 @@ router.put("/actualizar/:id", async (req, res) => {
   }
 });
 
-router.get("/categorias", async (req, res) => {
-  let connection;
-  try {
-    connection = await getConnection();
-    const [rows] = await connection.execute("SELECT * FROM categorias");
-    res.json(rows);
-    console.log("categorias totaltes", rows);
-  } catch (error) {
-    console.error("Error al publicar/despublicar:", error);
-    res.status(500).json({ error: "Error interno del servidor" });
-  } finally {
-    if (connection) await connection.end();
-  }
-});
+
 
 module.exports = router;

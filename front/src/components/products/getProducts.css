@@ -4,15 +4,9 @@
 
 .prueba {
  position: sticky;
-  top: 65px
+  top: 88px
 }
 
-.table th  {
-  position: sticky;
-  top: 165px; /* 👈 ajusta este valor a la altura real del div sticky-top */
-  z-index: 1;
-
-}
 
 
 
@@ -28,6 +22,21 @@ h1 + div {
   transition: background 0.2s;
     cursor: pointer;
 
+}
+
+.table th  {
+  position: sticky;
+  top: 189px; /* 👈 ajusta este valor a la altura real del div sticky-top */
+  z-index: 1;
+
+}
+
+.bg-stock-minimo {
+  background-color: #fdc763 !important; /* naranja suave */
+}
+
+.bg-no-stock {
+  background-color: #ff7f66 !important; /* rojo cálido menos intenso */
 }
 
 .fade-init {
@@ -100,11 +109,11 @@ svg:hover {
 @media (min-width: 768px) {
 
    .prueba {
-    top: 80px;
+    top: 63px;
   }
 
   .table thead th {
-    top: 130px;
+    top: 113px;
   }
 
  

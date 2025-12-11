@@ -1,4 +1,6 @@
 import { useState } from "react";
+const API_URL = import.meta.env.VITE_API_URL;
+
 
 const Recomendado = ({ id, recomendado }) => {
   const [estaRecomendadp, setEstaRecomendadp] = useState(Number(recomendado));
@@ -6,7 +8,7 @@ const Recomendado = ({ id, recomendado }) => {
   const putRecomendado = async () => {
     try {
       const response = await fetch(
-        `http://localhost:3000/productos/recomendar/${id}`,
+        `${API_URL}/productos/recomendar/${id}`,
         {
           method: "PUT",
           headers: {

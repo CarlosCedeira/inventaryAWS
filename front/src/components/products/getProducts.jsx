@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
+const API_URL = import.meta.env.VITE_API_URL;
+
 import Spinners from "../spiners";
-import CardLayout from "../cardLayout/CardLayout";
+import CardLayout from "./cardLayout/CardLayout";
 import Publicado from "./publicado/putPublicado";
 import "./getProducts.css";
+import NewProduct from "./newProduct/newProduct";
 
 const GetProducts = () => {
   const [items, setItems] = useState([]);
@@ -16,7 +19,7 @@ const GetProducts = () => {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch("http://192.168.0.18:3000/productos");
+      const response = await fetch(`${API_URL}/productos`);
       if (!response.ok) throw new Error("Error al obtener los productos");
       const data = await response.json();
       setItems(data);
@@ -71,9 +74,9 @@ const GetProducts = () => {
       let url;
 
       if (!searchValue) {
-        url = "http://localhost:3000/productos";
+        url = `${API_URL}/productos`;
       } else {
-        url = `http://localhost:3000/productos/buscar/${searchValue}`;
+        url = `${API_URL}/productos/buscar/${searchValue}`;
       }
 
       const res = await fetch(url);
@@ -117,9 +120,13 @@ const GetProducts = () => {
 
   return (
     <>
-      <h1 className="bg-white sticky-top ms-3 mt-2 mb-3 ps-5 ps-md-4 py-3">
+     <div className="bg-white sticky-top d-flex justify-content-between align-items-center ">
+       <h1 className=" ms-4 mt-2 mb-3 ps-5 ps-md-4 ">
         Listado de productos
       </h1>
+
+        <NewProduct/>
+     </div>
 
       <div className=" prueba  bg-white pt-2 pb-2 px-5 d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-2">
         {/* BLOQUE ORDENAR (siempre en una fila) */}
@@ -175,30 +182,55 @@ const GetProducts = () => {
           </thead>
           <tbody>
             {items.map((item) => (
-              <tr key={item.producto_id}>
-                <td onClick={() => handleTdClick(item)}>
+              <tr key={item.producto_id}
+              className={
+        item.cantidad <= item.stock_minimo
+          ? "bg-stock-minimo" 
+          : ""
+      }>
+                <td className={`d-md-table-cell ${
+  item.cantidad === 0 ? "bg-no-stock" : ""} ${
+  item.cantidad <= item.stock_minimo && item.cantidad > 0 ? "bg-stock-minimo" : ""
+}`}
+
+                onClick={() => handleTdClick(item)}>
                   {item.producto_nombre}
                 </td>
                 <td
-                  className="d-none d-md-table-cell"
+                  className={`d-none d-md-table-cell ${
+  item.cantidad === 0 ? "bg-no-stock" : ""} ${
+  item.cantidad <= item.stock_minimo && item.cantidad > 0 ? "bg-stock-minimo" : ""
+}`}
                   onClick={() => handleTdClick(item)}
                 >
                   {item.producto_categoria}
                 </td>
-                <td onClick={() => handleTdClick(item)}>{item.cantidad}</td>
+
+                <td                   className={`d-md-table-cell ${
+  item.cantidad === 0 ? "bg-no-stock" : ""} ${
+  item.cantidad <= item.stock_minimo && item.cantidad > 0 ? "bg-stock-minimo" : ""
+}`}
+onClick={() => handleTdClick(item)}>{item.cantidad}</td>
+
                 <td
-                  className="d-none d-md-table-cell"
+                                    className={`d-none d-md-table-cell  ${
+  item.cantidad === 0 ? "bg-no-stock" : ""} ${
+  item.cantidad <= item.stock_minimo && item.cantidad > 0 ? "bg-stock-minimo" : ""
+}`}
+
                   onClick={() => handleTdClick(item)}
                 >
                   {item.precio_compra}
                 </td>
-                <td onClick={() => handleTdClick(item)}>
+                <td                   className={`d-md-table-cell ${
+  item.cantidad === 0 ? "bg-no-stock" : ""} ${
+  item.cantidad <= item.stock_minimo && item.cantidad > 0 ? "bg-stock-minimo" : ""
+}`}
+
+                onClick={() => handleTdClick(item)}>
                   {formatDate(item.fecha_caducidad)}
                 </td>
-                <td>
-                  <Publicado id={item.producto_id} publicado={item.publicado} />
-                </td>
-                {console.log("publicado en getProducts", item.publicado)}
+                  <Publicado id={item.producto_id} publicado={item.publicado} cantidad={item.cantidad} stock_minimo={item.stock_minimo} />
               </tr>
             ))}
           </tbody>

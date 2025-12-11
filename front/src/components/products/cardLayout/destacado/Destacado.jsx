@@ -1,4 +1,6 @@
 import { useState } from "react";
+const API_URL = import.meta.env.VITE_API_URL;
+
 
 const Destacado = ({ id, destacado }) => {
   const [estaDestacado, setEstaDestacado] = useState(Number(destacado));
@@ -6,7 +8,7 @@ const Destacado = ({ id, destacado }) => {
   const putDestacado = async () => {
     try {
       const response = await fetch(
-        `http://localhost:3000/productos/destacar/${id}`,
+        `${API_URL}/productos/destacar/${id}`,
         {
           method: "PUT",
           headers: {
