@@ -38,10 +38,7 @@ const Publicado = ({ id, publicado, cantidad, stock_minimo }) => {
   return (
     <>
       {itspublish === 1 ? (
-        <td className={`d-md-table-cell ${
-  cantidad === 0 ? "bg-no-stock" : ""} ${
-  cantidad <= stock_minimo && cantidad > 0 ? "bg-stock-minimo" : ""
-}`}>
+        <td className={`d-md-table-cell `}>
           <svg
           onClick={putPublish}
           xmlns="http://www.w3.org/2000/svg"
@@ -54,10 +51,7 @@ const Publicado = ({ id, publicado, cantidad, stock_minimo }) => {
         </svg>
         </td>
       ) : (
-<td  className={`d-md-table-cell   ${
-  cantidad === 0 ? "bg-no-stock" : ""} ${
-  cantidad <= stock_minimo && cantidad > 0 ? "bg-stock-minimo" : ""
-}`}>
+<td  className={`d-md-table-cell   `}>
 
         <svg
           onClick={putPublish}

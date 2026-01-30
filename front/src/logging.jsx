@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
+const API_URL = import.meta.env.VITE_API_URL;
+
 
 const UsersManager = () => {
+
+  
   const [users, setUsers] = useState([]);
   const [form, setForm] = useState({
     username: "",
@@ -9,7 +13,7 @@ const UsersManager = () => {
   });
 
   const fetchUsers = async () => {
-    const res = await fetch("http://localhost:3000"); // asumir token ya enviado
+    const res = await fetch(`${API_URL}`); // asumir token ya enviado
     const data = await res.json();
     setUsers(data);
   };
@@ -20,7 +24,7 @@ const UsersManager = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await fetch("http://localhost:3000", {
+    await fetch(`${API_URL}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
@@ -87,6 +91,8 @@ const UsersManager = () => {
           Iniciar sesion
         </button>
       </form>
+
+      
     </div>
   );
 };

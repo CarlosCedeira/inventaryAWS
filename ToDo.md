@@ -25,6 +25,9 @@
 
 - [] Añadir una vista predefinida que represente el orden de los elementos en la página web.
 
+- [✓
+] Estilos de background para avisos de stock bajo.
+
 - [✓] Crear nuevos componentes similares a Publicado para:
 
   - [✓] Recomendado
@@ -71,9 +74,11 @@
 
 ## 2. Base de datos
 
-- [] Cambiar las categorias de fiajs a personalizadas por tenant_id
+- [] Cambiar las categorias de fiajs a personalizadas por tenant_id.
 
-- [] Elimninar las tablas tipo_variante y vlaor_variante por datos json y modificar las relaciones de otras tablas
+- [✓] Elimninar las tablas tipo_variante y vlaor_variante por datos json.
+
+- [] Modificar las relaciones de otras tablas.
 
 - [] Investigar mas campos necesarios para el producto como marca, peso, medida etc.
 

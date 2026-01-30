@@ -6,6 +6,8 @@ import CardLayout from "./cardLayout/CardLayout";
 import Publicado from "./publicado/putPublicado";
 import "./getProducts.css";
 import NewProduct from "./newProduct/newProduct";
+import InventoryDashboard from "./productsDashboard";  
+
 
 const GetProducts = () => {
   const [items, setItems] = useState([]);
@@ -120,6 +122,7 @@ const GetProducts = () => {
 
   return (
     <>
+<InventoryDashboard inventory={items} />
      <div className="bg-white sticky-top d-flex justify-content-between align-items-center ">
        <h1 className=" ms-4 mt-2 mb-3 ps-5 ps-md-4 ">
         Listado de productos
@@ -127,6 +130,8 @@ const GetProducts = () => {
 
         <NewProduct/>
      </div>
+
+
 
       <div className=" prueba  bg-white pt-2 pb-2 px-5 d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-2">
         {/* BLOQUE ORDENAR (siempre en una fila) */}
@@ -197,35 +202,23 @@ const GetProducts = () => {
                   {item.producto_nombre}
                 </td>
                 <td
-                  className={`d-none d-md-table-cell ${
-  item.cantidad === 0 ? "bg-no-stock" : ""} ${
-  item.cantidad <= item.stock_minimo && item.cantidad > 0 ? "bg-stock-minimo" : ""
-}`}
+                  className={`d-none d-md-table-cell `}
                   onClick={() => handleTdClick(item)}
                 >
                   {item.producto_categoria}
                 </td>
 
-                <td                   className={`d-md-table-cell ${
-  item.cantidad === 0 ? "bg-no-stock" : ""} ${
-  item.cantidad <= item.stock_minimo && item.cantidad > 0 ? "bg-stock-minimo" : ""
-}`}
+                <td                   className={`d-md-table-cell `}
 onClick={() => handleTdClick(item)}>{item.cantidad}</td>
 
                 <td
-                                    className={`d-none d-md-table-cell  ${
-  item.cantidad === 0 ? "bg-no-stock" : ""} ${
-  item.cantidad <= item.stock_minimo && item.cantidad > 0 ? "bg-stock-minimo" : ""
-}`}
+                                    className={`d-none d-md-table-cell  `}
 
                   onClick={() => handleTdClick(item)}
                 >
                   {item.precio_compra}
                 </td>
-                <td                   className={`d-md-table-cell ${
-  item.cantidad === 0 ? "bg-no-stock" : ""} ${
-  item.cantidad <= item.stock_minimo && item.cantidad > 0 ? "bg-stock-minimo" : ""
-}`}
+                <td                   className={`d-md-table-cell `}
 
                 onClick={() => handleTdClick(item)}>
                   {formatDate(item.fecha_caducidad)}
@@ -246,6 +239,7 @@ onClick={() => handleTdClick(item)}>{item.cantidad}</td>
           onClose={handleCloseCard}
         />
       )}
+
     </>
   );
 };

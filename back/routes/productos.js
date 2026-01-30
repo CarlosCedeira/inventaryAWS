@@ -10,22 +10,23 @@ router.get("/", async (req, res) => {
     connection = await getConnection();
     const [rows] = await connection.execute(
       `
-      SELECT 
-  i.id AS inventario_id,
-  i.tenant_id,
-  i.producto_id,
-  p.nombre AS producto_nombre,
-  c.nombre AS producto_categoria,
-  c.id AS categoria_id,
-  i.cantidad,
-  i.precio_compra,
-  i.precio_venta,
-  i.stock_minimo,
-  i.fecha_caducidad,
-  p.publicado
-FROM inventario i
-INNER JOIN productos p ON i.producto_id = p.id
-LEFT JOIN categorias c ON p.categoria_id = c.id
+     SELECT 
+        i.id AS inventario_id,
+        i.tenant_id,
+        i.producto_id,
+        p.nombre AS producto_nombre,
+        c.nombre AS producto_categoria,
+        c.id AS categoria_id,
+        i.cantidad,
+        i.precio_compra,
+        i.precio_venta,
+        i.stock_minimo,
+        i.fecha_caducidad,
+        p.publicado,
+        p.variantes   -- <-- AÑADIDO AQUÍ
+      FROM inventario i
+      INNER JOIN productos p ON i.producto_id = p.id
+      LEFT JOIN categorias c ON p.categoria_id = c.id
 
     `
     );

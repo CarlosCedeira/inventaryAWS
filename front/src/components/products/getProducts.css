@@ -98,12 +98,7 @@ h1 + div {
 
 
 
-svg:hover {
-  border-radius: 50%;
-  cursor: pointer;
-  scale: 1.2;
-  transition: all 0.3s ease-in-out;
-}
+
 
 /* A partir de 768px → tablets y escritorio */
 @media (min-width: 768px) {
@@ -115,6 +110,8 @@ svg:hover {
   .table thead th {
     top: 113px;
   }
-
+svg:hover {
+  cursor: pointer;
+}
  
 }
