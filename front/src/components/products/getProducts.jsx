@@ -193,10 +193,7 @@ const GetProducts = () => {
           ? "bg-stock-minimo" 
           : ""
       }>
-                <td className={`d-md-table-cell ${
-  item.cantidad === 0 ? "bg-no-stock" : ""} ${
-  item.cantidad <= item.stock_minimo && item.cantidad > 0 ? "bg-stock-minimo" : ""
-}`}
+                <td className={`d-md-table-cell`}
 
                 onClick={() => handleTdClick(item)}>
                   {item.producto_nombre}
@@ -208,7 +205,10 @@ const GetProducts = () => {
                   {item.producto_categoria}
                 </td>
 
-                <td                   className={`d-md-table-cell `}
+                <td                   className={`d-md-table-cell ${
+  item.cantidad === 0 ? "bg-no-stock" : ""} ${
+  item.cantidad <= item.stock_minimo && item.cantidad > 0 ? "bg-stock-minimo" : ""
+}`}
 onClick={() => handleTdClick(item)}>{item.cantidad}</td>
 
                 <td

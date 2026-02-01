@@ -52,7 +52,7 @@ function Nav() {
       <div
         className={`bg-dark sidebar-sticky${isCollapsed ? " collapsed" : ""}`}
         style={{
-          width: isCollapsed ? "0" : "180px",
+          width: isCollapsed ? "0" : "250px",
           padding: isCollapsed ? "0" : "0.1rem 0.1rem",
           overflowX: "hidden",
           transition:

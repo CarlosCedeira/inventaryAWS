@@ -1,20 +1,27 @@
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 2fr 1.25fr 2fr; /* Gráfica - detalle - gráfica */
   gap: 20px;
 }
+
 
 .chart-card {
   background: #fff;
   border-radius: 8px;
   padding: 16px;
-  text-align: center;
 }
 
-.chart-main {
+.chart-detail {
+  background: #fff; /* opcional, para diferenciar */
+  border-radius: 8px;
+  overflow-y: auto; /* si la lista es larga, permite scroll */
+  min-height: 320px; /* asegura altura mínima igual que las gráficas */
+  padding: 0
+}
+
+.chart-main, .chart-card {
   display: flex;
   flex-direction: column;
-  align-items: center;
 }
 
 .donut-center {
@@ -36,11 +43,39 @@
   width: 100%;
 }
 
+.dashboard-grid ul,
+.dashboard-grid li {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.detail-line-1 {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.detail-line-2 {
+  font-size: 13px;
+  color: #555;
+}
+
+
 .chart-legend li {
   display: flex;
   align-items: center;
   font-size: 13px;
   margin-bottom: 6px;
+
 }
 
 .legend-color {
@@ -96,7 +131,7 @@
 .alert-list {
   width: 100%;
   list-style: none;
-  padding: 0;
+  margin-left: 100px;
   margin-top: 10px;
 }
 

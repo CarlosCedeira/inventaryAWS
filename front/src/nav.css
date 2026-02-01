@@ -4,11 +4,13 @@
   top: 0;
   left: 0;
   height: 100vh;
+  width: 220px;
   background-color: #212529;
   color: white;
   transition: width 0.4s ease;
   overflow-x: hidden;
   z-index: 1020;
+
 }
 
 
