@@ -270,6 +270,86 @@ router.put("/actualizar/:id", async (req, res) => {
   }
 });
 
+router.post("/newProduct", async (req, res) => {
+  console.log("Solicitud recibida en /crear");
+  let connection;
+
+  try {
+    connection = await getConnection();
+
+    const {
+      producto_nombre,
+      producto_descripcion,
+      tenant_id = 1,
+      publicado = 0,
+      destacado = 0,
+      recomendado = 0,
+      ranking = 0,
+      cantidad = 0,
+      stock_minimo = 0,
+      precio_compra = 0,
+      precio_venta = 0,
+      fecha_caducidad = null,
+      codigo_barras = null,
+      numero_lote = null,
+      sku = null,
+      producto_categoria,
+    } = req.body;
+
+    /* ==========================
+       INSERT EN PRODUCTOS
+    ========================== */
+    const [productoResult] = await connection.execute(
+      `INSERT INTO productos 
+       (tenant_id, nombre, descripcion, publicado, destacado, recomendado, ranking)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        tenant_id,
+        producto_nombre,
+        producto_descripcion,
+        publicado,
+        destacado,
+        recomendado,
+        ranking,
+      ]
+    );
+
+    const productoId = productoResult.insertId;
+
+    /* ==========================
+       INSERT EN INVENTARIO
+    ========================== */
+    const [inventarioResult] = await connection.execute(
+      `INSERT INTO inventario
+       (tenant_id, producto_id, cantidad, stock_minimo, precio_compra, precio_venta, fecha_caducidad, codigo_barras, numero_lote, sku, ultima_actualizacion)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [
+        tenant_id,
+        productoId,
+        cantidad,
+        stock_minimo,
+        precio_compra,
+        precio_venta,
+        fecha_caducidad ? new Date(fecha_caducidad) : null,
+        codigo_barras,
+        numero_lote,
+        sku,
+      ]
+    );
+
+    res.status(201).json({
+      message: "Producto creado correctamente",
+      producto_id: productoId,
+      inventario_id: inventarioResult.insertId,
+    });
+  } catch (error) {
+    console.error("Error al crear producto:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  } finally {
+    if (connection) await connection.end();
+  }
+});
+
 
 
 module.exports = router;

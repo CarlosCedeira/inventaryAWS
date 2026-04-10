@@ -20,443 +20,12 @@ function App() {
 export default App;
 
 
-===== CardLayout.jsx =====
-
-import { useEffect, useState } from "react";
-import Spinners from "../spiners";
-import Publicado from "../products/publicado/putPublicado";
-import "./cardLayout.css";
-
-const CardLayout = ({ onClose, id }) => {
-  const [formData, setFormData] = useState({});
-  const [disabled, setDisabled] = useState(true);
-  const [categorias, setCategorias] = useState([]);
-  console.log("id en cardLayout", id);
-
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchProductsID = async () => {
-      try {
-        const response = await fetch(`http://localhost:3000/productos/${id}`);
-        if (!response.ok) throw new Error("Error al obtener los clientes");
-        const data = await response.json();
-        setFormData(data[0]);
-      } catch (error) {
-        console.error("Error en la solicitud:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProductsID();
-  }, []);
-
-  useEffect(() => {
-    if (disabled === true) return;
-    const fetchCategorias = async () => {
-      try {
-        const response = await fetch(
-          `http://localhost:3000/productos/categorias`
-        );
-        if (!response.ok) throw new Error("Error al obtener los clientes");
-        const data = await response.json();
-        setCategorias(data);
-      } catch (error) {
-        console.error("Error en la solicitud:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCategorias();
-  }, []);
-
-  // 🔹 Formatear fecha ISO -> YYYY-MM-DD (para mostrar en input type="date")
-  const formatDate = (dateString) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    return date.toISOString().split("T")[0];
-  };
-
-  // 🔹 Actualiza los valores del formulario
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === "checkbox" ? checked : value,
-    });
-    console.log("form data desde onchange", formData);
-  };
-
-  // 🔹 Al guardar, convierte la fecha al formato ISO
-  const handleSubmit = async (e) => {
-    console.log("on close desde handlesubmit", onClose);
-    e.preventDefault();
-
-    const updatedData = {
-      ...formData,
-      fecha_caducidad: formData.fecha_caducidad
-        ? new Date(formData.fecha_caducidad).toISOString()
-        : null,
-      fecha_creacion: formData.fecha_creacion
-        ? new Date(formData.fecha_creacion).toISOString()
-        : null,
-    };
-    console.log("fecha cambiada a estring ", updatedData);
-
-    try {
-      console.log("feeeeechingggg");
-      const response = await fetch(
-        `http://localhost:3000/productos/actualizar/${id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(updatedData),
-        }
-      );
-      console.log("response", response);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Error al guardar los datos");
-      }
-
-      const result = await response.json();
-      console.log("✅ Datos guardados con éxito:", result);
-
-      // ✅ Cierra el modal automáticamente después de guardar
-      if (onClose) {
-        onClose();
-      }
-    } catch (error) {
-      console.error("❌ Error al enviar los datos:", error);
-      alert("Ocurrió un error al guardar los datos");
-    }
-  };
-
-  if (loading) return <Spinners />;
-  console.log("formdata fuera del loading", formData.publicado);
-  return (
-    <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center product-modal-backdrop">
-      <div
-        className="card shadow product-modal-card"
-        style={{ maxHeight: "90vh", display: "flex", flexDirection: "column" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="card-body position-relative overflow-auto">
-          <article className="modal-content">
-            <button
-              type="button"
-              className="btn-close position-absolute top-0 end-0"
-              onClick={onClose}
-            ></button>
-
-            <header className="modal-header justify-content-start mb-4 ms-5">
-              <button
-                className="btn btn-warning"
-                onClick={() => setDisabled(!disabled)}
-              >
-                Editar
-              </button>
-              <>
-                <label>Publicado</label>
-                <Publicado
-                  publicado={formData.publicado}
-                  id={formData.producto_id}
-                  className="mr-1"
-                />
-              </>
-
-              {formData.destacado ? (
-                <>
-                  <label>Destacado</label>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    height="34px"
-                    viewBox="0 -960 960 960"
-                    width="34px"
-                    fill="#75FB4C"
-                  >
-                    <path d="M280-240q-100 0-170-70T40-480q0-100 70-170t170-70h400q100 0 170 70t70 170q0 100-70 170t-170 70H280Zm0-80h400q66 0 113-47t47-113q0-66-47-113t-113-47H280q-66 0-113 47t-47 113q0 66 47 113t113 47Zm400-40q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35ZM480-480Z" />
-                  </svg>
-                </>
-              ) : (
-                <>
-                  <label className="ms-4">Destacado</label>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    height="34px"
-                    viewBox="0 -960 960 960"
-                    width="34px"
-                    fill="#EA3323"
-                  >
-                    <path d="M280-240q-100 0-170-70T40-480q0-100 70-170t170-70h400q100 0 170 70t70 170q0 100-70 170t-170 70H280Zm0-80h400q66 0 113-47t47-113q0-66-47-113t-113-47H280q-66 0-113 47t-47 113q0 66 47 113t113 47Zm0-40q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35Zm200-120Z" />
-                  </svg>
-                </>
-              )}
-              {formData.destacado ? (
-                <>
-                  <label>Recomendado</label>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    height="34px"
-                    viewBox="0 -960 960 960"
-                    width="34px"
-                    fill="#75FB4C"
-                  >
-                    <path d="M280-240q-100 0-170-70T40-480q0-100 70-170t170-70h400q100 0 170 70t70 170q0 100-70 170t-170 70H280Zm0-80h400q66 0 113-47t47-113q0-66-47-113t-113-47H280q-66 0-113 47t-47 113q0 66 47 113t113 47Zm400-40q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35ZM480-480Z" />
-                  </svg>
-                </>
-              ) : (
-                <>
-                  <label className="ms-4">Recomendado</label>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    height="34px"
-                    viewBox="0 -960 960 960"
-                    width="34px"
-                    fill="#EA3323"
-                  >
-                    <path d="M280-240q-100 0-170-70T40-480q0-100 70-170t170-70h400q100 0 170 70t70 170q0 100-70 170t-170 70H280Zm0-80h400q66 0 113-47t47-113q0-66-47-113t-113-47H280q-66 0-113 47t-47 113q0 66 47 113t113 47Zm0-40q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35Zm200-120Z" />
-                  </svg>
-                </>
-              )}
-              {formData.ranking ? (
-                <input
-                  type="number"
-                  name="ranking"
-                  value={formData.ranking || ""}
-                  onChange={handleChange}
-                  className="form-control w-25 "
-                  disabled={disabled}
-                />
-              ) : (
-                "Ranking 0"
-              )}
-            </header>
-
-            <form onSubmit={handleSubmit}>
-              <div className="container-fluid">
-                {/* Nombre */}
-                <div className="mb-3 row align-items-center">
-                  <label className="col-sm-3 col-form-label text-nowrap">
-                    Nombre
-                  </label>
-                  <div className="col-sm-9">
-                    <input
-                      type="text"
-                      name="producto_nombre"
-                      value={formData.producto_nombre || ""}
-                      onChange={handleChange}
-                      className="form-control"
-                      disabled={disabled}
-                    />
-                  </div>
-                </div>
-
-                {/* Descripción */}
-                <div className="mb-3 row align-items-center">
-                  <label className="col-sm-3 col-form-label text-nowrap">
-                    Descripción
-                  </label>
-                  <div className="col-sm-9">
-                    <textarea
-                      name="producto_descripcion"
-                      value={formData.producto_descripcion || ""}
-                      onChange={handleChange}
-                      className="form-control"
-                      rows="2"
-                      disabled={disabled}
-                    />
-                  </div>
-                </div>
-
-                <div className="row">
-                  {/* Columna 1 */}
-                  <div className="col-md-6">
-                    <div className="mb-3 row align-items-center">
-                      <label className="col-sm-6 col-form-label text-nowrap">
-                        Categoria
-                      </label>
-                      <div className="col-sm-6">
-                        <select
-                          name="producto_categoria"
-                          value={formData.producto_categoria}
-                          onChange={handleChange}
-                          className="form-control"
-                          disabled={disabled}
-                        >
-                          {categorias.map((categoria) => (
-                            <option key={categoria.id} value={categoria.nombre}>
-                              {categoria.nombre}{" "}
-                              {/* ya viene capitalizado desde la API */}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    {[
-                      ["Variante", "tipo_variante", "text"],
-                      ["Valor", "valor_variante", "text"],
-                      ["Cantidad", "cantidad", "number"],
-                      ["Precio de compra", "precio_compra", "number"],
-                      ["Precio de venta", "precio_venta", "number"],
-                    ].map(([label, name, type]) => (
-                      <div className="mb-3 row align-items-center" key={name}>
-                        <label className="col-sm-6 col-form-label text-nowrap">
-                          {label}
-                        </label>
-                        <div className="col-sm-6">
-                          <input
-                            type={type}
-                            name={name}
-                            value={formData[name] || ""}
-                            onChange={handleChange}
-                            className="form-control"
-                            disabled={disabled}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Columna 2 */}
-                  <div className="col-md-6">
-                    {/* Fecha de caducidad */}
-                    <div className="mb-3 row align-items-center">
-                      <label className="col-sm-6 col-form-label text-nowrap">
-                        Caducidad
-                      </label>
-                      <div className="col-sm-6">
-                        <input
-                          type="date"
-                          name="fecha_caducidad"
-                          value={formatDate(formData.fecha_caducidad)}
-                          onChange={handleChange}
-                          className="form-control"
-                          disabled={disabled}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Fecha de creación */}
-                    <div className="mb-3 row align-items-center">
-                      <label className="col-sm-6 col-form-label text-nowrap">
-                        Fecha de creación
-                      </label>
-                      <div className="col-sm-6">
-                        <input
-                          type="date"
-                          name="fecha_creacion"
-                          value={formatDate(formData.fecha_creacion)}
-                          className="form-control"
-                          disabled
-                        />
-                      </div>
-                    </div>
-
-                    {/* Código de barras */}
-                    <div className="mb-3 row align-items-center">
-                      <label className="col-sm-6 col-form-label text-nowrap">
-                        Código de barras
-                      </label>
-                      <div className="col-sm-6">
-                        <input
-                          type="text"
-                          name="codigo_barras"
-                          value={formData.codigo_barras || ""}
-                          onChange={handleChange}
-                          className="form-control"
-                          disabled={disabled}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mb-3 row align-items-center">
-                      <label className="col-sm-6 col-form-label text-nowrap">
-                        Numero de lote
-                      </label>
-                      <div className="col-sm-6">
-                        <input
-                          type="text"
-                          name="numero_lote"
-                          value={formData.numero_lote || ""}
-                          onChange={handleChange}
-                          className="form-control"
-                          disabled={disabled}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mb-3 row align-items-center">
-                      <label className="col-sm-6 col-form-label text-nowrap">
-                        Codigo SKU
-                      </label>
-                      <div className="col-sm-6">
-                        <input
-                          type="text"
-                          name="sku"
-                          value={formData.sku || ""}
-                          onChange={handleChange}
-                          className="form-control"
-                          disabled={disabled}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mb-3 row align-items-center">
-                      <label className="col-sm-6 col-form-label text-nowrap">
-                        Estock mínimo
-                      </label>
-                      <div className="col-sm-6">
-                        <input
-                          type="number"
-                          name="stock_minimo"
-                          value={formData.stock_minimo || ""}
-                          onChange={handleChange}
-                          className="form-control"
-                          disabled={disabled}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="d-flex justify-content-end pt-5 gap-5">
-                      <button
-                        type="button"
-                        className="btn btn-secondary"
-                        onClick={onClose}
-                      >
-                        Cancelar
-                      </button>
-                      <button
-                        className="btn btn-primary"
-                        onClick={handleSubmit}
-                      >
-                        Guardar cambios
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </form>
-          </article>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default CardLayout;
-
-
 ===== getClients.jsx =====
 
 import { useEffect, useState } from "react";
 import Spinners from "../spiners.jsx";
+const API_URL = import.meta.env.VITE_API_URL;
+
 
 const GetClients = () => {
   const [loading, setLoading] = useState(true);
@@ -467,7 +36,7 @@ const GetClients = () => {
   useEffect(() => {
     const fetchClients = async () => {
       try {
-        const response = await fetch("http://localhost:3000/clientes");
+        const response = await fetch(`${API_URL}/clientes`);
         if (!response.ok) throw new Error("Error al obtener los clientes");
         const data = await response.json();
         setClients(data);
@@ -646,7 +215,7 @@ const GetClients = () => {
               <tr key={client.id}>
                 <td className="text-start">{client.nombre}</td>
                 <td className="text-start">{client.direccion}</td>
-                <td className="text-center">{client.correo_electronico}</td>
+                <td className="text-center">{client.email}</td>
                 <td className="text-center">{client.telefono}</td>
               </tr>
             ))}
@@ -844,13 +413,537 @@ const PointOfSale = () => {
 export default PointOfSale;
 
 
+===== CardLayout.jsx =====
+
+import { useEffect, useState } from "react";
+const API_URL = import.meta.env.VITE_API_URL;
+import Spinners from "../../spiners";
+import "./cardLayout.css";
+import Destacado from "./destacado/Destacado";
+import Recomendado from "./recomendado/Recomendado";
+
+const CardLayout = ({ onClose, id }) => {
+  const [formData, setFormData] = useState({});
+  const [disabled, setDisabled] = useState(true);
+  const [categorias, setCategorias] = useState([]);
+
+  const [loadingProducto, setLoadingProducto] = useState(true);
+  const [loadingCategorias, setLoadingCategorias] = useState(true);
+
+  console.log("id en cardLayout", id);
+
+  useEffect(() => {
+    const fetchProductsID = async () => {
+      try {
+        const response = await fetch(`${API_URL}/productos/${id}`);
+        if (!response.ok) throw new Error("Error al obtener el producto");
+        const data = await response.json();
+        setFormData(data[0]);
+        console.log("data", data);
+      } catch (error) {
+        console.error("Error al obtener producto:", error);
+      } finally {
+        setLoadingProducto(false);
+      }
+    };
+
+    const fetchCategorias = async () => {
+      try {
+        const response = await fetch(
+          `${API_URL}/productos/categorias`
+        );
+        if (!response.ok) throw new Error("Error al obtener categorías");
+
+        const data = await response.json();
+        setCategorias(data);
+        console.log("categorias data", data);
+      } catch (error) {
+        console.error("Error al obtener categorías:", error);
+      } finally {
+        setLoadingCategorias(false);
+      }
+    };
+
+    fetchProductsID();
+    fetchCategorias();
+  }, [id]);
+
+  // ============================
+  //  FORMATEO DE FECHAS
+  // ============================
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toISOString().split("T")[0];
+  };
+
+  // ============================
+  //  HANDLE CHANGE
+  // ============================
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  // ============================
+  //  SUBMIT FORMULARIO
+  // ============================
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const updatedData = {
+      ...formData,
+      fecha_caducidad: formData.fecha_caducidad
+        ? new Date(formData.fecha_caducidad).toISOString()
+        : null,
+      fecha_creacion: formData.fecha_creacion
+        ? new Date(formData.fecha_creacion).toISOString()
+        : null,
+    };
+
+    try {
+      const response = await fetch(
+        `${API_URL}/productos/actualizar/${id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updatedData),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Error al guardar los datos");
+      }
+
+      const result = await response.json();
+      console.log("Datos guardados:", result);
+
+      if (onClose) onClose();
+    } catch (error) {
+      console.error("Error al guardar:", error);
+      alert("Ocurrió un error al guardar los datos");
+    }
+  };
+
+  return (
+    <div
+      className="position-fixed top-0 start-0     d-flex align-items-center justify-content-center product-modal-backdrop py-md-3 py-lg-5"
+      style={{
+        width: window.innerWidth < 768 ? null : "100%",
+      }}
+    >
+      <div
+        className="card shadow product-modal-card pt-3 pb-5 py-md-0 mx-md-3 mx-lg-5"
+        style={{ maxHeight: "50vh", display: "flex", flexDirection: "column" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="card-body position-relative overflow-auto">
+          <button
+            className="btn btn-close fs-5 position-absolute end-0"
+            onClick={onClose}
+          ></button>
+          <article className="modal-content">
+            {loadingCategorias && loadingProducto ? <Spinners /> : null}
+            {/* Botón cerrar */}
+
+            {/* Botón editar */}
+            <button
+              className="btn btn-primary position-absolute"
+              onClick={() => setDisabled(!disabled)}
+            >
+              Editar
+            </button>
+
+            {/* Publicado / Destacado / Recomendado */}
+
+            <header className="modal-header my-3 my-lg-0  ms-3 me-5"></header>
+
+            <div className="d-flex align-items-center justify-content-evenly flex-wrap my-3 ">
+              <div className="d-flex align-items-center justify-content-between ">
+                <label className="me-2">Destacado</label>
+                <Destacado
+                  destacado={formData.destacado}
+                  id={formData.producto_id}
+                />
+              </div>
+
+              <div className="d-flex align-items-center ">
+                <label className="me-2">Recomendado</label>
+                <Recomendado
+                  recomendado={formData.recomendado}
+                  id={formData.producto_id}
+                />
+              </div>
+
+             
+            </div>
+
+            {/* FORMULARIO */}
+            <form onSubmit={handleSubmit}>
+              <div className="container-fluid">
+                {/* Nombre y Ranking */}
+                <div className="mb-3 row align-items-center">
+                  <label className="col-sm-3 col-form-label text-nowrap">
+                    Nombre
+                  </label>
+                  <div className="col-sm-9">
+                    <input
+                      type="text"
+                      name="producto_nombre"
+                      value={id ? formData.producto_nombre || "" : ""}
+                      onChange={handleChange}
+                      className="form-control"
+                      disabled={disabled}
+                    />
+                  </div>
+
+                 
+                </div>
+
+                {/* Descripción */}
+                <div className="mb-3 row align-items-center">
+                  <label className="col-sm-3 col-form-label text-nowrap">
+                    Descripción
+                  </label>
+                  <div className="col-sm-9">
+                    <textarea
+                      name="producto_descripcion"
+                      value={formData.producto_descripcion || ""}
+                      onChange={handleChange}
+                      className="form-control"
+                      rows="2"
+                      disabled={disabled}
+                    />
+                  </div>
+                </div>
+
+                <div className="row">
+                  {/* Columna 1 */}
+                  <div className="col-md-6">
+                    {/* Categoría */}
+                    <div className="mb-3 row align-items-center">
+                      <label className="col-sm-6 col-form-label text-nowrap">
+                        Categoria
+                      </label>
+                      <div className="col-sm-6">
+                        <select
+                          name="producto_categoria"
+                          value={formData.producto_categoria}
+                          onChange={handleChange}
+                          className="form-control"
+                          disabled={disabled}
+                        >
+                          {categorias.map((c) => (
+                            <option key={c.id} value={c.producto_categoria}>
+                              {c.nombre}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Inputs dinámicos */}
+                    {[
+                      ["Ranking", "ranking", "number"],
+                      ["Cantidad", "cantidad", "number"],
+                      ["Precio de compra", "precio_compra", "number"],
+                      ["Precio de venta", "precio_venta", "number"],
+                      ["Stock minimo", "stock_minimo", "number"],
+                    ].map(([label, name, type]) => (
+                      <div className="mb-3 row align-items-center" key={name}>
+                        <label className="col-sm-6 col-form-label text-nowrap">
+                          {label}
+                        </label>
+                        <div className="col-sm-6">
+                          <input
+                            type={type}
+                            name={name}
+                            value={formData[name] || ""}
+                            onChange={handleChange}
+                            className="form-control"
+                            disabled={disabled}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Columna 2 */}
+                  <div className="col-md-6">
+                    {/* Fecha de caducidad */}
+                    <div className="mb-3 row align-items-center">
+                      <label className="col-sm-6 col-form-label text-nowrap">
+                        Caducidad
+                      </label>
+                      <div className="col-sm-6">
+                        <input
+                          type="date"
+                          name="fecha_caducidad"
+                          value={formatDate(formData.fecha_caducidad)}
+                          onChange={handleChange}
+                          className="form-control"
+                          disabled={disabled}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Fecha de creación */}
+                    <div className="mb-3 row align-items-center">
+                      <label className="col-sm-6 col-form-label text-nowrap">
+                        Fecha de creación
+                      </label>
+                      <div className="col-sm-6">
+                        <input
+                          type="date"
+                          name="fecha_creacion"
+                          value={formatDate(formData.fecha_creacion)}
+                          className="form-control"
+                          disabled
+                        />
+                      </div>
+                    </div>
+
+                    {/* Código de barras */}
+                    <div className="mb-3 row align-items-center">
+                      <label className="col-sm-6 col-form-label text-nowrap">
+                        Código de barras
+                      </label>
+                      <div className="col-sm-6">
+                        <input
+                          type="text"
+                          name="codigo_barras"
+                          value={formData.codigo_barras || ""}
+                          onChange={handleChange}
+                          className="form-control"
+                          disabled={disabled}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Número de lote */}
+                    <div className="mb-3 row align-items-center">
+                      <label className="col-sm-6 col-form-label text-nowrap">
+                        Numero de lote
+                      </label>
+                      <div className="col-sm-6">
+                        <input
+                          type="text"
+                          name="numero_lote"
+                          value={formData.numero_lote || ""}
+                          onChange={handleChange}
+                          className="form-control"
+                          disabled={disabled}
+                        />
+                      </div>
+                    </div>
+
+                    {/* SKU */}
+                    <div className="mb-3 row align-items-center">
+                      <label className="col-sm-6 col-form-label text-nowrap">
+                        Codigo SKU
+                      </label>
+                      <div className="col-sm-6">
+                        <input
+                          type="text"
+                          name="sku"
+                          value={formData.sku || ""}
+                          onChange={handleChange}
+                          className="form-control"
+                          disabled={disabled}
+                        />
+                      </div>
+
+                    </div>
+
+                     
+                 
+                  </div>
+
+                  <div className="d-flex justify-content-between align-items-end gap-5">
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={onClose}
+                      >
+                        Cancelar
+                      </button>
+                      <button className="btn btn-success" type="submit">
+                        Guardar cambios
+                      </button>
+                    </div>
+
+                    
+                </div>
+              </div>
+            </form>
+          </article>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CardLayout;
+
+
+===== Destacado.jsx =====
+
+import { useState } from "react";
+const API_URL = import.meta.env.VITE_API_URL;
+
+
+const Destacado = ({ id, destacado }) => {
+  const [estaDestacado, setEstaDestacado] = useState(Number(destacado));
+
+  const putDestacado = async () => {
+    try {
+      const response = await fetch(
+        `${API_URL}/productos/destacar/${id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Error al guardar los datos");
+      }
+
+      const result = await response.json();
+      if (estaDestacado === 1) {
+        setEstaDestacado(0);
+      } else {
+        setEstaDestacado(1);
+      }
+
+      console.log("✅ Datos guardados con éxito:", result);
+    } catch (error) {
+      console.error("❌ Error al enviar los datos:", error);
+      alert("Ocurrió un error al guardar los datos");
+    }
+  };
+  return (
+    <>
+      {estaDestacado === 1 ? (
+        <svg
+          onClick={putDestacado}
+          xmlns="http://www.w3.org/2000/svg"
+          height="34px"
+          viewBox="0 -960 960 960"
+          width="34px"
+          fill="#75FB4C"
+        >
+          <path d="M280-240q-100 0-170-70T40-480q0-100 70-170t170-70h400q100 0 170 70t70 170q0 100-70 170t-170 70H280Zm0-80h400q66 0 113-47t47-113q0-66-47-113t-113-47H280q-66 0-113 47t-47 113q0 66 47 113t113 47Zm400-40q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35ZM480-480Z" />
+        </svg>
+      ) : (
+        <svg
+          onClick={putDestacado}
+          xmlns="http://www.w3.org/2000/svg"
+          height="34px"
+          viewBox="0 -960 960 960"
+          width="34px"
+          fill="#EA3323"
+        >
+          <path d="M280-240q-100 0-170-70T40-480q0-100 70-170t170-70h400q100 0 170 70t70 170q0 100-70 170t-170 70H280Zm0-80h400q66 0 113-47t47-113q0-66-47-113t-113-47H280q-66 0-113 47t-47 113q0 66 47 113t113 47Zm0-40q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35Zm200-120Z" />
+        </svg>
+      )}
+    </>
+  );
+};
+
+export default Destacado;
+
+
+===== Recomendado.jsx =====
+
+import { useState } from "react";
+const API_URL = import.meta.env.VITE_API_URL;
+
+
+const Recomendado = ({ id, recomendado }) => {
+  const [estaRecomendadp, setEstaRecomendadp] = useState(Number(recomendado));
+
+  const putRecomendado = async () => {
+    try {
+      const response = await fetch(
+        `${API_URL}/productos/recomendar/${id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Error al guardar los datos");
+      }
+
+      const result = await response.json();
+      if (estaRecomendadp === 1) {
+        setEstaRecomendadp(0);
+      } else {
+        setEstaRecomendadp(1);
+      }
+
+      console.log("✅ Datos guardados con éxito:", result);
+    } catch (error) {
+      console.error("❌ Error al enviar los datos:", error);
+      alert("Ocurrió un error al guardar los datos");
+    }
+  };
+  return (
+    <>
+      {estaRecomendadp === 1 ? (
+        <svg
+          onClick={putRecomendado}
+          xmlns="http://www.w3.org/2000/svg"
+          height="34px"
+          viewBox="0 -960 960 960"
+          width="34px"
+          fill="#75FB4C"
+        >
+          <path d="M280-240q-100 0-170-70T40-480q0-100 70-170t170-70h400q100 0 170 70t70 170q0 100-70 170t-170 70H280Zm0-80h400q66 0 113-47t47-113q0-66-47-113t-113-47H280q-66 0-113 47t-47 113q0 66 47 113t113 47Zm400-40q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35ZM480-480Z" />
+        </svg>
+      ) : (
+        <svg
+          onClick={putRecomendado}
+          xmlns="http://www.w3.org/2000/svg"
+          height="34px"
+          viewBox="0 -960 960 960"
+          width="34px"
+          fill="#EA3323"
+        >
+          <path d="M280-240q-100 0-170-70T40-480q0-100 70-170t170-70h400q100 0 170 70t70 170q0 100-70 170t-170 70H280Zm0-80h400q66 0 113-47t47-113q0-66-47-113t-113-47H280q-66 0-113 47t-47 113q0 66 47 113t113 47Zm0-40q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35Zm200-120Z" />
+        </svg>
+      )}
+    </>
+  );
+};
+
+export default Recomendado;
+
+
 ===== getProducts.jsx =====
 
 import { useState, useEffect } from "react";
+const API_URL = import.meta.env.VITE_API_URL;
+
 import Spinners from "../spiners";
-import CardLayout from "../cardLayout/CardLayout";
+import CardLayout from "./cardLayout/CardLayout";
 import Publicado from "./publicado/putPublicado";
 import "./getProducts.css";
+import NewProduct from "./newProduct/newProduct";
+import InventoryDashboard from "./productsDashboard";  
+
 
 const GetProducts = () => {
   const [items, setItems] = useState([]);
@@ -864,7 +957,7 @@ const GetProducts = () => {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch("http://localhost:3000/productos");
+      const response = await fetch(`${API_URL}/productos`);
       if (!response.ok) throw new Error("Error al obtener los productos");
       const data = await response.json();
       setItems(data);
@@ -919,9 +1012,9 @@ const GetProducts = () => {
       let url;
 
       if (!searchValue) {
-        url = "http://localhost:3000/productos";
+        url = `${API_URL}/productos`;
       } else {
-        url = `http://localhost:3000/productos/buscar/${searchValue}`;
+        url = `${API_URL}/productos/buscar/${searchValue}`;
       }
 
       const res = await fetch(url);
@@ -965,23 +1058,22 @@ const GetProducts = () => {
 
   return (
     <>
-      <h1 className="text-center mt-3 mb-5">Listado de productos</h1>
+<InventoryDashboard inventory={items} />
+     <div className="bg-white sticky-top d-flex justify-content-between align-items-center ">
+       <h1 className=" ms-4 mt-2 mb-3 ps-5 ps-md-4 ">
+        Listado de productos
+      </h1>
 
-      {/* 🔹 Barra de búsqueda y ordenamiento */}
-      <div className="d-flex align-items-center justify-content-right ms-5 me-5 sticky-top w-90">
-        <div className="m-2 d-flex justify-content-right">
-          <input
-            type="text"
-            className="form-control w-100"
-            placeholder="Buscar por nombre..."
-            value={search}
-            onChange={handleSearch}
-          />
-        </div>
+        <NewProduct/>
+     </div>
 
-        <div className="m-2 mx-5 d-flex align-items-center">
+
+
+      <div className=" prueba  bg-white pt-2 pb-2 px-5 d-flex flex-column flex-md-row align-items-md-center justify-content-md-between gap-2">
+        {/* BLOQUE ORDENAR (siempre en una fila) */}
+        <div className="d-flex flex-row align-items-center ps-2 ps-sm-0  gap-3">
           <select
-            className="form-select w-auto mx-2"
+            className="form-select w-auto"
             value={sortField}
             onChange={(e) => setSortField(e.target.value)}
           >
@@ -989,8 +1081,9 @@ const GetProducts = () => {
             <option value="cantidad">Cantidad</option>
             <option value="precio_compra">Precio</option>
           </select>
+
           <select
-            className="form-select w-auto mx-2"
+            className="form-select w-auto"
             value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value)}
           >
@@ -998,41 +1091,75 @@ const GetProducts = () => {
             <option value="desc">Mayor</option>
           </select>
         </div>
+
+        {/* BLOQUE BUSCAR (en móvil baja a nueva fila, en desktop va en la misma) */}
+        <input
+          type="text"
+          className="form-control ms-2 w-100"
+          placeholder="Buscar producto..."
+          value={search}
+          onChange={handleSearch}
+        />
       </div>
 
       {/* 🔹 Tabla de productos */}
-      <div className={`fade-init${fadeIn ? " fade-in" : ""} ms-5 me-5`}>
-        <table className="table table-responsive table-hover align-middle shadow">
-          <thead className="table-primary sticky-top">
+      <div
+        className={`fade-init${
+          fadeIn ? " fade-in" : ""
+        } ms-0 me-0 ms-md-5 me-md-5`}
+      >
+        <table className="table table-responsive table-hover align-middle shadow ">
+          <thead className="table-primary ">
             <tr>
-              <th className="text-start">Nombre</th>
-              <th className="text-start">Categoría</th>
+              <th className="text-start ">Nombre</th>
+              <th className="text-start d-none d-md-table-cell">Categoría</th>
               <th className="text-start">Cantidad</th>
-              <th className="text-start">Precio de Compra</th>
-              <th className="text-start">Precio de Venta</th>
+              <th className="text-start d-none d-md-table-cell">
+                Precio de Compra
+              </th>
               <th className="text-start">Caducidad</th>
               <th className="text-start">Publicado</th>
             </tr>
           </thead>
           <tbody>
             {items.map((item) => (
-              <tr key={item.producto_id}>
-                <td onClick={() => handleTdClick(item)}>
+              <tr key={item.producto_id}
+              className={
+        item.cantidad <= item.stock_minimo
+          ? "bg-stock-minimo" 
+          : ""
+      }>
+                <td className={`d-md-table-cell`}
+
+                onClick={() => handleTdClick(item)}>
                   {item.producto_nombre}
                 </td>
-                <td onClick={() => handleTdClick(item)}>
+                <td
+                  className={`d-none d-md-table-cell `}
+                  onClick={() => handleTdClick(item)}
+                >
                   {item.producto_categoria}
                 </td>
-                <td onClick={() => handleTdClick(item)}>{item.cantidad}</td>
-                <td onClick={() => handleTdClick(item)}>
+
+                <td                   className={`d-md-table-cell ${
+  item.cantidad === 0 ? "bg-no-stock" : ""} ${
+  item.cantidad <= item.stock_minimo && item.cantidad > 0 ? "bg-stock-minimo" : ""
+}`}
+onClick={() => handleTdClick(item)}>{item.cantidad}</td>
+
+                <td
+                                    className={`d-none d-md-table-cell  `}
+
+                  onClick={() => handleTdClick(item)}
+                >
                   {item.precio_compra}
                 </td>
-                <td onClick={() => handleTdClick(item)}>{item.precio_venta}</td>
-                <td onClick={() => handleTdClick(item)}>
+                <td                   className={`d-md-table-cell `}
+
+                onClick={() => handleTdClick(item)}>
                   {formatDate(item.fecha_caducidad)}
                 </td>
-                <Publicado id={item.producto_id} publicado={item.publicado} />
-                {console.log("publicado en getProducts", item.publicado)}
+                  <Publicado id={item.producto_id} publicado={item.publicado} cantidad={item.cantidad} stock_minimo={item.stock_minimo} />
               </tr>
             ))}
           </tbody>
@@ -1048,6 +1175,7 @@ const GetProducts = () => {
           onClose={handleCloseCard}
         />
       )}
+
     </>
   );
 };
@@ -1055,19 +1183,850 @@ const GetProducts = () => {
 export default GetProducts;
 
 
+===== GetProducts.test.jsx =====
+
+import { render, screen, within, waitFor } from "@testing-library/react";
+import GetProducts from "./GetProducts";
+
+vi.mock("../spiners", () => ({
+  default: () => <div data-testid="spinner">Cargando...</div>,
+}));
+
+// Mock del componente Publicado
+vi.mock("./publicado/putPublicado", () => ({
+  default: () => <td data-testid="publicado">Mock Pub</td>,
+}));
+
+const mockProductos = [
+  {
+    inventario_id: 1,
+    tenant_id: 1,
+    producto_id: 11,
+    producto_nombre: "Camiseta básica ",
+    producto_categoria: "Moda",
+    categoria_id: 8,
+    cantidad: 50,
+    precio_compra: "5.00",
+    precio_venta: "12.99",
+    fecha_caducidad: "2026-02-12T23:00:00.000Z",
+    publicado: 1,
+  },
+  {
+    inventario_id: 2,
+    tenant_id: 1,
+    producto_id: 21,
+    producto_nombre: "Camiseta básica",
+    producto_categoria: "Moda",
+    categoria_id: 8,
+    cantidad: 44,
+    precio_compra: "5.00",
+    precio_venta: "12.99",
+    fecha_caducidad: "2025-11-29T23:00:00.000Z",
+    publicado: 1,
+  },
+  {
+    inventario_id: 3,
+    tenant_id: 1,
+    producto_id: 12,
+    producto_nombre: "Pantalón vaquero",
+    producto_categoria: "Moda",
+    categoria_id: 8,
+    cantidad: 30,
+    precio_compra: "10.00",
+    precio_venta: "25.99",
+    fecha_caducidad: "2025-11-27T23:00:00.000Z",
+    publicado: 1,
+  },
+  {
+    inventario_id: 4,
+    tenant_id: 1,
+    producto_id: 22,
+    producto_nombre: "Pantalón vaquero",
+    producto_categoria: "Moda",
+    categoria_id: 8,
+    cantidad: 25,
+    precio_compra: "10.00",
+    precio_venta: "25.99",
+    fecha_caducidad: null,
+    publicado: 1,
+  },
+  {
+    inventario_id: 5,
+    tenant_id: 1,
+    producto_id: 13,
+    producto_nombre: "Sudadera con capucha",
+    producto_categoria: "Moda",
+    categoria_id: 8,
+    cantidad: 20,
+    precio_compra: "15.00",
+    precio_venta: "30.00",
+    fecha_caducidad: null,
+    publicado: 0,
+  },
+  {
+    inventario_id: 6,
+    tenant_id: 1,
+    producto_id: 23,
+    producto_nombre: "Sudadera con capucha",
+    producto_categoria: "Moda",
+    categoria_id: 8,
+    cantidad: 15,
+    precio_compra: "15.00",
+    precio_venta: "30.00",
+    fecha_caducidad: null,
+    publicado: 0,
+  },
+  {
+    inventario_id: 7,
+    tenant_id: 1,
+    producto_id: 14,
+    producto_nombre: "Zapatillas deportivas",
+    producto_categoria: "Moda",
+    categoria_id: 8,
+    cantidad: 60,
+    precio_compra: "20.00",
+    precio_venta: "45.00",
+    fecha_caducidad: null,
+    publicado: 0,
+  },
+  {
+    inventario_id: 8,
+    tenant_id: 1,
+    producto_id: 24,
+    producto_nombre: "Zapatillas deportivas",
+    producto_categoria: "Moda",
+    categoria_id: 8,
+    cantidad: 55,
+    precio_compra: "20.00",
+    precio_venta: "45.00",
+    fecha_caducidad: null,
+    publicado: 0,
+  },
+  {
+    inventario_id: 9,
+    tenant_id: 1,
+    producto_id: 15,
+    producto_nombre: "Camisa formal",
+    producto_categoria: "Moda",
+    categoria_id: 8,
+    cantidad: 35,
+    precio_compra: "12.00",
+    precio_venta: "28.00",
+    fecha_caducidad: null,
+    publicado: 1,
+  },
+  {
+    inventario_id: 10,
+    tenant_id: 1,
+    producto_id: 25,
+    producto_nombre: "Camisa formal",
+    producto_categoria: "Moda",
+    categoria_id: 8,
+    cantidad: 30,
+    precio_compra: "12.00",
+    precio_venta: "28.00",
+    fecha_caducidad: null,
+    publicado: 1,
+  },
+  {
+    inventario_id: 11,
+    tenant_id: 1,
+    producto_id: 16,
+    producto_nombre: "Vestido de verano",
+    producto_categoria: "Moda",
+    categoria_id: 8,
+    cantidad: 1,
+    precio_compra: "1.00",
+    precio_venta: "1.00",
+    fecha_caducidad: null,
+    publicado: 0,
+  },
+  {
+    inventario_id: 12,
+    tenant_id: 1,
+    producto_id: 26,
+    producto_nombre: "Vestido de verano",
+    producto_categoria: "Moda",
+    categoria_id: 8,
+    cantidad: 20,
+    precio_compra: "18.00",
+    precio_venta: "40.00",
+    fecha_caducidad: null,
+    publicado: 0,
+  },
+  {
+    inventario_id: 13,
+    tenant_id: 1,
+    producto_id: 17,
+    producto_nombre: "Gorra de béisbol",
+    producto_categoria: "Moda",
+    categoria_id: 8,
+    cantidad: 40,
+    precio_compra: "4.00",
+    precio_venta: "10.00",
+    fecha_caducidad: null,
+    publicado: 0,
+  },
+  {
+    inventario_id: 14,
+    tenant_id: 1,
+    producto_id: 27,
+    producto_nombre: "Gorra de béisbol",
+    producto_categoria: "Moda",
+    categoria_id: 8,
+    cantidad: 35,
+    precio_compra: "4.00",
+    precio_venta: "10.00",
+    fecha_caducidad: null,
+    publicado: 0,
+  },
+  {
+    inventario_id: 15,
+    tenant_id: 1,
+    producto_id: 18,
+    producto_nombre: "Chaqueta de cuero",
+    producto_categoria: "Moda",
+    categoria_id: 8,
+    cantidad: 15,
+    precio_compra: "50.00",
+    precio_venta: "120.00",
+    fecha_caducidad: null,
+    publicado: 0,
+  },
+  {
+    inventario_id: 16,
+    tenant_id: 1,
+    producto_id: 28,
+    producto_nombre: "Chaqueta de cuero",
+    producto_categoria: "Moda",
+    categoria_id: 8,
+    cantidad: 10,
+    precio_compra: "50.00",
+    precio_venta: "125.00",
+    fecha_caducidad: null,
+    publicado: 0,
+  },
+];
+
+test("muestra spinner, carga datos y renderiza la tabla correctamente", async () => {
+  const fetchMock = vi.spyOn(global, "fetch").mockImplementation(() =>
+    Promise.resolve({
+      ok: true,
+      json: async () => mockProductos,
+    })
+  );
+
+  render(<GetProducts />);
+
+  // Spinner visible mientras loading
+  expect(screen.getByTestId("spinner")).toBeInTheDocument();
+  expect(screen.queryByRole("table")).not.toBeInTheDocument();
+
+  // Esperar a la tabla
+  await waitFor(() => {
+    expect(screen.getByRole("table")).toBeInTheDocument();
+  });
+
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(fetchMock).toHaveBeenCalledWith("http://localhost:3000/productos");
+
+  // Spinner desaparece
+  expect(screen.queryByTestId("spinner")).not.toBeInTheDocument();
+
+  const rows = await screen.findAllByRole("row");
+  const dataRows = rows.slice(1);
+
+  mockProductos.forEach((producto, idx) => {
+    const row = dataRows[idx];
+    const cells = within(row).getAllByRole("cell");
+
+    expect(cells).toHaveLength(7);
+
+    expect(cells[0]).toHaveTextContent(producto.producto_nombre.trim());
+    expect(cells[1]).toHaveTextContent(producto.producto_categoria);
+    expect(cells[2]).toHaveTextContent(producto.cantidad.toString());
+    expect(cells[3]).toHaveTextContent(producto.precio_compra);
+    expect(cells[4]).toHaveTextContent(producto.precio_venta);
+
+    if (producto.fecha_caducidad) {
+      const fecha = new Date(producto.fecha_caducidad);
+      const fechaStr = fecha.toLocaleDateString("es-ES", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+      expect(cells[5]).toHaveTextContent(fechaStr);
+    } else {
+      expect(cells[5]).toHaveTextContent("");
+    }
+
+    // Columna Publicado mockeada
+    expect(cells[6]).toHaveTextContent("Mock Pub");
+  });
+});
+
+
+===== newProduct.jsx =====
+
+  import { useEffect, useState } from "react";
+import Spinners from "../../spiners.jsx";
+
+const NewProduct = () => {
+
+  const [fadeIn, setFadeIn] = useState(false);
+   const [showModal, setShowModal] = useState(false);
+
+ // Estado para el formulario
+  const [form, setForm] = useState({
+    nombre: "",
+    tipo_cliente: "",
+    documento: "",
+    telefono: "",
+    direccion: "",
+    correo: "",
+    anadido_por: "",
+  });
+
+
+
+
+  const handleAddClick = () => setShowModal(true);
+  const handleCloseModal = () => setShowModal(false);
+
+  // Manejar cambios en el formulario
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  // Manejar envío del formulario
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    
+    
+  };
+
+return (
+<>
+
+<button className="btn btn-success my-3 me-5" onClick={handleAddClick}>
+        Añadir producto
+      </button>
+      {showModal && (
+        <div
+          className="modal d-block modal-lg"
+          tabIndex="-1"
+          style={{ background: "rgba(0,0,0,0.5)" }}
+        >
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title w-100 text-center">
+                  Añadir producto
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={handleCloseModal}
+                ></button>
+              </div>
+              <div className="modal-body">
+               <form onSubmit={handleSubmit}>
+              <div className="container-fluid">
+                {/* Nombre y Ranking */}
+                <div className="mb-3 row align-items-center">
+                  <label className="col-sm-3 col-form-label text-nowrap">
+                    Nombre
+                  </label>
+                  <div className="col-sm-9">
+                    <input
+                      type="text"
+                      name="producto_nombre"
+                      onChange={handleChange}
+                      className="form-control"
+                    />
+                  </div>
+
+                 
+                </div>
+
+                {/* Descripción */}
+                <div className="mb-3 row align-items-center">
+                  <label className="col-sm-3 col-form-label text-nowrap">
+                    Descripción
+                  </label>
+                  <div className="col-sm-9">
+                    <textarea
+                      name="producto_descripcion"
+                      onChange={handleChange}
+                      className="form-control"
+                      rows="2"
+                    />
+                  </div>
+                </div>
+
+                <div className="row">
+                  {/* Columna 1 */}
+                  <div className="col-md-6">
+                    {/* Categoría */}
+                    <div className="mb-3 row align-items-center">
+                      <label className="col-sm-6 col-form-label text-nowrap">
+                        Categoria
+                      </label>
+                      <div className="col-sm-6">
+                        <select
+                          name="producto_categoria"
+                          value="categoria"
+                          onChange={handleChange}
+                          className="form-control"
+                            >
+                         
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Inputs dinámicos */}
+                    {[
+                      ["Ranking", "ranking", "number"],
+                      ["Cantidad", "cantidad", "number"],
+                      ["Precio de compra", "precio_compra", "number"],
+                      ["Precio de venta", "precio_venta", "number"],
+                      ["Stock minimo", "stock_minimo", "number"],
+                    ].map(([label, name, type]) => (
+                      <div className="mb-3 row align-items-center" key={name}>
+                        <label className="col-sm-6 col-form-label text-nowrap">
+                          {label}
+                        </label>
+                        <div className="col-sm-6">
+                          <input
+                            type={type}
+                            name={name}
+                            onChange={handleChange}
+                            className="form-control"
+                                />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Columna 2 */}
+                  <div className="col-md-6">
+                    {/* Fecha de caducidad */}
+                    <div className="mb-3 row align-items-center">
+                      <label className="col-sm-6 col-form-label text-nowrap">
+                        Caducidad
+                      </label>
+                      <div className="col-sm-6">
+                        <input
+                          type="date"
+                          name="fecha_caducidad"
+                          onChange={handleChange}
+                          className="form-control"
+                            />
+                      </div>
+                    </div>
+                    
+
+                    {/* Código de barras */}
+                    <div className="mb-3 row align-items-center">
+                      <label className="col-sm-6 col-form-label text-nowrap">
+                        Código de barras
+                      </label>
+                      <div className="col-sm-6">
+                        <input
+                          type="text"
+                          name="codigo_barras"
+                          onChange={handleChange}
+                          className="form-control"
+                            />
+                      </div>
+                    </div>
+
+                    {/* Número de lote */}
+                    <div className="mb-3 row align-items-center">
+                      <label className="col-sm-6 col-form-label text-nowrap">
+                        Numero de lote
+                      </label>
+                      <div className="col-sm-6">
+                        <input
+                          type="text"
+                          name="numero_lote"
+                          onChange={handleChange}
+                          className="form-control"
+                            />
+                      </div>
+                    </div>
+
+                    {/* SKU */}
+                    <div className="mb-3 row align-items-center">
+                      <label className="col-sm-6 col-form-label text-nowrap">
+                        Codigo SKU
+                      </label>
+                      <div className="col-sm-6">
+                        <input
+                          type="text"
+                          name="sku"
+                          onChange={handleChange}
+                          className="form-control"
+                            />
+                      </div>
+
+                    </div>
+
+                     
+                 
+                  </div>
+
+                  <div className="d-flex justify-content-between align-items-end gap-5">
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={handleCloseModal}
+
+                      >
+                        Cancelar
+                      </button>
+                      <button className="btn btn-success" type="submit">
+                        Crear producto
+                      </button>
+                    </div>
+
+                    
+                </div>
+              </div>
+            </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+</>
+);
+};
+    
+
+export default NewProduct;
+
+===== productsDashboard.jsx =====
+
+import React, { useMemo, useState } from "react";
+import { VictoryPie, VictoryLabel } from "victory";
+import "./productDashboard.css";
+
+export default function InventoryDashboard({ inventory }) {
+  const [hoveredSector, setHoveredSector] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+
+  const colorScale = [
+    "#4f81bd",
+    "#c0504d",
+    "#9bbb59",
+    "#8064a2",
+    "#4bacc6",
+    "#f79646"
+  ];
+
+  const totalStock = useMemo(
+    () => inventory.reduce((sum, i) => sum + i.cantidad, 0),
+    [inventory]
+  );
+
+  const stockByCategory = useMemo(() => {
+    const map = {};
+    inventory.forEach((item) => {
+      map[item.producto_categoria] =
+        (map[item.producto_categoria] || 0) + item.cantidad;
+    });
+    return Object.entries(map).map(([cat, value]) => ({ x: cat, y: value }));
+  }, [inventory]);
+
+  // 🟡 MODIFICADO: total de stock solo de la categoría seleccionada
+  const categoryTotalStock = inventory
+    .filter(p => p.producto_categoria === selectedCategory)
+    .reduce((sum, p) => sum + p.cantidad, 0);
+
+  const inventoryValue = useMemo(() => {
+    const map = {};
+    inventory.forEach((i) => {
+      const value = i.cantidad * Number(i.precio_compra);
+      map[i.producto_categoria] =
+        (map[i.producto_categoria] || 0) + value;
+    });
+    return Object.entries(map).map(([cat, value]) => ({ x: cat, y: value }));
+  }, [inventory]);
+
+  const lowStock = useMemo(
+    () => inventory.filter((i) => i.cantidad <= i.stock_minimo),
+    [inventory]
+  );
+
+  const totalInventoryValue = useMemo(
+    () => inventoryValue.reduce((sum, i) => sum + i.y, 0),
+    [inventoryValue]
+  );
+
+  const handleSectorClick = (categoria) => {
+    setSelectedCategory(categoria === selectedCategory ? null : categoria);
+  };
+
+  return (
+   <>
+    <div className="dashboard-grid">
+
+      {/* ================= STOCK POR CATEGORÍA ================= */}
+      <div className="chart-card chart-main">
+        <h4 className="text-center">Stock por categoría</h4>
+
+        <div className="donut-wrapper">
+          <VictoryPie
+            data={stockByCategory}
+            width={320}
+            height={320}
+            innerRadius={80}
+            padAngle={2}
+            labelRadius={({ radius }) => radius * 1.1}
+            labels={({ datum }) =>
+              `${((datum.y / totalStock) * 100).toFixed(0)}%`
+            }
+            labelComponent={<VictoryLabel />}
+            colorScale={colorScale}
+            style={{
+              data: {
+                stroke: "#fff",
+                strokeWidth: 5,
+                fillOpacity: ({ datum }) =>
+                  datum.x === hoveredSector ? 0.5 : 1,
+                cursor: "pointer"
+              },
+              labels: {
+                fill: "#000",
+                fontSize: 14,
+                fontWeight: "bold",
+                pointerEvents: "none"
+              }
+            }}
+            animate={{ duration: 500 }}
+            events={[{
+              target: "data",
+              eventHandlers: {
+                onClick: (_, props) => {
+                  handleSectorClick(props.datum.x);
+                  return [];
+                },
+                onMouseOver: (_, props) => {
+                  setHoveredSector(props.datum.x);
+                  return [];
+                },
+                onMouseOut: () => {
+                  setHoveredSector(null);
+                  return [];
+                }
+              }
+            }]}
+          />
+<ul className="chart-legend">
+  {stockByCategory.map((item, i) => (
+  <li
+  key={item.x}
+  onMouseEnter={() => setHoveredSector(item.x)}
+  onMouseLeave={() => setHoveredSector(null)}
+  className={hoveredSector === item.x ? "legend-hovered" : ""}
+>
+      <span
+        className="legend-color"
+        style={{ background: colorScale[i % colorScale.length] }}
+      />
+      <span className="legend-label">{item.x}</span>
+      <span className="legend-value">{item.y}</span>
+    </li>
+  ))}
+</ul>
+
+          <div className="donut-center">
+            <h5>productos</h5>
+            <h3>{totalStock}</h3>
+          </div>
+        </div>
+      </div>
+
+      {/* ================= DETALLE CENTRAL ================= */}
+      <div className="chart-card chart-detail">
+        {selectedCategory ? (
+          <>
+            <h4>Detalles de {selectedCategory}</h4>
+            <ul>
+              {inventory
+                .filter(i => i.producto_categoria === selectedCategory)
+                .map(i => {
+                  const productValue = i.cantidad * i.precio_compra;
+                  const stockPercent = (i.cantidad / totalStock) * 100;
+                  const valuePercent =
+                    (productValue / totalInventoryValue) * 100;
+
+                  // 🔴 AÑADIDO: peso dentro de la categoría
+                  const categoryWeight =
+                    categoryTotalStock > 0
+                      ? (i.cantidad / categoryTotalStock) * 100
+                      : 0;
+
+                  // 🔴 AÑADIDO: estado del producto
+                  let estado = "OK";
+                  if (i.cantidad <= i.stock_minimo) {
+                    estado = "BAJO";
+                  } else if (i.cantidad <= i.stock_minimo * 2) {
+                    estado = "MEDIO";
+                  }
+
+                  return (
+                    <li
+                      key={i.producto_id}
+                      className={`detail-item estado-${estado.toLowerCase()}`} // 🔴 AÑADIDO
+                    >
+                      <div className="detail-line-1">
+                        {i.producto_nombre}
+                      </div>
+
+                      <div className="detail-line-2">
+                        {i.cantidad} unidades — {productValue.toFixed(2)} €
+                      </div>
+
+                      <div className="detail-line-2">
+                        Stock: {stockPercent.toFixed(1)}% · Valor:{" "}
+                        {valuePercent.toFixed(1)}%
+                      </div>
+
+                      {/* 🔴 AÑADIDO */}
+                      <div className="detail-line-2">
+                        Estado: <strong>{estado}</strong> · Peso en categoría:{" "}
+                        {categoryWeight.toFixed(0)}%
+                      </div>
+                    </li>
+                  );
+                })}
+            </ul>
+          </>
+        ) : (
+          <p style={{ marginTop: "40px" }}>
+            Selecciona un sector en la gráfica para ver los detalles.
+          </p>
+        )}
+      </div>
+
+      {/* ================= VALOR INVENTARIO ================= */}
+      <div className="chart-card chart-main">
+        <h4 className="text-center">Valor inventario</h4>
+
+        <div className="donut-wrapper">
+          <VictoryPie
+            data={inventoryValue}
+            width={320}
+            height={320}
+            innerRadius={80}
+            padAngle={2}
+            labelRadius={({ radius }) => radius * 1.1}
+            labels={({ datum }) =>
+              `${((datum.y / totalInventoryValue) * 100).toFixed(0)}%`
+            }
+            labelComponent={<VictoryLabel />}
+            colorScale={colorScale}
+           style={{
+    data: {
+      stroke: "#fff",
+      strokeWidth: 5,
+      fillOpacity: ({ datum }) =>
+        datum.x === hoveredSector ? 0.5 : 1,
+      cursor: "pointer"
+    },
+    labels: {
+      fill: "#000",
+      fontSize: 14,
+      fontWeight: "bold",
+      pointerEvents: "none"
+    }
+  }}
+
+  /* 🔴 AÑADIDO: eventos de hover */
+  events={[{
+    target: "data",
+    eventHandlers: {
+      onMouseOver: (_, props) => {
+        setHoveredSector(props.datum.x);
+        return [];
+      },
+      onMouseOut: () => {
+        setHoveredSector(null);
+        return [];
+      }
+    }
+  }]}
+
+  animate={{ duration: 500 }}
+/>
+          <ul className="chart-legend">
+          {inventoryValue.map((item, i) => (
+<li
+  key={item.x}
+  onMouseEnter={() => setHoveredSector(item.x)}
+  onMouseLeave={() => setHoveredSector(null)}
+  className={hoveredSector === item.x ? "legend-hovered" : ""}
+>
+              <span
+                className="legend-color"
+                style={{ background: colorScale[i % colorScale.length] }}
+              />
+              <span className="legend-label">{item.x}</span>
+              <span className="legend-value">{item.y}€</span>
+            </li>
+          ))}
+        </ul>
+
+          <div className="donut-center">
+            <h5>valor total</h5>
+            <h3>
+              {totalInventoryValue.toFixed(0)} €
+            </h3>
+          </div>
+        </div>
+      </div>
+
+    </div>
+      {/* ================= STOCK BAJO ================= */}
+      <div className="chart-card alert-card chart-alert">
+        <h4>Stock bajo</h4>
+        <div className="alert-number">{lowStock.length}</div>
+
+        {lowStock.length === 0 ? (
+          <p className="alert-ok">Todo el stock está en niveles correctos</p>
+        ) : (
+          <ul className="alert-list">
+            {lowStock.map((item) => (
+              <li key={item.producto_id}>
+                <strong>{item.producto_nombre}</strong>
+                <span>
+                  {item.cantidad} / min {item.stock_minimo}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+   </>
+  );
+}
+
+
 ===== putPublicado.jsx =====
 
-import { useState } from "react";
+import { useState} from "react";
+const API_URL = import.meta.env.VITE_API_URL;
 
-const Publicado = ({ id, publicado }) => {
-  const [itspublish, setItspublish] = useState(publicado);
 
-  console.log("id en putPublicadocontext", itspublish);
+const Publicado = ({ id, publicado, cantidad, stock_minimo }) => {
+  const [itspublish, setItspublish] = useState(Number(publicado));
 
   const putPublish = async () => {
     try {
       const response = await fetch(
-        `http://localhost:3000/productos/publicar/${id}`,
+        `${API_URL}/productos/publicar/${id}`,
         {
           method: "PUT",
           headers: {
@@ -1075,7 +2034,6 @@ const Publicado = ({ id, publicado }) => {
           },
         }
       );
-      console.log("response", response);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -1095,21 +2053,26 @@ const Publicado = ({ id, publicado }) => {
       alert("Ocurrió un error al guardar los datos");
     }
   };
-  console.log("publicado en putPublicado", publicado);
   return (
-    <td className="text-center d-none d-sm-block" onClick={putPublish}>
+    <>
       {itspublish === 1 ? (
-        <svg
+        <td className={`d-md-table-cell `}>
+          <svg
+          onClick={putPublish}
           xmlns="http://www.w3.org/2000/svg"
           height="34px"
           viewBox="0 -960 960 960"
           width="34px"
-          fill="#75FB4C"
+          fill="#198754"
         >
           <path d="M280-240q-100 0-170-70T40-480q0-100 70-170t170-70h400q100 0 170 70t70 170q0 100-70 170t-170 70H280Zm0-80h400q66 0 113-47t47-113q0-66-47-113t-113-47H280q-66 0-113 47t-47 113q0 66 47 113t113 47Zm400-40q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35ZM480-480Z" />
         </svg>
+        </td>
       ) : (
+<td  className={`d-md-table-cell   `}>
+
         <svg
+          onClick={putPublish}
           xmlns="http://www.w3.org/2000/svg"
           height="34px"
           viewBox="0 -960 960 960"
@@ -1118,8 +2081,9 @@ const Publicado = ({ id, publicado }) => {
         >
           <path d="M280-240q-100 0-170-70T40-480q0-100 70-170t170-70h400q100 0 170 70t70 170q0 100-70 170t-170 70H280Zm0-80h400q66 0 113-47t47-113q0-66-47-113t-113-47H280q-66 0-113 47t-47 113q0 66 47 113t113 47Zm0-40q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35Zm200-120Z" />
         </svg>
+        </td>
       )}
-    </td>
+    </>
   );
 };
 
@@ -1322,9 +2286,14 @@ export const ProductProvider = ({ children }) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [itsPublish, setItsPublish] = useState(false);
+  const [publishedStates, setPublishedStates] = useState({});
 
-  // 🔹 Función que acepta un id opcional
+  const togglePublished = (id) => {
+    setPublishedStates((prev) => ({
+      ...prev,
+      [id]: prev[id] === 1 ? 0 : 1,
+    }));
+  };
 
   return (
     <ProductContext.Provider
@@ -1335,14 +2304,120 @@ export const ProductProvider = ({ children }) => {
         setLoading,
         selectedProduct,
         setSelectedProduct,
-        itsPublish,
-        setItsPublish,
+
+        // 🔥 nuevo manejo GLOBAL por id
+        publishedStates,
+        togglePublished,
       }}
     >
       {children}
     </ProductContext.Provider>
   );
 };
+
+
+===== logging.jsx =====
+
+import { useEffect, useState } from "react";
+const API_URL = import.meta.env.VITE_API_URL;
+
+
+const UsersManager = () => {
+
+  
+  const [users, setUsers] = useState([]);
+  const [form, setForm] = useState({
+    username: "",
+    password: "",
+    role: "user",
+  });
+
+  const fetchUsers = async () => {
+    const res = await fetch(`${API_URL}`); // asumir token ya enviado
+    const data = await res.json();
+    setUsers(data);
+  };
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await fetch(`${API_URL}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    fetchUsers();
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  return (
+    <div className="container mt-5 " style={{ maxWidth: "400px" }}>
+      <h3 className="mb-4 text-center">Iniciar Sesión</h3>
+      <form className="" onSubmit={handleSubmit}>
+        {/* Usuario */}
+        <div className="mb-3">
+          <label htmlFor="username" className="form-label">
+            Usuario
+          </label>
+          <input
+            type="text"
+            className="form-control"
+            id="username"
+            name="username"
+            placeholder="Usuario"
+            onChange={handleChange}
+          />
+        </div>
+
+        {/* Contraseña */}
+        <div className="mb-3">
+          <label htmlFor="password" className="form-label">
+            Contraseña
+          </label>
+          <input
+            type="password"
+            className="form-control"
+            id="password"
+            name="password"
+            placeholder="Contraseña"
+            onChange={handleChange}
+          />
+        </div>
+
+        {/* Rol */}
+        <div className="mb-3 ">
+          <label htmlFor="role" className="form-label">
+            Rol
+          </label>
+          <select
+            className="form-select"
+            id="role"
+            name="role"
+            onChange={handleChange}
+          >
+            <option value="user">Usuario</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+
+        {/* Botón */}
+        <button type="submit" className="btn btn-primary w-100">
+          Iniciar sesion
+        </button>
+      </form>
+
+      
+    </div>
+  );
+};
+
+export default UsersManager;
 
 
 ===== main.jsx =====
@@ -1361,7 +2436,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
 ===== Nav.jsx =====
 
 import React, { useState } from "react";
-import { Routes, Route, Link, useLocation } from "react-router-dom";
+import { Routes, Route, Link, useLocation, useBlocker } from "react-router-dom";
 
 import GetProducts from "./components/products/getProducts.jsx";
 import GetClients from "./components/clients/getClients.jsx";
@@ -1372,6 +2447,7 @@ import GetSales from "./components/sales/sales.jsx";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
 import "./nav.css";
+import UsersManager from "./logging.jsx";
 
 function Nav() {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -1411,11 +2487,9 @@ function Nav() {
 
       {/* Sidebar */}
       <div
-        className={`bg-dark text-black sidebar-sticky${
-          isCollapsed ? " collapsed" : ""
-        }`}
+        className={`bg-dark sidebar-sticky${isCollapsed ? " collapsed" : ""}`}
         style={{
-          width: isCollapsed ? "0" : "180px",
+          width: isCollapsed ? "0" : "250px",
           padding: isCollapsed ? "0" : "0.1rem 0.1rem",
           overflowX: "hidden",
           transition:
@@ -1432,14 +2506,13 @@ function Nav() {
             </button>
           </div>
 
-          <ul className="nav flex-md-row">
+          <ul className="navegation">
             <li className="nav-item ">
               <Link
-                to="/"
+                to="/pos"
                 className={`nav-link text-white ${
-                  location.pathname === "/" ? "active" : ""
+                  location.pathname === "/pos" ? "active" : ""
                 }`}
-                onClick={() => setIsCollapsed(!isCollapsed)}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -1459,7 +2532,6 @@ function Nav() {
                 className={`nav-link text-white ${
                   location.pathname === "/productos" ? "active" : ""
                 }`}
-                onClick={() => setIsCollapsed(!isCollapsed)}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -1479,7 +2551,6 @@ function Nav() {
                 className={`nav-link text-white ${
                   location.pathname === "/clientes" ? "active" : ""
                 }`}
-                onClick={() => setIsCollapsed(!isCollapsed)}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -1493,13 +2564,12 @@ function Nav() {
                 Clientes
               </Link>
             </li>
-            <li className="nav-item mt-2">
+            <li className="nav-item d-block mt-2">
               <Link
                 to="/ventas"
                 className={`nav-link text-white ${
                   location.pathname === "/ventas" ? "active" : ""
                 }`}
-                onClick={() => setIsCollapsed(!isCollapsed)}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -1518,9 +2588,10 @@ function Nav() {
       </div>
 
       {/* Contenido principal */}
-      <div className="flex-grow-1 p-3">
+      <div className="flex-grow-1 ps-md-3">
         <Routes>
-          <Route path="/" element={<PointOfSale />} />
+          <Route path="/" element={<UsersManager />} />
+          <Route path="/pos" element={<PointOfSale />} />
           <Route path="/productos" element={<GetProducts />} />
           <Route path="/clientes" element={<GetClients />} />
           <Route path="/ventas" element={<GetSales />} />

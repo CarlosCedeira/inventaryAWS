@@ -18,7 +18,7 @@ app.use(cors());
 app.use(express.json());
 
 // Rutas
-app.use("/productos", require("./routes/productos"));
+app.use("/productos", require("./modules/inventory/inventory.routes"));
 app.use("/clientes", require("./routes/clientes"));
 app.use("/ventas", require("./routes/ventas"));
 

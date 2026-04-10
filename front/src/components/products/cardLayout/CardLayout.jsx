@@ -2,8 +2,6 @@ import { useEffect, useState } from "react";
 const API_URL = import.meta.env.VITE_API_URL;
 import Spinners from "../../spiners";
 import "./cardLayout.css";
-import Destacado from "./destacado/Destacado";
-import Recomendado from "./recomendado/Recomendado";
 
 const CardLayout = ({ onClose, id }) => {
   const [formData, setFormData] = useState({});
@@ -22,7 +20,7 @@ const CardLayout = ({ onClose, id }) => {
         if (!response.ok) throw new Error("Error al obtener el producto");
         const data = await response.json();
         setFormData(data[0]);
-        console.log("data", data);
+        console.log("producto data", data[0]);
       } catch (error) {
         console.error("Error al obtener producto:", error);
       } finally {
@@ -145,25 +143,7 @@ const CardLayout = ({ onClose, id }) => {
 
             <header className="modal-header my-3 my-lg-0  ms-3 me-5"></header>
 
-            <div className="d-flex align-items-center justify-content-evenly flex-wrap my-3 ">
-              <div className="d-flex align-items-center justify-content-between ">
-                <label className="me-2">Destacado</label>
-                <Destacado
-                  destacado={formData.destacado}
-                  id={formData.producto_id}
-                />
-              </div>
-
-              <div className="d-flex align-items-center ">
-                <label className="me-2">Recomendado</label>
-                <Recomendado
-                  recomendado={formData.recomendado}
-                  id={formData.producto_id}
-                />
-              </div>
-
-             
-            </div>
+           
 
             {/* FORMULARIO */}
             <form onSubmit={handleSubmit}>

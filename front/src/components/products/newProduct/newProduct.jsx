@@ -3,19 +3,46 @@ import Spinners from "../../spiners.jsx";
 
 const NewProduct = () => {
 
-  const [fadeIn, setFadeIn] = useState(false);
+  const API_URL = import.meta.env.VITE_API_URL;
+
+const [categorias, setCategorias] = useState([]);
+const [loadingCategorias, setLoadingCategorias] = useState(true);
+
    const [showModal, setShowModal] = useState(false);
 
  // Estado para el formulario
-  const [form, setForm] = useState({
-    nombre: "",
-    tipo_cliente: "",
-    documento: "",
-    telefono: "",
-    direccion: "",
-    correo: "",
-    anadido_por: "",
-  });
+const [form, setForm] = useState({
+  producto_nombre: "",
+  producto_descripcion: "",
+  producto_categoria: "",
+  ranking: "",
+  cantidad: "",
+  precio_compra: "",
+  precio_venta: "",
+  stock_minimo: "",
+  fecha_caducidad: "",
+  codigo_barras: "",
+  numero_lote: "",
+  sku: "",
+});
+
+
+  useEffect(() => {
+  const fetchCategorias = async () => {
+    try {
+      const res = await fetch(`${API_URL}/productos/categorias`);
+      if (!res.ok) throw new Error("Error al obtener categorías");
+      const data = await res.json();
+      setCategorias(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingCategorias(false);
+    }
+  };
+
+  fetchCategorias();
+}, []);
 
 
 
@@ -28,12 +55,41 @@ const NewProduct = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  // Manejar envío del formulario
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    
+
+
+  const dataToSend = {
+    ...form,
+    fecha_caducidad: form.fecha_caducidad
+      ? new Date(form.fecha_caducidad).toISOString()
+      : null,
   };
+
+  try {
+    const response = await fetch(`${API_URL}/productos/newProduct`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(dataToSend),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Error al guardar los datos");
+    }
+
+    const result = await response.json();
+    console.log("Producto creado:", result);
+
+    handleCloseModal(); // cerrar modal
+  } catch (error) {
+    console.error("Error al guardar:", error);
+    alert("Ocurrió un error al guardar los datos");
+  }
+};
+
+
+
 
 return (
 <>
@@ -103,14 +159,21 @@ return (
                         Categoria
                       </label>
                       <div className="col-sm-6">
-                        <select
-                          name="producto_categoria"
-                          value="categoria"
-                          onChange={handleChange}
-                          className="form-control"
-                            >
-                         
-                        </select>
+                      <select
+  name="producto_categoria"
+  value={form.producto_categoria}
+  onChange={handleChange}
+  className="form-control"
+>
+  <option value="">Selecciona una categoría</option>
+
+  {categorias.map((c) => (
+    <option key={c.id} value={c.id}>
+      {c.nombre}
+    </option>
+  ))}
+</select>
+
                       </div>
                     </div>
 

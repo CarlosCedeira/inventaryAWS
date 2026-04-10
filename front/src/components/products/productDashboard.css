@@ -2,6 +2,8 @@
   display: grid;
   grid-template-columns: 2fr 1.25fr 2fr; /* Gráfica - detalle - gráfica */
   gap: 20px;
+  padding-left: 2rem;
+  padding-right: 2rem;
 }
 
 
@@ -19,14 +21,11 @@
   padding: 0
 }
 
-.chart-main, .chart-card {
-  display: flex;
-  flex-direction: column;
-}
+
 
 .donut-center {
   position: absolute;
-  top: 50%;
+  top: 40%;
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;

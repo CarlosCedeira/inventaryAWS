@@ -38,7 +38,7 @@ const Publicado = ({ id, publicado, cantidad, stock_minimo }) => {
   return (
     <>
       {itspublish === 1 ? (
-        <td className={`d-md-table-cell `}>
+        <td className={`d-md-table-cell text-center `}>
           <svg
           onClick={putPublish}
           xmlns="http://www.w3.org/2000/svg"
@@ -51,7 +51,7 @@ const Publicado = ({ id, publicado, cantidad, stock_minimo }) => {
         </svg>
         </td>
       ) : (
-<td  className={`d-md-table-cell   `}>
+<td  className={`d-md-table-cell text-center  `}>
 
         <svg
           onClick={putPublish}

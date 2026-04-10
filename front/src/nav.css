@@ -4,7 +4,6 @@
   top: 0;
   left: 0;
   height: 100vh;
-  width: 220px;
   background-color: #212529;
   color: white;
   transition: width 0.4s ease;
@@ -30,6 +29,14 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
+.navegation {
+  --bs-nav-link-padding-x: 1rem;
+    --bs-nav-link-padding-y: 0.5rem;
+    flex-wrap: wrap;
+    padding-left: 0;
+    /* margin-bottom: 0; */
+    list-style: none;
+}
 
 /* --- Estilos para pantallas móviles (navbar superior horizontal) --- */
 

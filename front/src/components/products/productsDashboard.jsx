@@ -59,6 +59,7 @@ export default function InventoryDashboard({ inventory }) {
   };
 
   return (
+   <>
     <div className="dashboard-grid">
 
       {/* ================= STOCK POR CATEGORÍA ================= */}
@@ -277,6 +278,7 @@ export default function InventoryDashboard({ inventory }) {
         </div>
       </div>
 
+    </div>
       {/* ================= STOCK BAJO ================= */}
       <div className="chart-card alert-card chart-alert">
         <h4>Stock bajo</h4>
@@ -297,6 +299,6 @@ export default function InventoryDashboard({ inventory }) {
           </ul>
         )}
       </div>
-    </div>
+   </>
   );
 }
