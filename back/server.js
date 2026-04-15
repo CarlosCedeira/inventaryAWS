@@ -19,8 +19,7 @@ app.use(express.json());
 
 // Rutas
 app.use("/productos", require("./modules/inventory/inventory.routes"));
-app.use("/clientes", require("./routes/clientes"));
-app.use("/ventas", require("./routes/ventas"));
+
 
 app.listen(3000, "0.0.0.0", () => {
   console.log("API escuchando en todas las interfaces");

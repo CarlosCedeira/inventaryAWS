@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 const API_URL = import.meta.env.VITE_API_URL;
+
 import Spinners from "../../spiners";
 import "./cardLayout.css";
 
@@ -17,9 +18,12 @@ const CardLayout = ({ onClose, id }) => {
     const fetchProductsID = async () => {
       try {
         const response = await fetch(`${API_URL}/productos/${id}`);
+
         if (!response.ok) throw new Error("Error al obtener el producto");
+
         const data = await response.json();
-        setFormData(data[0]);
+        setFormData(data);
+
         console.log("producto data", data[0]);
       } catch (error) {
         console.error("Error al obtener producto:", error);
@@ -30,13 +34,13 @@ const CardLayout = ({ onClose, id }) => {
 
     const fetchCategorias = async () => {
       try {
-        const response = await fetch(
-          `${API_URL}/productos/categorias`
-        );
+        const response = await fetch(`${API_URL}/productos/categorias`);
+
         if (!response.ok) throw new Error("Error al obtener categorías");
 
         const data = await response.json();
         setCategorias(data);
+
         console.log("categorias data", data);
       } catch (error) {
         console.error("Error al obtener categorías:", error);
@@ -50,19 +54,21 @@ const CardLayout = ({ onClose, id }) => {
   }, [id]);
 
   // ============================
-  //  FORMATEO DE FECHAS
+  // FORMATEO DE FECHAS
   // ============================
   const formatDate = (dateString) => {
     if (!dateString) return "";
+
     const date = new Date(dateString);
     return date.toISOString().split("T")[0];
   };
 
   // ============================
-  //  HANDLE CHANGE
+  // HANDLE CHANGE
   // ============================
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
@@ -70,7 +76,7 @@ const CardLayout = ({ onClose, id }) => {
   };
 
   // ============================
-  //  SUBMIT FORMULARIO
+  // SUBMIT FORMULARIO
   // ============================
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -95,6 +101,8 @@ const CardLayout = ({ onClose, id }) => {
         }
       );
 
+      console.log("Datos enviados al backend:", updatedData);
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Error al guardar los datos");
@@ -112,7 +120,7 @@ const CardLayout = ({ onClose, id }) => {
 
   return (
     <div
-      className="position-fixed top-0 start-0     d-flex align-items-center justify-content-center product-modal-backdrop py-md-3 py-lg-5"
+      className="position-fixed top-0 start-0 d-flex align-items-center justify-content-center product-modal-backdrop py-md-3 py-lg-5"
       style={{
         width: window.innerWidth < 768 ? null : "100%",
       }}
@@ -126,12 +134,11 @@ const CardLayout = ({ onClose, id }) => {
           <button
             className="btn btn-close fs-5 position-absolute end-0"
             onClick={onClose}
-          ></button>
+          />
+
           <article className="modal-content">
             {loadingCategorias && loadingProducto ? <Spinners /> : null}
-            {/* Botón cerrar */}
 
-            {/* Botón editar */}
             <button
               className="btn btn-primary position-absolute"
               onClick={() => setDisabled(!disabled)}
@@ -139,16 +146,11 @@ const CardLayout = ({ onClose, id }) => {
               Editar
             </button>
 
-            {/* Publicado / Destacado / Recomendado */}
+            <header className="modal-header my-3 my-lg-0 ms-3 me-5" />
 
-            <header className="modal-header my-3 my-lg-0  ms-3 me-5"></header>
-
-           
-
-            {/* FORMULARIO */}
             <form onSubmit={handleSubmit}>
-              <div className="container-fluid">
-                {/* Nombre y Ranking */}
+              <div className="container-fluid mt-5">
+                {/* Nombre */}
                 <div className="mb-3 row align-items-center">
                   <label className="col-sm-3 col-form-label text-nowrap">
                     Nombre
@@ -157,14 +159,12 @@ const CardLayout = ({ onClose, id }) => {
                     <input
                       type="text"
                       name="producto_nombre"
-                      value={id ? formData.producto_nombre || "" : ""}
+                      value={formData.producto_nombre || ""}
                       onChange={handleChange}
                       className="form-control"
                       disabled={disabled}
                     />
                   </div>
-
-                 
                 </div>
 
                 {/* Descripción */}
@@ -211,8 +211,6 @@ const CardLayout = ({ onClose, id }) => {
 
                     {/* Inputs dinámicos */}
                     {[
-                      ["Ranking", "ranking", "number"],
-                      ["Cantidad", "cantidad", "number"],
                       ["Precio de compra", "precio_compra", "number"],
                       ["Precio de venta", "precio_venta", "number"],
                       ["Stock minimo", "stock_minimo", "number"],
@@ -237,7 +235,7 @@ const CardLayout = ({ onClose, id }) => {
 
                   {/* Columna 2 */}
                   <div className="col-md-6">
-                    {/* Fecha de caducidad */}
+                    {/* Fecha */}
                     <div className="mb-3 row align-items-center">
                       <label className="col-sm-6 col-form-label text-nowrap">
                         Caducidad
@@ -254,7 +252,6 @@ const CardLayout = ({ onClose, id }) => {
                       </div>
                     </div>
 
-                    {/* Fecha de creación */}
                     <div className="mb-3 row align-items-center">
                       <label className="col-sm-6 col-form-label text-nowrap">
                         Fecha de creación
@@ -269,77 +266,21 @@ const CardLayout = ({ onClose, id }) => {
                         />
                       </div>
                     </div>
-
-                    {/* Código de barras */}
-                    <div className="mb-3 row align-items-center">
-                      <label className="col-sm-6 col-form-label text-nowrap">
-                        Código de barras
-                      </label>
-                      <div className="col-sm-6">
-                        <input
-                          type="text"
-                          name="codigo_barras"
-                          value={formData.codigo_barras || ""}
-                          onChange={handleChange}
-                          className="form-control"
-                          disabled={disabled}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Número de lote */}
-                    <div className="mb-3 row align-items-center">
-                      <label className="col-sm-6 col-form-label text-nowrap">
-                        Numero de lote
-                      </label>
-                      <div className="col-sm-6">
-                        <input
-                          type="text"
-                          name="numero_lote"
-                          value={formData.numero_lote || ""}
-                          onChange={handleChange}
-                          className="form-control"
-                          disabled={disabled}
-                        />
-                      </div>
-                    </div>
-
-                    {/* SKU */}
-                    <div className="mb-3 row align-items-center">
-                      <label className="col-sm-6 col-form-label text-nowrap">
-                        Codigo SKU
-                      </label>
-                      <div className="col-sm-6">
-                        <input
-                          type="text"
-                          name="sku"
-                          value={formData.sku || ""}
-                          onChange={handleChange}
-                          className="form-control"
-                          disabled={disabled}
-                        />
-                      </div>
-
-                    </div>
-
-                     
-                 
                   </div>
 
                   <div className="d-flex justify-content-between align-items-end gap-5">
-                      <button
-                        type="button"
-                        className="btn btn-secondary"
-                        onClick={onClose}
-                      >
-                        Cancelar
-                      </button>
-                      <button className="btn btn-success" type="submit">
-                        Guardar cambios
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={onClose}
+                    >
+                      Cancelar
+                    </button>
 
-                    
+                    <button className="btn btn-success" type="submit">
+                      Guardar cambios
+                    </button>
+                  </div>
                 </div>
               </div>
             </form>

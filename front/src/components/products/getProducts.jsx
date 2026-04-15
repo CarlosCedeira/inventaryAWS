@@ -3,7 +3,6 @@ import { useProducts } from "./useProducts";
 
 import Spinners from "../spiners";
 import CardLayout from "./cardLayout/CardLayout";
-import Publicado from "./publicado/putPublicado";
 import NewProduct from "./newProduct/newProduct";
 import InventoryDashboard from "./productsDashboard";
 
@@ -63,17 +62,16 @@ const GetProducts = () => {
 
   return (
     <>
-      <InventoryDashboard inventory={items} />
 
-      <div className="bg-white sticky-top d-flex justify-content-between align-items-center">
+      <div className="bg-white  d-flex justify-content-between align-items-center sticky-top" >
         <h1 className="ms-4 mt-2 mb-3 ps-5 ps-md-4">
           Listado de productos
         </h1>
         <NewProduct />
       </div>
 
-      <div className="bg-white pt-2 pb-2 px-5 d-flex flex-column flex-md-row justify-content-between gap-2">
-        <div className="d-flex gap-3">
+      <div className="bg-white pt-2 pb-2 px-5 d-flex flex-column flex-md-row justify-content-between gap-2 ">
+        <div className="d-flex gap-3 ">
           <select
             className="form-select w-auto"
             value={sortField}
@@ -85,7 +83,7 @@ const GetProducts = () => {
           </select>
 
           <select
-            className="form-select w-auto"
+            className="form-select w-auto "
             value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value)}
           >
@@ -103,8 +101,8 @@ const GetProducts = () => {
         />
       </div>
 
-      <div className={`fade-init${fadeIn ? " fade-in" : ""}`}>
-        <table className="table table-hover shadow">
+      <div className={`fade-init${fadeIn ? " fade-in" : ""} px-5 py-3`}>
+        <table className="table table-hover shadow me-5">
           <thead className="table-primary">
             <tr>
               <th>Nombre</th>
@@ -114,14 +112,13 @@ const GetProducts = () => {
                 Precio
               </th>
               <th className="text-center">Caducidad</th>
-              <th className="text-center">Publicado</th>
             </tr>
           </thead>
 
-          <tbody>
+          <tbody className=" ">
             {items.map((item) => (
-              <tr >
-                <td onClick={() => handleTdClick(item)}>
+              <tr key={item.inventario_id} onClick={() => handleTdClick(item)} style={{ cursor: "pointer" }}>
+                <td >
                   {item.producto_nombre}
                 </td>
 
@@ -145,12 +142,6 @@ const GetProducts = () => {
                   {formatDate(item.fecha_caducidad)}
                 </td>
 
-                <Publicado
-                  id={item.producto_id}
-                  publicado={item.publicado}
-                  cantidad={item.cantidad}
-                  stock_minimo={item.stock_minimo}
-                />
               </tr>
             ))}
           </tbody>
@@ -165,6 +156,9 @@ const GetProducts = () => {
           onClose={handleCloseCard}
         />
       )}
+
+            <InventoryDashboard inventory={items} />
+
     </>
   );
 };

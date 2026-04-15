@@ -26,10 +26,17 @@ h1 + div {
 
 .table th  {
   position: sticky;
-  top: 189px; /* 👈 ajusta este valor a la altura real del div sticky-top */
   z-index: 1;
+  top: 70px
 
 }
+
+h1 {
+  position: sticky;
+  top: 0;
+}
+
+
 
 .bg-stock-minimo {
   background-color: #fdc763 !important; /* naranja suave */
@@ -107,9 +114,7 @@ h1 + div {
     top: 63px;
   }
 
-  .table thead th {
-    top: 113px;
-  }
+  
 svg:hover {
   cursor: pointer;
 }

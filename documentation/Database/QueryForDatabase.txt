@@ -1,10 +1,6 @@
-SCRIPT SQL – Versión mejorada y modular
+🧱 1. MVP de base de datos (OPTIMIZADA Y LIMPIA)
 
---- Esquema SQL simplificado para un MVP SaaS local
--- Tienda online + Inventario + Punto de Venta (multi-tenant básico)
--- Motor: MySQL (InnoDB, utf8mb4)
-
-SET FOREIGN_KEY_CHECKS = 0;
+Te propongo una versión realista para vender ya:
 
 -- =====================================
 -- Tabla principal: tenants (negocios / clientes)
@@ -35,42 +31,6 @@ CREATE TABLE usuarios (
   FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
   UNIQUE KEY uq_usuario_email_tenant (tenant_id, email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =====================================
--- Clientes (para pedidos online o POS)
--- =====================================
-
-CREATE TABLE clientes (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  tenant_id INT NOT NULL,
-  nombre VARCHAR(200) NOT NULL,
-  email VARCHAR(150) NULL,
-  telefono VARCHAR(50) NULL,
-  direccion VARCHAR(255) NULL,
-  ciudad VARCHAR(100) NULL,
-  provincia VARCHAR(100) NULL,
-  codigo_postal VARCHAR(20) NULL,
-  pais VARCHAR(100) DEFAULT 'España',
-  notas TEXT NULL,
-  fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-
--- =====================================
--- Categorías
--- =====================================
-
-CREATE TABLE categorias (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  nombre VARCHAR(150) NOT NULL,
-  descripcion TEXT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-
--- =====================================
--- Productos
--- =====================================
 
 CREATE TABLE productos (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -109,6 +69,65 @@ CREATE TABLE inventario (
 FOREIGN KEY (valor_variante_id) REFERENCES valores_variantes(id) ON DELETE CASCADE
 
 );
+
+🔄 MOVIMIENTOS DE STOCK (MUY IMPORTANTE)
+CREATE TABLE movimientos_stock (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  tenant_id INT NOT NULL,
+  producto_id INT NOT NULL,
+  tipo ENUM('entrada','salida') NOT NULL,
+  cantidad INT NOT NULL,
+  motivo VARCHAR(255),
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+  FOREIGN KEY (producto_id) REFERENCES productos(id) ON DELETE CASCADE
+);
+🧠 2. ESTA ES LA CLAVE DEL MVP
+
+👉 Tu sistema ahora se basa en:
+
+Producto → Stock → Movimientos
+
+Esto es lo que realmente necesita una tienda pequeña.
+
+
+
+-- =====================================
+-- Clientes (para pedidos online o POS)
+-- =====================================
+
+CREATE TABLE clientes (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  tenant_id INT NOT NULL,
+  nombre VARCHAR(200) NOT NULL,
+  email VARCHAR(150) NULL,
+  telefono VARCHAR(50) NULL,
+  direccion VARCHAR(255) NULL,
+  ciudad VARCHAR(100) NULL,
+  provincia VARCHAR(100) NULL,
+  codigo_postal VARCHAR(20) NULL,
+  pais VARCHAR(100) DEFAULT 'España',
+  notas TEXT NULL,
+  fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- =====================================
+-- Categorías
+-- =====================================
+
+CREATE TABLE categorias (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(150) NOT NULL,
+  descripcion TEXT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- =====================================
+-- Productos
+-- =====================================
+
 
 CREATE TABLE inventario_variantes (
   id INT AUTO_INCREMENT PRIMARY KEY,
