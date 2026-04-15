@@ -1,5 +1,5 @@
 import { render, screen, within, waitFor } from "@testing-library/react";
-import GetProducts from "./GetProducts";
+import GetProducts from "../GetProducts";
 
 vi.mock("../spiners", () => ({
   default: () => <div data-testid="spinner">Cargando...</div>,

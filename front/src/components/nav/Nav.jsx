@@ -1,12 +1,11 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Routes, Route, Link, useLocation, useBlocker } from "react-router-dom";
 
-import GetProducts from "./components/products/getProducts.jsx";
+import GetProducts from "../products/GetProducts.jsx";
 
-import "bootstrap/dist/css/bootstrap.min.css";
-import "bootstrap/dist/js/bootstrap.bundle.min.js";
+
 import "./nav.css";
-import UsersManager from "./logging.jsx";
+import UsersManager from "../../logging.jsx";
 
 function Nav() {
   const [isCollapsed, setIsCollapsed] = useState(false);

@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
-import { useProducts } from "./useProducts";
+import { useProducts } from "./hooks/useProducts";
 
-import Spinners from "../spiners";
+import Spinners from "../spiners/spiners";
 import CardLayout from "./cardLayout/CardLayout";
 import NewProduct from "./newProduct/newProduct";
-import InventoryDashboard from "./productsDashboard";
+import InventoryDashboard from "./dashboard/productsDashboard";
 
 import "./getProducts.css";
 

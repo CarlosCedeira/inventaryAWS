@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 const API_URL = import.meta.env.VITE_API_URL;
 
-import Spinners from "../../spiners";
+import Spinners from "../../spiners/spiners";
 import "./cardLayout.css";
 
 const CardLayout = ({ onClose, id }) => {

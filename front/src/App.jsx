@@ -1,14 +1,13 @@
 import React from "react";
 import { BrowserRouter } from "react-router-dom";
-import { ProductProvider } from "./context/ProductContext";
-import Nav from "./Nav";
+import "bootstrap/dist/css/bootstrap.min.css";
+import "bootstrap/dist/js/bootstrap.bundle.min.js";
+import Nav from "./components/nav/Nav.jsx";
 
 function App() {
   return (
     <BrowserRouter>
-      <ProductProvider>
         <Nav />
-      </ProductProvider>
     </BrowserRouter>
   );
 }
