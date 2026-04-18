@@ -5,19 +5,36 @@ async function getAllProducts() {
   const connection = await getConnection();
   try {
     const [rows] = await connection.execute(`
-      SELECT 
-  i.id AS inventario_id, 
-  i.tenant_id, 
-  p.nombre AS producto_nombre, 
+    SELECT 
+  p.id AS producto_id,
+  p.nombre AS producto_nombre,
+  p.descripcion AS producto_descripcion,
+
+  c.id AS categoria_id,
   c.nombre AS producto_categoria,
-  c.id AS categoria_id, 
-  i.cantidad, 
-  i.precio_compra, 
-  i.stock_minimo, 
-  i.fecha_caducidad
-FROM inventario i
-INNER JOIN productos p ON i.producto_id = p.id
-LEFT JOIN categorias c ON p.categoria_id = c.id`);
+
+  p.precio_compra,
+  p.precio_venta,
+  p.stock_minimo,
+
+  COALESCE(SUM(i.cantidad), 0) AS stock_total
+
+FROM productos p
+LEFT JOIN inventario i 
+  ON i.producto_id = p.id
+LEFT JOIN categorias c 
+  ON p.categoria_id = c.id
+
+GROUP BY 
+  p.id,
+  p.nombre,
+  p.descripcion,
+  c.id,
+  c.nombre,
+  p.precio_compra,
+  p.precio_venta,
+  p.stock_minimo
+  ;`);
     return rows;
   } finally {
     await connection.end();
@@ -42,7 +59,7 @@ async function searchProductsByName(name) {
     const [rows] = await connection.execute(
       `
       SELECT i.id AS inventario_id, p.nombre AS producto_nombre, p.descripcion,
-             c.nombre AS producto_categoria, i.precio_venta, i.cantidad
+             c.nombre AS producto_categoria, p.precio_venta, i.cantidad
       FROM inventario i
       INNER JOIN productos p ON i.producto_id = p.id
       LEFT JOIN categorias c ON p.categoria_id = c.id
@@ -60,22 +77,40 @@ async function searchProductsByName(name) {
 async function getProductById(id) {
   const connection = await getConnection();
   try {
-    console.log("Consultando producto por ID:", id);
+    console.log("Consultando en base de datos producto por ID:", id);
     const [rows] = await connection.execute(
       `
-      SELECT i.id AS inventario_id, i.tenant_id, i.producto_id,
-             p.nombre AS producto_nombre, p.descripcion AS producto_descripcion,
-             c.id AS categoria_id, c.nombre AS producto_categoria,
-             i.cantidad, i.stock_minimo, i.precio_compra, i.precio_venta,
-             i.fecha_caducidad, i.ultima_actualizacion
-      FROM inventario i
-      INNER JOIN productos p ON i.producto_id = p.id
-      LEFT JOIN categorias c ON p.categoria_id = c.id
-      WHERE i.id = ?;
+     SELECT 
+  i.id AS inventario_id,
+  i.tenant_id,
+  i.producto_id,
+
+  p.nombre AS producto_nombre,
+  p.descripcion AS producto_descripcion,
+
+  c.id AS categoria_id,
+  c.nombre AS producto_categoria,
+
+  i.cantidad,
+  p.stock_minimo,
+  p.precio_compra,
+  p.precio_venta,
+
+  i.fecha_caducidad,
+  i.ultima_actualizacion,
+  i.numero_lote
+
+FROM inventario i
+INNER JOIN productos p 
+  ON i.producto_id = p.id
+LEFT JOIN categorias c 
+  ON p.categoria_id = c.id
+
+WHERE i.producto_id = ?;
       `,
       [id]
     );
-    return rows[0];
+    return rows;
   } finally {
     await connection.end();
   }
@@ -95,35 +130,44 @@ async function toggleFlag(id, flag) {
 }
 
 // Actualizar producto e inventario
-async function updateProduct(inventarioId, productoData, inventarioData) {
+async function updateProduct(productId, productoData, invnetarioData) {
+  console.log("NOdal Actualizando producto id:", productId, );
+  console.log("informacion productoData:", productoData);
+  console.log("informacion inventarioData:", invnetarioData);
   const connection = await getConnection();
-  console.log("Actualizando producto e inventario con ID:", inventarioId);
   try {
     await connection.execute(
       `UPDATE productos
-       SET nombre = ?, descripcion = ?
+       SET nombre = ?, descripcion = ?, categoria_id = ?, precio_compra = ?, precio_venta = ?, stock_minimo = ?
        WHERE id = ?`,
       [
         productoData.nombre,
         productoData.descripcion,
-        productoData.id,
+        productoData.categoria_id,
+        productoData.precio_compra,
+        productoData.precio_venta,
+        productoData.stock_minimo,
+        productId
       ]
     );
 
-    await connection.execute(
-      `UPDATE inventario
-       SET cantidad = ?, stock_minimo = ?, precio_compra = ?, precio_venta = ?, fecha_caducidad = ?, ultima_actualizacion = NOW()
-       WHERE id = ?`,
-      [
-        inventarioData.cantidad,
-        inventarioData.stock_minimo,
-        inventarioData.precio_compra,
-        inventarioData.precio_venta,
-        inventarioData.fecha_caducidad ? new Date(inventarioData.fecha_caducidad) : null,
-        inventarioId,
 
-      ]
-    );
+    
+    
+ for (const item of invnetarioData) {
+  await connection.execute(
+    `UPDATE inventario
+     SET cantidad = ?, fecha_caducidad = ?, numero_lote = ?, ultima_actualizacion = NOW()
+     WHERE id = ?`,
+    [
+      item.cantidad,
+      item.fecha_caducidad ? new Date(item.fecha_caducidad) : null,
+      item.numero_lote || null,
+      item.inventario_id, 
+    ]
+  );
+}
+    
   } finally {
     await connection.end();
   }

@@ -179,8 +179,7 @@ return (
 
                     {/* Inputs dinámicos */}
                     {[
-                      ["Ranking", "ranking", "number"],
-                      ["Cantidad", "cantidad", "number"],
+                      
                       ["Precio de compra", "precio_compra", "number"],
                       ["Precio de venta", "precio_venta", "number"],
                       ["Stock minimo", "stock_minimo", "number"],
@@ -201,73 +200,7 @@ return (
                     ))}
                   </div>
 
-                  {/* Columna 2 */}
-                  <div className="col-md-6">
-                    {/* Fecha de caducidad */}
-                    <div className="mb-3 row align-items-center">
-                      <label className="col-sm-6 col-form-label text-nowrap">
-                        Caducidad
-                      </label>
-                      <div className="col-sm-6">
-                        <input
-                          type="date"
-                          name="fecha_caducidad"
-                          onChange={handleChange}
-                          className="form-control"
-                            />
-                      </div>
-                    </div>
-                    
-
-                    {/* Código de barras */}
-                    <div className="mb-3 row align-items-center">
-                      <label className="col-sm-6 col-form-label text-nowrap">
-                        Código de barras
-                      </label>
-                      <div className="col-sm-6">
-                        <input
-                          type="text"
-                          name="codigo_barras"
-                          onChange={handleChange}
-                          className="form-control"
-                            />
-                      </div>
-                    </div>
-
-                    {/* Número de lote */}
-                    <div className="mb-3 row align-items-center">
-                      <label className="col-sm-6 col-form-label text-nowrap">
-                        Numero de lote
-                      </label>
-                      <div className="col-sm-6">
-                        <input
-                          type="text"
-                          name="numero_lote"
-                          onChange={handleChange}
-                          className="form-control"
-                            />
-                      </div>
-                    </div>
-
-                    {/* SKU */}
-                    <div className="mb-3 row align-items-center">
-                      <label className="col-sm-6 col-form-label text-nowrap">
-                        Codigo SKU
-                      </label>
-                      <div className="col-sm-6">
-                        <input
-                          type="text"
-                          name="sku"
-                          onChange={handleChange}
-                          className="form-control"
-                            />
-                      </div>
-
-                    </div>
-
-                     
-                 
-                  </div>
+                
 
                   <div className="d-flex justify-content-between align-items-end gap-5">
                       <button

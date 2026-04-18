@@ -4,7 +4,7 @@ import { useProducts } from "./hooks/useProducts";
 import Spinners from "../spiners/spiners";
 import CardLayout from "./cardLayout/CardLayout";
 import NewProduct from "./newProduct/newProduct";
-import InventoryDashboard from "./dashboard/productsDashboard";
+//import InventoryDashboard from "./dashboard/productsDashboard";
 
 import "./getProducts.css";
 
@@ -111,13 +111,12 @@ const GetProducts = () => {
               <th className="d-none d-md-table-cell text-center">
                 Precio
               </th>
-              <th className="text-center">Caducidad</th>
             </tr>
           </thead>
 
           <tbody className=" ">
             {items.map((item) => (
-              <tr key={item.inventario_id} onClick={() => handleTdClick(item)} style={{ cursor: "pointer" }}>
+              <tr key={item.producto_id} onClick={() => handleTdClick(item)} style={{ cursor: "pointer" }}>
                 <td >
                   {item.producto_nombre}
                 </td>
@@ -128,19 +127,17 @@ const GetProducts = () => {
 
                <td
   className={`text-center ${
-    item.cantidad <= item.stock_minimo ? "bg-stock-minimo" : ""
+    item.stock_total <= item.stock_minimo ? "bg-stock-minimo" : ""
   }`}
 >
-  {item.cantidad}
+  {item.stock_total}
 </td>
 
                 <td className="d-none d-md-table-cell text-center">
                   {item.precio_compra}
                 </td>
 
-                <td className="text-center">
-                  {formatDate(item.fecha_caducidad)}
-                </td>
+               
 
               </tr>
             ))}
@@ -152,12 +149,12 @@ const GetProducts = () => {
         <CardLayout
           product={selectedProduct}
           formatDate={formatDate}
-          id={selectedProduct.inventario_id}
+          id={selectedProduct.producto_id}
           onClose={handleCloseCard}
         />
       )}
 
-            <InventoryDashboard inventory={items} />
+            {/*<InventoryDashboard inventory={items} />*/}
 
     </>
   );

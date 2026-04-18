@@ -1,3 +1,4 @@
+const { groupProductWithInventory } = require("./inventory.mappers");
 const inventoryModel = require("./inventory.model");
 
 async function listProducts() {
@@ -13,7 +14,9 @@ async function searchProducts(name) {
 }
 
 async function getProduct(id) {
-  return await inventoryModel.getProductById(id);
+  const rows = await inventoryModel.getProductById(id);
+
+  return groupProductWithInventory(rows);
 }
 
 async function toggleProductFlag(id, flag) {
@@ -22,8 +25,9 @@ async function toggleProductFlag(id, flag) {
   return await inventoryModel.toggleFlag(id, flag);
 }
 
-async function updateProductData(inventarioId, productoData, inventarioData) {
-  return await inventoryModel.updateProduct(inventarioId, productoData, inventarioData);
+async function updateProductData(productId, productoData) {
+const { inventario } = productoData;
+  return await inventoryModel.updateProduct(productId, productoData, inventario);
 }
 
 async function createNewProduct(productoData, inventarioData) {

@@ -1,71 +1,21 @@
-import { useEffect, useState } from "react";
-const API_URL = import.meta.env.VITE_API_URL;
-
+import { useState } from "react";
 import Spinners from "../../spiners/spiners";
 import "./cardLayout.css";
 
+import { useProduct } from "./hooks/useProductForm";
+import { formatDate } from "./utils/date";
+
 const CardLayout = ({ onClose, id }) => {
-  const [formData, setFormData] = useState({});
   const [disabled, setDisabled] = useState(true);
-  const [categorias, setCategorias] = useState([]);
 
-  const [loadingProducto, setLoadingProducto] = useState(true);
-  const [loadingCategorias, setLoadingCategorias] = useState(true);
+  const {
+    formData,
+    setFormData,
+    categorias,
+    loading,
+    update,
+  } = useProduct(id);
 
-  console.log("id en cardLayout", id);
-
-  useEffect(() => {
-    const fetchProductsID = async () => {
-      try {
-        const response = await fetch(`${API_URL}/productos/${id}`);
-
-        if (!response.ok) throw new Error("Error al obtener el producto");
-
-        const data = await response.json();
-        setFormData(data);
-
-        console.log("producto data", data[0]);
-      } catch (error) {
-        console.error("Error al obtener producto:", error);
-      } finally {
-        setLoadingProducto(false);
-      }
-    };
-
-    const fetchCategorias = async () => {
-      try {
-        const response = await fetch(`${API_URL}/productos/categorias`);
-
-        if (!response.ok) throw new Error("Error al obtener categorías");
-
-        const data = await response.json();
-        setCategorias(data);
-
-        console.log("categorias data", data);
-      } catch (error) {
-        console.error("Error al obtener categorías:", error);
-      } finally {
-        setLoadingCategorias(false);
-      }
-    };
-
-    fetchProductsID();
-    fetchCategorias();
-  }, [id]);
-
-  // ============================
-  // FORMATEO DE FECHAS
-  // ============================
-  const formatDate = (dateString) => {
-    if (!dateString) return "";
-
-    const date = new Date(dateString);
-    return date.toISOString().split("T")[0];
-  };
-
-  // ============================
-  // HANDLE CHANGE
-  // ============================
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
@@ -75,9 +25,22 @@ const CardLayout = ({ onClose, id }) => {
     }));
   };
 
-  // ============================
-  // SUBMIT FORMULARIO
-  // ============================
+  const handleInventarioChange = (index, field, value) => {
+  setFormData((prev) => {
+    const updatedInventario = [...prev.inventario];
+
+    updatedInventario[index] = {
+      ...updatedInventario[index],
+      [field]: value,
+    };
+
+    return {
+      ...prev,
+      inventario: updatedInventario,
+    };
+  });
+};
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -86,37 +49,18 @@ const CardLayout = ({ onClose, id }) => {
       fecha_caducidad: formData.fecha_caducidad
         ? new Date(formData.fecha_caducidad).toISOString()
         : null,
-      fecha_creacion: formData.fecha_creacion
-        ? new Date(formData.fecha_creacion).toISOString()
-        : null,
     };
-
-    try {
-      const response = await fetch(
-        `${API_URL}/productos/actualizar/${id}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updatedData),
-        }
-      );
-
-      console.log("Datos enviados al backend:", updatedData);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Error al guardar los datos");
-      }
-
-      const result = await response.json();
-      console.log("Datos guardados:", result);
-
-      if (onClose) onClose();
-    } catch (error) {
-      console.error("Error al guardar:", error);
-      alert("Ocurrió un error al guardar los datos");
-    }
+    console.log("Datos a actualizar enviados desde el formulario:", updatedData);
+    await update(updatedData);
+    onClose?.();
   };
+
+  const totalCantidad = formData.inventario?.reduce(
+  (acc, item) => acc + Number(item.cantidad || 0),
+  0
+);
+
+  if (loading) return <Spinners />;
 
   return (
     <div
@@ -137,7 +81,7 @@ const CardLayout = ({ onClose, id }) => {
           />
 
           <article className="modal-content">
-            {loadingCategorias && loadingProducto ? <Spinners /> : null}
+            
 
             <button
               className="btn btn-primary position-absolute"
@@ -147,6 +91,66 @@ const CardLayout = ({ onClose, id }) => {
             </button>
 
             <header className="modal-header my-3 my-lg-0 ms-3 me-5" />
+
+              <h3>Lotes de inventario</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Cantidad</th>
+        <th>Caducidad</th>
+        <th>Número de lote</th>
+      </tr>
+    </thead>
+
+   <tbody>
+       
+
+  {formData.inventario?.map((item, index) => (
+    <tr key={item.inventario_id} >
+
+      <td>
+        <input
+          type="number"
+          disabled={disabled}
+          value={item.cantidad}
+onChange={(e) =>
+    handleInventarioChange(index, "cantidad", e.target.value)
+  }
+          className="form-control"
+        />
+      </td>
+
+      <td>
+        <input
+          type="date"
+          disabled={disabled}
+          value={formatDate(item.fecha_caducidad)}
+          onChange={(e) =>
+    handleInventarioChange(index, "fecha_caducidad", e.target.value)
+  }        className="form-control"
+        />
+      </td>
+
+      <td>
+        <input type="number"
+        disabled={disabled}
+          value={item.numero_lote}
+onChange={(e) =>
+    handleInventarioChange(index, "numero_lote", e.target.value)
+  }
+          className="form-control" />
+      </td>
+
+     
+    </tr>
+  ))}
+   <tr>
+        <th>{totalCantidad} Cantidad total</th>
+        </tr>
+  
+</tbody>
+  </table>
 
             <form onSubmit={handleSubmit}>
               <div className="container-fluid mt-5">
@@ -158,8 +162,8 @@ const CardLayout = ({ onClose, id }) => {
                   <div className="col-sm-9">
                     <input
                       type="text"
-                      name="producto_nombre"
-                      value={formData.producto_nombre || ""}
+                      name="nombre"
+                      value={formData.nombre || ""}
                       onChange={handleChange}
                       className="form-control"
                       disabled={disabled}
@@ -174,8 +178,8 @@ const CardLayout = ({ onClose, id }) => {
                   </label>
                   <div className="col-sm-9">
                     <textarea
-                      name="producto_descripcion"
-                      value={formData.producto_descripcion || ""}
+                      name="descripcion"
+                      value={formData.descripcion || ""}
                       onChange={handleChange}
                       className="form-control"
                       rows="2"
@@ -230,43 +234,19 @@ const CardLayout = ({ onClose, id }) => {
                           />
                         </div>
                       </div>
+                    
                     ))}
                   </div>
 
                   {/* Columna 2 */}
                   <div className="col-md-6">
-                    {/* Fecha */}
-                    <div className="mb-3 row align-items-center">
-                      <label className="col-sm-6 col-form-label text-nowrap">
-                        Caducidad
-                      </label>
-                      <div className="col-sm-6">
-                        <input
-                          type="date"
-                          name="fecha_caducidad"
-                          value={formatDate(formData.fecha_caducidad)}
-                          onChange={handleChange}
-                          className="form-control"
-                          disabled={disabled}
-                        />
-                      </div>
-                    </div>
+                        <div>
 
-                    <div className="mb-3 row align-items-center">
-                      <label className="col-sm-6 col-form-label text-nowrap">
-                        Fecha de creación
-                      </label>
-                      <div className="col-sm-6">
-                        <input
-                          type="date"
-                          name="fecha_creacion"
-                          value={formatDate(formData.fecha_creacion)}
-                          className="form-control"
-                          disabled
-                        />
-                      </div>
-                    </div>
+</div>
+                    {/* Fecha */}
+                  
                   </div>
+
 
                   <div className="d-flex justify-content-between align-items-end gap-5">
                     <button

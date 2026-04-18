@@ -1,6 +1,7 @@
 const inventoryService = require("./inventory.service");
 
 async function getProducts(req, res) {
+  console.log("Controlador Listando productos", req.body);
   try {
     const products = await inventoryService.listProducts();
     res.json(products);
@@ -52,11 +53,37 @@ async function toggleFlag(req, res) {
 }
 
 async function updateProduct(req, res) {
+  console.log("Controlador Actualizando productoid:", req.params.id);
+  console.log("Controlador Actualizando con data:", req.body);
+
   try {
     const { id } = req.params;
-    const { producto_id, ...productoData } = req.body;
-    const inventarioData = { ...req.body };
-    await inventoryService.updateProductData(id, { id: producto_id, ...productoData }, inventarioData);
+
+    const {
+      nombre,
+      descripcion,
+      categoria_id,
+      precio_compra,
+      precio_venta,
+      stock_minimo,
+      inventario
+    } = req.body;
+
+    const productoData = {
+      nombre,
+      descripcion,
+      categoria_id,
+      precio_compra,
+      precio_venta,
+      stock_minimo,
+      inventario
+    };
+
+    await inventoryService.updateProductData(
+      productID = id,
+      productoData,
+    );
+
     res.json({ message: "Producto e inventario actualizados correctamente" });
   } catch (error) {
     console.error(error);

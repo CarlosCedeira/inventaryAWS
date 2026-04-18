@@ -1,40 +1,40 @@
-import { useState, useEffect } from "react";
-import { updateProduct } from "../services/productService";
+import { useEffect, useState } from "react";
+import {
+  getProductById,
+  getCategorias,
+  updateProduct,
+} from "../services/productService";
 
-export const useProductForm = (producto) => {
-  const [formData, setFormData] = useState({});
-  const [disabled, setDisabled] = useState(true);
+export function useProduct(id) {
+  const [formData, setFormData] = useState({ inventario: [] });
+  const [categorias, setCategorias] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (producto) setFormData(producto);
-  }, [producto]);
+    async function load() {
+      try {
+        const [product, cats] = await Promise.all([
+          getProductById(id),
+          getCategorias(),
+        ]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+        setFormData(product);
+        setCategorias(cats);
+      } finally {
+        setLoading(false);
+      }
+    }
 
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
+    load();
+  }, [id]);
 
-  const handleSubmit = async (id) => {
-    const payload = {
-      ...formData,
-      fecha_caducidad: formData.fecha_caducidad
-        ? new Date(formData.fecha_caducidad).toISOString()
-        : null,
-    };
-
-    return updateProduct(id, payload);
-  };
+  const update = (data) => updateProduct(id, data);
 
   return {
     formData,
     setFormData,
-    disabled,
-    setDisabled,
-    handleChange,
-    handleSubmit,
+    categorias,
+    loading,
+    update,
   };
-};
+}
