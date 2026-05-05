@@ -1,5 +1,6 @@
   import { useEffect, useState } from "react";
 import Spinners from "../../spiners/spiners.jsx";
+import { getAuthHeaders } from "../../../services/authService";
 
 const NewProduct = () => {
 
@@ -30,7 +31,9 @@ const [form, setForm] = useState({
   useEffect(() => {
   const fetchCategorias = async () => {
     try {
-      const res = await fetch(`${API_URL}/productos/categorias`);
+      const res = await fetch(`${API_URL}/productos/categorias`, {
+        headers: getAuthHeaders(),
+      });
       if (!res.ok) throw new Error("Error al obtener categorías");
       const data = await res.json();
       setCategorias(data);
@@ -69,7 +72,7 @@ const [form, setForm] = useState({
   try {
     const response = await fetch(`${API_URL}/productos/newProduct`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
       body: JSON.stringify(dataToSend),
     });
 

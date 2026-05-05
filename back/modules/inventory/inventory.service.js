@@ -1,33 +1,29 @@
 const { groupProductWithInventory } = require("./inventory.mappers");
 const inventoryModel = require("./inventory.model");
 
-async function listProducts() {
-  return await inventoryModel.getAllProducts();
+async function listProducts(tenantId) {
+  return await inventoryModel.getAllProducts(tenantId);
 }
 
-async function listCategories() {
-  return await inventoryModel.getAllCategories();
+async function listCategories(tenantId) {
+  return await inventoryModel.getAllCategories(tenantId);
 }
 
-async function searchProducts(name) {
-  return await inventoryModel.searchProductsByName(name);
+async function searchProducts(tenantId, name) {
+  return await inventoryModel.searchProductsByName(tenantId, name);
 }
 
-async function getProduct(id) {
-  const rows = await inventoryModel.getProductById(id);
+async function getProduct(tenantId, id) {
+  const rows = await inventoryModel.getProductById(tenantId, id);
 
   return groupProductWithInventory(rows);
 }
 
-async function toggleProductFlag(id, flag) {
-  const allowedFlags = ["publicado", "destacado", "recomendado"];
-  if (!allowedFlags.includes(flag)) throw new Error("Flag no permitido");
-  return await inventoryModel.toggleFlag(id, flag);
-}
 
-async function updateProductData(productId, productoData) {
+
+async function updateProductData(tenantId, productId, productoData) {
 const { inventario } = productoData;
-  return await inventoryModel.updateProduct(productId, productoData, inventario);
+  return await inventoryModel.updateProduct(tenantId, productId, productoData, inventario);
 }
 
 async function createNewProduct(productoData, inventarioData) {
@@ -39,7 +35,6 @@ module.exports = {
   listCategories,
   searchProducts,
   getProduct,
-  toggleProductFlag,
   updateProductData,
   createNewProduct,
 };

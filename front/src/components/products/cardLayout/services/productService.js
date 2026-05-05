@@ -1,7 +1,11 @@
+import { getAuthHeaders } from "../../../../services/authService";
+
 const API_URL = import.meta.env.VITE_API_URL;
 
 export async function getProductById(id) {
-  const res = await fetch(`${API_URL}/productos/${id}`);
+  const res = await fetch(`${API_URL}/productos/${id}`, {
+    headers: getAuthHeaders(),
+  });
   if (!res.ok) throw new Error("Error al obtener producto");
   return res.json();
 }
@@ -23,7 +27,7 @@ export async function updateProduct(id, data) {
 
   const res = await fetch(`${API_URL}/productos/actualizar/${id}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...getAuthHeaders() },
     body: JSON.stringify(data),
   });
 
@@ -36,7 +40,9 @@ export async function updateProduct(id, data) {
 }
 
 export async function getCategorias() {
-  const res = await fetch(`${API_URL}/productos/categorias`);
+  const res = await fetch(`${API_URL}/productos/categorias`, {
+    headers: getAuthHeaders(),
+  });
   if (!res.ok) throw new Error("Error categorías");
   return res.json();
 }

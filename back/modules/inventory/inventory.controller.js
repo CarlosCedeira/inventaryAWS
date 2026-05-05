@@ -3,7 +3,7 @@ const inventoryService = require("./inventory.service");
 async function getProducts(req, res) {
   console.log("Controlador Listando productos", req.body);
   try {
-    const products = await inventoryService.listProducts();
+    const products = await inventoryService.listProducts(req.tenantId);
     res.json(products);
   } catch (error) {
     console.error(error);
@@ -13,7 +13,7 @@ async function getProducts(req, res) {
 
 async function getCategories(req, res) {
   try {
-    const categories = await inventoryService.listCategories();
+    const categories = await inventoryService.listCategories(req.tenantId);
     res.json(categories);
   } catch (error) {
     console.error(error);
@@ -23,7 +23,7 @@ async function getCategories(req, res) {
 
 async function searchProducts(req, res) {
   try {
-    const products = await inventoryService.searchProducts(req.params.name);
+    const products = await inventoryService.searchProducts(req.tenantId, req.params.name);
     res.json(products);
   } catch (error) {
     console.error(error);
@@ -33,7 +33,7 @@ async function searchProducts(req, res) {
 
 async function getProductById(req, res) {
   try {
-    const product = await inventoryService.getProduct(req.params.id);
+    const product = await inventoryService.getProduct(req.tenantId, req.params.id);
     res.json(product);
   } catch (error) {
     console.error(error);
@@ -41,16 +41,7 @@ async function getProductById(req, res) {
   }
 }
 
-async function toggleFlag(req, res) {
-  try {
-    const { flag } = req.params;
-    const updated = await inventoryService.toggleProductFlag(req.params.id, flag);
-    res.json({ message: `Flag ${flag} actualizado correctamente` });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: error.message || "Error interno del servidor" });
-  }
-}
+
 
 async function updateProduct(req, res) {
   console.log("Controlador Actualizando productoid:", req.params.id);
@@ -80,7 +71,8 @@ async function updateProduct(req, res) {
     };
 
     await inventoryService.updateProductData(
-      productID = id,
+      req.tenantId,
+      id,
       productoData,
     );
 
@@ -93,8 +85,8 @@ async function updateProduct(req, res) {
 
 async function createProduct(req, res) {
   try {
-    const productoData = req.body;
-    const inventarioData = req.body;
+    const productoData = { ...req.body, tenant_id: req.tenantId };
+    const inventarioData = { ...req.body, tenant_id: req.tenantId };
     const result = await inventoryService.createNewProduct(productoData, inventarioData);
     res.status(201).json({ message: "Producto creado correctamente", ...result });
   } catch (error) {
@@ -108,7 +100,6 @@ module.exports = {
   getCategories,
   searchProducts,
   getProductById,
-  toggleFlag,
   updateProduct,
   createProduct,
 };

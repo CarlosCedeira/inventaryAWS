@@ -18,6 +18,7 @@ app.use(cors());
 app.use(express.json());
 
 // Rutas
+app.use("/auth", require("./modules/auth/auth.routes"));
 app.use("/productos", require("./modules/inventory/inventory.routes"));
 
 

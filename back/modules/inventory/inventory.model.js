@@ -1,7 +1,7 @@
 const { getConnection } = require("../../db");
 
 // Listar todos los productos
-async function getAllProducts() {
+async function getAllProducts(tenantId) {
   const connection = await getConnection();
   try {
     const [rows] = await connection.execute(`
@@ -21,9 +21,11 @@ async function getAllProducts() {
 
 FROM productos p
 LEFT JOIN inventario i 
-  ON i.producto_id = p.id
+  ON i.producto_id = p.id AND i.tenant_id = p.tenant_id
 LEFT JOIN categorias c 
-  ON p.categoria_id = c.id
+  ON p.categoria_id = c.id AND c.tenant_id = p.tenant_id
+
+WHERE p.tenant_id = ?
 
 GROUP BY 
   p.id,
@@ -34,7 +36,7 @@ GROUP BY
   p.precio_compra,
   p.precio_venta,
   p.stock_minimo
-  ;`);
+  ;`, [tenantId]);
     return rows;
   } finally {
     await connection.end();
@@ -42,10 +44,13 @@ GROUP BY
 }
 
 // Listar categorías
-async function getAllCategories() {
+async function getAllCategories(tenantId) {
   const connection = await getConnection();
   try {
-    const [rows] = await connection.execute("SELECT * FROM categorias");
+    const [rows] = await connection.execute(
+      "SELECT * FROM categorias WHERE tenant_id = ?",
+      [tenantId]
+    );
     return rows;
   } finally {
     await connection.end();
@@ -53,7 +58,7 @@ async function getAllCategories() {
 }
 
 // Buscar producto por nombre
-async function searchProductsByName(name) {
+async function searchProductsByName(tenantId, name) {
   const connection = await getConnection();
   try {
     const [rows] = await connection.execute(
@@ -61,11 +66,11 @@ async function searchProductsByName(name) {
       SELECT i.id AS inventario_id, p.nombre AS producto_nombre, p.descripcion,
              c.nombre AS producto_categoria, p.precio_venta, i.cantidad
       FROM inventario i
-      INNER JOIN productos p ON i.producto_id = p.id
-      LEFT JOIN categorias c ON p.categoria_id = c.id
-      WHERE p.nombre LIKE CONCAT('%', ?, '%')
+      INNER JOIN productos p ON i.producto_id = p.id AND p.tenant_id = i.tenant_id
+      LEFT JOIN categorias c ON p.categoria_id = c.id AND c.tenant_id = p.tenant_id
+      WHERE i.tenant_id = ? AND p.nombre LIKE CONCAT('%', ?, '%')
       `,
-      [name]
+      [tenantId, name]
     );
     return rows;
   } finally {
@@ -74,7 +79,7 @@ async function searchProductsByName(name) {
 }
 
 // Obtener producto por id
-async function getProductById(id) {
+async function getProductById(tenantId, id) {
   const connection = await getConnection();
   try {
     console.log("Consultando en base de datos producto por ID:", id);
@@ -102,13 +107,13 @@ async function getProductById(id) {
 
 FROM inventario i
 INNER JOIN productos p 
-  ON i.producto_id = p.id
+  ON i.producto_id = p.id AND p.tenant_id = i.tenant_id
 LEFT JOIN categorias c 
-  ON p.categoria_id = c.id
+  ON p.categoria_id = c.id AND c.tenant_id = p.tenant_id
 
-WHERE i.producto_id = ?;
+WHERE i.tenant_id = ? AND i.producto_id = ?;
       `,
-      [id]
+      [tenantId, id]
     );
     return rows;
   } finally {
@@ -117,20 +122,10 @@ WHERE i.producto_id = ?;
 }
 
 // Actualizar flags (publicado, destacado, recomendado)
-async function toggleFlag(id, flag) {
-  const connection = await getConnection();
-  try {
-    await connection.execute(
-      `UPDATE productos SET ${flag} = NOT ${flag} WHERE id = ?`,
-      [id]
-    );
-  } finally {
-    await connection.end();
-  }
-}
+
 
 // Actualizar producto e inventario
-async function updateProduct(productId, productoData, invnetarioData) {
+async function updateProduct(tenantId, productId, productoData, invnetarioData) {
   console.log("NOdal Actualizando producto id:", productId, );
   console.log("informacion productoData:", productoData);
   console.log("informacion inventarioData:", invnetarioData);
@@ -139,7 +134,7 @@ async function updateProduct(productId, productoData, invnetarioData) {
     await connection.execute(
       `UPDATE productos
        SET nombre = ?, descripcion = ?, categoria_id = ?, precio_compra = ?, precio_venta = ?, stock_minimo = ?
-       WHERE id = ?`,
+       WHERE tenant_id = ? AND id = ?`,
       [
         productoData.nombre,
         productoData.descripcion,
@@ -147,6 +142,7 @@ async function updateProduct(productId, productoData, invnetarioData) {
         productoData.precio_compra,
         productoData.precio_venta,
         productoData.stock_minimo,
+        tenantId,
         productId
       ]
     );
@@ -158,11 +154,12 @@ async function updateProduct(productId, productoData, invnetarioData) {
   await connection.execute(
     `UPDATE inventario
      SET cantidad = ?, fecha_caducidad = ?, numero_lote = ?, ultima_actualizacion = NOW()
-     WHERE id = ?`,
+     WHERE tenant_id = ? AND id = ?`,
     [
       item.cantidad,
       item.fecha_caducidad ? new Date(item.fecha_caducidad) : null,
       item.numero_lote || null,
+      tenantId,
       item.inventario_id, 
     ]
   );
@@ -224,7 +221,6 @@ module.exports = {
   getAllCategories,
   searchProductsByName,
   getProductById,
-  toggleFlag,
   updateProduct,
   createProduct,
 };
