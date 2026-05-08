@@ -92,9 +92,9 @@ const CardLayout = ({ onClose, id }) => {
 
             <header className="modal-header my-3 my-lg-0 ms-3 me-5" />
 
-              <h3>Lotes de inventario</h3>
+              <h3 className="text-center ">Lotes de inventario</h3>
 
-  <table>
+  <table className="mt-3">
     <thead>
       <tr>
         <th>Cantidad</th>
@@ -198,14 +198,15 @@ onChange={(e) =>
                       </label>
                       <div className="col-sm-6">
                         <select
-                          name="producto_categoria"
-                          value={formData.producto_categoria}
+                          name="categoria_id"
+                          value={formData.categoria_id || ""}
                           onChange={handleChange}
                           className="form-control"
                           disabled={disabled}
                         >
+                          <option value="">Selecciona una categoria</option>
                           {categorias.map((c) => (
-                            <option key={c.id} value={c.producto_categoria}>
+                            <option key={c.id} value={c.id}>
                               {c.nombre}
                             </option>
                           ))}

@@ -19,6 +19,30 @@ export function clearSession() {
   localStorage.removeItem(SESSION_KEY);
 }
 
+export async function fetchWithAuth(input, init = {}) {
+  const headers = {
+    ...getAuthHeaders(),
+    ...(init.headers || {}),
+  };
+
+  const response = await fetch(input, {
+    ...init,
+    headers,
+  });
+
+  if (response.status === 401) {
+    clearSession();
+
+    if (window.location.pathname !== "/login") {
+      window.location.replace("/login");
+    }
+
+    throw new Error("Sesion expirada o no valida");
+  }
+
+  return response;
+}
+
 export async function login(email, password) {
   console.log("Attempting login with email:", email, password);
   const res = await fetch(`${API_URL}/auth/login`, {

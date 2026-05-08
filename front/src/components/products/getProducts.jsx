@@ -4,6 +4,7 @@ import { useProducts } from "./hooks/useProducts";
 import Spinners from "../spiners/spiners";
 import CardLayout from "./cardLayout/CardLayout";
 import NewProduct from "./newProduct/newProduct";
+import NewCategory from "./newCategory/NewCategory";
 //import InventoryDashboard from "./dashboard/productsDashboard";
 
 import "./getProducts.css";
@@ -12,13 +13,18 @@ const GetProducts = () => {
   const {
     items,
     loading,
+    categories,
+    selectedCategory,
     search,
     sortField,
     sortOrder,
     setSortField,
     setSortOrder,
+    handleCategoryFilter,
     handleSearch,
+    handleSoftDelete,
     refetch,
+    refetchCategories,
   } = useProducts();
 
   const [showCard, setShowCard] = useState(false);
@@ -51,6 +57,19 @@ const GetProducts = () => {
     refetch();
   };
 
+  const handleDelete = async (event, productId) => {
+    event.stopPropagation();
+
+    const confirmed = window.confirm("¿Seguro que quieres eliminar este producto?");
+    if (!confirmed) return;
+
+    try {
+      await handleSoftDelete(productId);
+    } catch (error) {
+      alert(error.message || "No se pudo eliminar el producto");
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return "";
     return new Intl.DateTimeFormat("es-ES", {
@@ -67,18 +86,43 @@ const GetProducts = () => {
         <h1 className="ms-4 mt-2 mb-3 ps-5 ps-md-4">
           Listado de productos
         </h1>
-        <NewProduct />
+        <input
+          type="text"
+          className="form-control w-25 w-md-100"
+          placeholder="Buscar por nombre"
+          value={search}
+          onChange={(e) => handleSearch(e.target.value)}
+        />
+        <div className="d-flex align-items-center gap-5">
+           
+          <NewCategory onCreated={refetchCategories} />
+          <NewProduct onCreated={refetch} />
+        </div>
       </div>
 
-      <div className="bg-white pt-2 pb-2 px-5 d-flex flex-column flex-md-row justify-content-between gap-2 ">
+      <div className="bg-white pt-2 pb-2 px-5 d-flex flex-column flex-md-row justify-content-start gap-2 ">
+       
         <div className="d-flex gap-3 ">
+          <select
+            className="form-select w-auto"
+            value={selectedCategory}
+            onChange={(e) => handleCategoryFilter(e.target.value)}
+          >
+            <option value="">Todas las categorias</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.nombre}
+              </option>
+            ))}
+          </select>
+
           <select
             className="form-select w-auto"
             value={sortField}
             onChange={(e) => setSortField(e.target.value)}
           >
             <option value="predefinido">Ordenar por</option>
-            <option value="cantidad">Cantidad</option>
+            <option value="stock_total">Cantidad</option>
             <option value="precio_compra">Precio</option>
           </select>
 
@@ -92,13 +136,7 @@ const GetProducts = () => {
           </select>
         </div>
 
-        <input
-          type="text"
-          className="form-control"
-          placeholder="Buscar producto..."
-          value={search}
-          onChange={(e) => handleSearch(e.target.value)}
-        />
+        
       </div>
 
       <div className={`fade-init${fadeIn ? " fade-in" : ""} px-5 py-3`}>
@@ -109,8 +147,10 @@ const GetProducts = () => {
               <th className="d-none d-md-table-cell">Categoría</th>
               <th className="text-center">Cantidad</th>
               <th className="d-none d-md-table-cell text-center">
-                Precio
+                Caducidad
               </th>
+              <th className="d-none d-md-table-cell text-center">
+                Acciones</th>
             </tr>
           </thead>
 
@@ -133,11 +173,33 @@ const GetProducts = () => {
   {item.stock_total}
 </td>
 
-                <td className="d-none d-md-table-cell text-center">
-                  {item.precio_compra}
+              <td
+  className={`d-none d-md-table-cell text-center ${
+    (() => {
+      const hoy = new Date();
+      const fechaCaducidad = new Date(item.fecha_caducidad);
+
+      const diferenciaDias = Math.ceil(
+        (fechaCaducidad - hoy) / (1000 * 60 * 60 * 24)
+      );
+
+      return diferenciaDias <= 40 ? "bg-stock-minimo" : "";
+    })()
+  }`}
+>
+                  {formatDate(item.fecha_caducidad)}
                 </td>
 
-               
+                <td className="d-none d-md-table-cell text-center">
+                  <button
+                    type="button"
+                    className="btn btn-link p-0 text-decoration-none"
+                    title="Eliminar producto"
+                    onClick={(event) => handleDelete(event, item.producto_id)}
+                  >
+                    🗑️
+                  </button>
+                </td>
 
               </tr>
             ))}

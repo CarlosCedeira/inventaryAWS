@@ -9,8 +9,16 @@ async function listCategories(tenantId) {
   return await inventoryModel.getAllCategories(tenantId);
 }
 
+async function createCategoryForTenant(tenantId, categoryData) {
+  return await inventoryModel.createCategory(tenantId, categoryData);
+}
+
 async function searchProducts(tenantId, name) {
   return await inventoryModel.searchProductsByName(tenantId, name);
+}
+
+async function listProductsByCategory(tenantId, categoryId) {
+  return await inventoryModel.getProductsByCategory(tenantId, categoryId);
 }
 
 async function getProduct(tenantId, id) {
@@ -30,11 +38,18 @@ async function createNewProduct(productoData, inventarioData) {
   return await inventoryModel.createProduct(productoData, inventarioData);
 }
 
+async function removeProduct(tenantId, productId) {
+  return await inventoryModel.softDeleteProduct(tenantId, productId);
+}
+
 module.exports = {
   listProducts,
   listCategories,
+  createCategoryForTenant,
   searchProducts,
+  listProductsByCategory,
   getProduct,
   updateProductData,
   createNewProduct,
+  removeProduct,
 };

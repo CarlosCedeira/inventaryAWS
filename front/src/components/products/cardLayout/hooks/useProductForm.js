@@ -18,7 +18,10 @@ export function useProduct(id) {
           getCategorias(),
         ]);
 
-        setFormData(product);
+        setFormData({
+          ...product,
+          categoria_id: product?.categoria_id ?? "",
+        });
         setCategorias(cats);
       } finally {
         setLoading(false);

@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Routes, Route, Link, Navigate, useLocation } from "react-router-dom";
+import { Routes, Route, Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import GetProducts from "../products/GetProducts.jsx";
 import UsersManager from "../logging.jsx";
-import { getSession } from "../../services/authService";
+import { clearSession, getSession } from "../../services/authService";
 
 import "./nav.css";
 
@@ -18,9 +18,18 @@ function ProtectedRoute({ isAuthenticated, children }) {
 function Nav() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const session = getSession();
+  const user = session?.user;
   const isAuthenticated = Boolean(session?.token && session?.user?.tenant_id);
   const toggleSidebar = () => setIsCollapsed(!isCollapsed);
+  const userInitial = user?.nombre?.trim()?.charAt(0)?.toUpperCase() || "U";
+
+  const handleLogout = () => {
+    clearSession();
+    setIsCollapsed(false);
+    navigate("/login", { replace: true });
+  };
 
   return (
     <div className="d-flex">
@@ -63,7 +72,7 @@ function Nav() {
               "width 0.4s cubic-bezier(0.4, 0, 0.2, 1), padding 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
           }}
         >
-          <div className="sidebar-content">
+          <div className="sidebar-content d-flex flex-column h-100">
             <div className="d-flex justify-content-center">
               <button
                 className="btn btn-light mb-5 mt-5 w-15"
@@ -94,6 +103,25 @@ function Nav() {
                 </Link>
               </li>
             </ul>
+
+            <div className="sidebar-user mt-auto mx-3 mb-4 p-3">
+              <div className="d-flex align-items-center gap-3">
+                <div className="sidebar-user-avatar">{userInitial}</div>
+                <div className="sidebar-user-meta">
+                  <div className="sidebar-user-name">{user?.nombre || "Usuario"}</div>
+                  <div className="sidebar-user-email">{user?.email || ""}</div>
+                  <div className="sidebar-user-tenant">{user?.tenant_nombre || ""}</div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="btn btn-outline-light btn-sm w-100 mt-3"
+                onClick={handleLogout}
+              >
+                Cerrar sesion
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -3,6 +3,8 @@ import { productService } from "../services/productService";
 
 export const useProducts = () => {
   const [items, setItems] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState("");
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState("predefinido");
   const [sortOrder, setSortOrder] = useState("asc");
@@ -19,8 +21,44 @@ export const useProducts = () => {
     }
   };
 
+  const fetchCategories = async () => {
+    try {
+      const data = await productService.getCategories();
+      setCategories(data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleCategoryFilter = async (categoryId) => {
+    setSelectedCategory(categoryId);
+    setSearch("");
+
+    if (!categoryId) {
+      await fetchProducts();
+      return;
+    }
+
+    try {
+      const data = await productService.getByCategory(categoryId);
+      setItems(data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   const handleSearch = async (value) => {
     setSearch(value);
+
+    if (!value && selectedCategory) {
+      await handleCategoryFilter(selectedCategory);
+      return;
+    }
+
+    if (selectedCategory) {
+      setSelectedCategory("");
+    }
+
     try {
       const data = await productService.search(value);
       setItems(data);
@@ -29,9 +67,20 @@ export const useProducts = () => {
     }
   };
 
+  const handleSoftDelete = async (productId) => {
+    try {
+      await productService.softDelete(productId);
+      setItems((prev) => prev.filter((item) => item.producto_id !== productId));
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  };
+
   // inicial
   useEffect(() => {
     fetchProducts();
+    fetchCategories();
   }, []);
 
   // ordenar
@@ -51,12 +100,17 @@ export const useProducts = () => {
   return {
     items,
     loading,
+    categories,
+    selectedCategory,
     search,
     sortField,
     sortOrder,
     setSortField,
     setSortOrder,
+    handleCategoryFilter,
     handleSearch,
+    handleSoftDelete,
     refetch: fetchProducts,
+    refetchCategories: fetchCategories,
   };
 };

@@ -1,105 +1,120 @@
-  import { useEffect, useState } from "react";
-import Spinners from "../../spiners/spiners.jsx";
-import { getAuthHeaders } from "../../../services/authService";
+import { useEffect, useState } from "react";
+import { fetchWithAuth } from "../../../services/authService";
 
-const NewProduct = () => {
+const API_URL = import.meta.env.VITE_API_URL;
 
-  const API_URL = import.meta.env.VITE_API_URL;
-
-const [categorias, setCategorias] = useState([]);
-const [loadingCategorias, setLoadingCategorias] = useState(true);
-
-   const [showModal, setShowModal] = useState(false);
-
- // Estado para el formulario
-const [form, setForm] = useState({
+const initialForm = {
   producto_nombre: "",
   producto_descripcion: "",
-  producto_categoria: "",
-  ranking: "",
-  cantidad: "",
+  categoria_id: "",
   precio_compra: "",
   precio_venta: "",
   stock_minimo: "",
+  cantidad: "",
   fecha_caducidad: "",
-  codigo_barras: "",
   numero_lote: "",
-  sku: "",
-});
+};
 
+const numberFields = new Set([
+  "producto_categoria",
+  "cantidad",
+  "precio_compra",
+  "precio_venta",
+  "stock_minimo",
+]);
+
+const NewProduct = ({ onCreated }) => {
+  const [categorias, setCategorias] = useState([]);
+  const [loadingCategorias, setLoadingCategorias] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [form, setForm] = useState(initialForm);
 
   useEffect(() => {
-  const fetchCategorias = async () => {
-    try {
-      const res = await fetch(`${API_URL}/productos/categorias`, {
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok) throw new Error("Error al obtener categorías");
-      const data = await res.json();
-      setCategorias(data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingCategorias(false);
-    }
+    const fetchCategorias = async () => {
+      try {
+        const res = await fetchWithAuth(`${API_URL}/productos/categorias`);
+
+        if (!res.ok) throw new Error("Error al obtener categorias");
+
+        const data = await res.json();
+        setCategorias(data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingCategorias(false);
+      }
+    };
+
+    fetchCategorias();
+  }, []);
+
+  const handleAddClick = () => {
+    setError("");
+    setShowModal(true);
   };
 
-  fetchCategorias();
-}, []);
+  const handleCloseModal = () => {
+    if (saving) return;
+    setShowModal(false);
+    setError("");
+    setForm(initialForm);
+  };
 
-
-
-
-  const handleAddClick = () => setShowModal(true);
-  const handleCloseModal = () => setShowModal(false);
-
-  // Manejar cambios en el formulario
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
+
+ const buildPayload = () => ({
+  producto_nombre: form.producto_nombre,
+  producto_descripcion: form.producto_descripcion,
+  categoria_id: form.categoria_id ? Number(form.categoria_id) : null,
+  precio_compra: form.precio_compra === "" ? null : Number(form.precio_compra),
+  precio_venta: form.precio_venta === "" ? null : Number(form.precio_venta),
+  stock_minimo: form.stock_minimo === "" ? 0 : Number(form.stock_minimo),
+
+  // Esto irá a inventario
+  cantidad: form.cantidad === "" ? 0 : Number(form.cantidad),
+  fecha_caducidad: form.fecha_caducidad || null,
+  numero_lote: form.numero_lote || null,
+});
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSaving(true);
+    setError("");
 
+    try {
+      const response = await fetchWithAuth(`${API_URL}/productos/newProduct`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildPayload()),
+      });
 
-  const dataToSend = {
-    ...form,
-    fecha_caducidad: form.fecha_caducidad
-      ? new Date(form.fecha_caducidad).toISOString()
-      : null,
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.message || "Error al guardar los datos");
+      }
+
+      await response.json();
+      onCreated?.();
+      handleCloseModal();
+    } catch (submitError) {
+      console.error("Error al guardar:", submitError);
+      setError(submitError.message || "Ocurrio un error al guardar los datos");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  try {
-    const response = await fetch(`${API_URL}/productos/newProduct`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-      body: JSON.stringify(dataToSend),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Error al guardar los datos");
-    }
-
-    const result = await response.json();
-    console.log("Producto creado:", result);
-
-    handleCloseModal(); // cerrar modal
-  } catch (error) {
-    console.error("Error al guardar:", error);
-    alert("Ocurrió un error al guardar los datos");
-  }
-};
-
-
-
-
-return (
-<>
-
-<button className="btn btn-success my-3 me-5" onClick={handleAddClick}>
-        Añadir producto
+  return (
+    <>
+      <button className="btn btn-success my-3 me-5" onClick={handleAddClick}>
+        Nuevo producto
       </button>
+
       {showModal && (
         <div
           className="modal d-block modal-lg"
@@ -109,128 +124,142 @@ return (
           <div className="modal-dialog">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title w-100 text-center">
-                  Añadir producto
-                </h5>
+                <h5 className="modal-title w-100 text-center">Anadir producto</h5>
                 <button
                   type="button"
                   className="btn-close"
                   onClick={handleCloseModal}
-                ></button>
+                  disabled={saving}
+                />
               </div>
+
               <div className="modal-body">
-               <form onSubmit={handleSubmit}>
-              <div className="container-fluid">
-                {/* Nombre y Ranking */}
-                <div className="mb-3 row align-items-center">
-                  <label className="col-sm-3 col-form-label text-nowrap">
-                    Nombre
-                  </label>
-                  <div className="col-sm-9">
-                    <input
-                      type="text"
-                      name="producto_nombre"
-                      onChange={handleChange}
-                      className="form-control"
-                    />
-                  </div>
-
-                 
-                </div>
-
-                {/* Descripción */}
-                <div className="mb-3 row align-items-center">
-                  <label className="col-sm-3 col-form-label text-nowrap">
-                    Descripción
-                  </label>
-                  <div className="col-sm-9">
-                    <textarea
-                      name="producto_descripcion"
-                      onChange={handleChange}
-                      className="form-control"
-                      rows="2"
-                    />
-                  </div>
-                </div>
-
-                <div className="row">
-                  {/* Columna 1 */}
-                  <div className="col-md-6">
-                    {/* Categoría */}
+                <form onSubmit={handleSubmit}>
+                  <div className="container-fluid">
                     <div className="mb-3 row align-items-center">
-                      <label className="col-sm-6 col-form-label text-nowrap">
-                        Categoria
-                      </label>
-                      <div className="col-sm-6">
-                      <select
-  name="producto_categoria"
-  value={form.producto_categoria}
+                      <label className="col-sm-3 col-form-label text-nowrap">Nombre</label>
+                      <div className="col-sm-9">
+                        <input
+                          type="text"
+                          name="producto_nombre"
+                          value={form.producto_nombre}
+                          onChange={handleChange}
+                          className="form-control"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mb-3 row align-items-center">
+                      <label className="col-sm-3 col-form-label text-nowrap">Descripcion</label>
+                      <div className="col-sm-9">
+                        <textarea
+                          name="producto_descripcion"
+                          value={form.producto_descripcion}
+                          onChange={handleChange}
+                          className="form-control"
+                          rows="2"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="row">
+                      <div className="col-md-6">
+                        <div className="mb-3 row align-items-center">
+                          <label className="col-sm-6 col-form-label text-nowrap">Categoria</label>
+                          <div className="col-sm-6">
+                            <select
+  name="categoria_id"
+  value={form.categoria_id}
   onChange={handleChange}
   className="form-control"
+  disabled={loadingCategorias}
+  required
 >
-  <option value="">Selecciona una categoría</option>
-
+  <option value="">
+    {loadingCategorias ? "Cargando..." : "Selecciona una categoria"}
+  </option>
   {categorias.map((c) => (
     <option key={c.id} value={c.id}>
       {c.nombre}
     </option>
   ))}
 </select>
+                          </div>
+                        </div>
 
+                        {[
+                          ["Precio de compra", "precio_compra", "number"],
+                          ["Precio de venta", "precio_venta", "number"],
+                          ["Stock minimo", "stock_minimo", "number"],
+                        ].map(([label, name, type]) => (
+                          <div className="mb-3 row align-items-center" key={name}>
+                            <label className="col-sm-6 col-form-label text-nowrap">{label}</label>
+                            <div className="col-sm-6">
+                              <input
+                                type={type}
+                                name={name}
+                                value={form[name]}
+                                onChange={handleChange}
+                                className="form-control"
+                                min="0"
+                                step={numberFields.has(name) && name.includes("precio") ? "0.01" : "1"}
+                                required
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="col-md-6">
+                        {[
+                          ["Cantidad inicial", "cantidad", "number"],
+                          ["Fecha de caducidad", "fecha_caducidad", "date"],
+                          ["Numero de lote", "numero_lote", "text"],
+                        ].map(([label, name, type]) => (
+                          <div className="mb-3 row align-items-center" key={name}>
+                            <label className="col-sm-6 col-form-label text-nowrap">{label}</label>
+                            <div className="col-sm-6">
+                              <input
+                                type={type}
+                                name={name}
+                                value={form[name]}
+                                onChange={handleChange}
+                                className="form-control"
+                                min={type === "number" ? "0" : undefined}
+                                step={type === "number" ? "1" : undefined}
+                                required={name === "cantidad"}
+                              />
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
 
-                    {/* Inputs dinámicos */}
-                    {[
-                      
-                      ["Precio de compra", "precio_compra", "number"],
-                      ["Precio de venta", "precio_venta", "number"],
-                      ["Stock minimo", "stock_minimo", "number"],
-                    ].map(([label, name, type]) => (
-                      <div className="mb-3 row align-items-center" key={name}>
-                        <label className="col-sm-6 col-form-label text-nowrap">
-                          {label}
-                        </label>
-                        <div className="col-sm-6">
-                          <input
-                            type={type}
-                            name={name}
-                            onChange={handleChange}
-                            className="form-control"
-                                />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                    {error && <div className="alert alert-danger py-2">{error}</div>}
 
-                
-
-                  <div className="d-flex justify-content-between align-items-end gap-5">
+                    <div className="d-flex justify-content-between align-items-end gap-5">
                       <button
                         type="button"
                         className="btn btn-secondary"
                         onClick={handleCloseModal}
-
+                        disabled={saving}
                       >
                         Cancelar
                       </button>
-                      <button className="btn btn-success" type="submit">
-                        Crear producto
+                      <button className="btn btn-success" type="submit" disabled={saving}>
+                        {saving ? "Creando..." : "Crear producto"}
                       </button>
                     </div>
-
-                    
-                </div>
-              </div>
-            </form>
+                  </div>
+                </form>
               </div>
             </div>
           </div>
         </div>
       )}
-</>
-);
+    </>
+  );
 };
-    
 
 export default NewProduct;

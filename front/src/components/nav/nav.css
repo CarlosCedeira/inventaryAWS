@@ -31,11 +31,52 @@
 
 .navegation {
   --bs-nav-link-padding-x: 1rem;
-    --bs-nav-link-padding-y: 0.5rem;
-    flex-wrap: wrap;
-    padding-left: 0;
-    /* margin-bottom: 0; */
-    list-style: none;
+  --bs-nav-link-padding-y: 0.5rem;
+  flex-wrap: wrap;
+  padding-left: 0;
+  list-style: none;
+}
+
+.sidebar-user {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.sidebar-user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-weight: 700;
+}
+
+.sidebar-user-meta {
+  min-width: 0;
+}
+
+.sidebar-user-name,
+.sidebar-user-email,
+.sidebar-user-tenant {
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-user-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.sidebar-user-email,
+.sidebar-user-tenant {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.72);
 }
 
 /* --- Estilos para pantallas móviles (navbar superior horizontal) --- */

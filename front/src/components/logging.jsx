@@ -22,6 +22,7 @@ const UsersManager = () => {
 
     try {
       await login(form.email, form.password);
+      console.log("login successful, navigating to /productos", Response);
       navigate("/productos");
     } catch (err) {
       setError(err.message);

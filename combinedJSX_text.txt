@@ -19,26 +19,129 @@ function App() {
 export default App;
 
 
+===== logging.jsx =====
+
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { login } from "../services/authService";
+
+const UsersManager = () => {
+  const navigate = useNavigate();
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+  });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      await login(form.email, form.password);
+      console.log("login successful, navigating to /productos", Response);
+      navigate("/productos");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="container mt-5" style={{ maxWidth: "400px" }}>
+      <h3 className="mb-4 text-center">Iniciar Sesion</h3>
+
+      <form onSubmit={handleSubmit}>
+        <div className="mb-3">
+          <label htmlFor="email" className="form-label">
+            Email
+          </label>
+          <input
+            type="email"
+            className="form-control"
+            id="email"
+            name="email"
+            placeholder="usuario@empresa.com"
+            value={form.email}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+        <div className="mb-3">
+          <label htmlFor="password" className="form-label">
+            Password
+          </label>
+          <input
+            type="password"
+            className="form-control"
+            id="password"
+            name="password"
+            placeholder="Password"
+            value={form.password}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+        {error && <div className="alert alert-danger py-2">{error}</div>}
+
+        <button type="submit" className="btn btn-primary w-100" disabled={loading}>
+          {loading ? "Entrando..." : "Iniciar sesion"}
+        </button>
+      </form>
+    </div>
+  );
+};
+
+export default UsersManager;
+
+
 ===== Nav.jsx =====
 
 import { useState } from "react";
-import { Routes, Route, Link, useLocation, useBlocker } from "react-router-dom";
+import { Routes, Route, Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import GetProducts from "../products/GetProducts.jsx";
-
+import UsersManager from "../logging.jsx";
+import { clearSession, getSession } from "../../services/authService";
 
 import "./nav.css";
-import UsersManager from "../../logging.jsx";
+
+function ProtectedRoute({ isAuthenticated, children }) {
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
 
 function Nav() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const session = getSession();
+  const user = session?.user;
+  const isAuthenticated = Boolean(session?.token && session?.user?.tenant_id);
   const toggleSidebar = () => setIsCollapsed(!isCollapsed);
+  const userInitial = user?.nombre?.trim()?.charAt(0)?.toUpperCase() || "U";
+
+  const handleLogout = () => {
+    clearSession();
+    setIsCollapsed(false);
+    navigate("/login", { replace: true });
+  };
 
   return (
     <div className="d-flex">
-      {/* Botón flotante */}
-      {isCollapsed && (
+      {isAuthenticated && isCollapsed && (
         <button
           className="navbar-toggler border-0 bg-dark"
           type="button"
@@ -66,58 +169,89 @@ function Nav() {
         </button>
       )}
 
-      {/* Sidebar */}
-      <div
-        className={`bg-dark sidebar-sticky${isCollapsed ? " collapsed" : ""}`}
-        style={{
-          width: isCollapsed ? "0" : "250px",
-          padding: isCollapsed ? "0" : "0.1rem 0.1rem",
-          overflowX: "hidden",
-          transition:
-            "width 0.4s cubic-bezier(0.4, 0, 0.2, 1), padding 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
-        }}
-      >
-        <div className="sidebar-content">
-          <div className="d-flex justify-content-center">
-            <button
-              className="btn btn-light mb-5 mt-5 w-15"
-              onClick={toggleSidebar}
-            >
-              {isCollapsed ? "" : "Ocultar menú"}
-            </button>
-          </div>
-
-          <ul className="navegation">
-           
-            <li className="nav-item mt-2">
-              <Link
-                to="/productos"
-                className={`nav-link text-white ${
-                  location.pathname === "/productos" ? "active" : ""
-                }`}
+      {isAuthenticated && (
+        <div
+          className={`bg-dark sidebar-sticky${isCollapsed ? " collapsed" : ""}`}
+          style={{
+            width: isCollapsed ? "0" : "250px",
+            padding: isCollapsed ? "0" : "0.1rem 0.1rem",
+            overflowX: "hidden",
+            transition:
+              "width 0.4s cubic-bezier(0.4, 0, 0.2, 1), padding 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+          }}
+        >
+          <div className="sidebar-content d-flex flex-column h-100">
+            <div className="d-flex justify-content-center">
+              <button
+                className="btn btn-light mb-5 mt-5 w-15"
+                onClick={toggleSidebar}
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  height="25px"
-                  viewBox="0 -960 960 960"
-                  width="25px"
-                  fill="#FFFFFF"
-                >
-                  <path d="M620-159 460-319l43-43 117 117 239-239 43 43-282 282Zm220-414h-60v-207h-60v90H240v-90h-60v600h251v60H180q-26 0-43-17t-17-43v-600q0-26 17-43t43-17h202q7-35 34.5-57.5T480-920q36 0 63.5 22.5T578-840h202q26 0 43 17t17 43v207ZM480-780q17 0 28.5-11.5T520-820q0-17-11.5-28.5T480-860q-17 0-28.5 11.5T440-820q0 17 11.5 28.5T480-780Z" />
-                </svg>{" "}
-                Productos
-              </Link>
-            </li>
-          
-          </ul>
-        </div>
-      </div>
+                {isCollapsed ? "" : "Ocultar menu"}
+              </button>
+            </div>
 
-      {/* Contenido principal */}
+            <ul className="navegation">
+              <li className="nav-item mt-2">
+                <Link
+                  to="/productos"
+                  className={`nav-link text-white ${
+                    location.pathname === "/productos" ? "active" : ""
+                  }`}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    height="25px"
+                    viewBox="0 -960 960 960"
+                    width="25px"
+                    fill="#FFFFFF"
+                  >
+                    <path d="M620-159 460-319l43-43 117 117 239-239 43 43-282 282Zm220-414h-60v-207h-60v90H240v-90h-60v600h251v60H180q-26 0-43-17t-17-43v-600q0-26 17-43t43-17h202q7-35 34.5-57.5T480-920q36 0 63.5 22.5T578-840h202q26 0 43 17t17 43v207ZM480-780q17 0 28.5-11.5T520-820q0-17-11.5-28.5T480-860q-17 0-28.5 11.5T440-820q0 17 11.5 28.5T480-780Z" />
+                  </svg>{" "}
+                  Productos
+                </Link>
+              </li>
+            </ul>
+
+            <div className="sidebar-user mt-auto mx-3 mb-4 p-3">
+              <div className="d-flex align-items-center gap-3">
+                <div className="sidebar-user-avatar">{userInitial}</div>
+                <div className="sidebar-user-meta">
+                  <div className="sidebar-user-name">{user?.nombre || "Usuario"}</div>
+                  <div className="sidebar-user-email">{user?.email || ""}</div>
+                  <div className="sidebar-user-tenant">{user?.tenant_nombre || ""}</div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="btn btn-outline-light btn-sm w-100 mt-3"
+                onClick={handleLogout}
+              >
+                Cerrar sesion
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex-grow-1 ps-md-3">
         <Routes>
-          <Route path="/" element={<UsersManager />} />
-          <Route path="/productos" element={<GetProducts />} />
+          <Route
+            path="/"
+            element={<Navigate to={isAuthenticated ? "/productos" : "/login"} replace />}
+          />
+          <Route
+            path="/productos"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <GetProducts />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/login"
+            element={isAuthenticated ? <Navigate to="/productos" replace /> : <UsersManager />}
+          />
         </Routes>
       </div>
     </div>
@@ -129,74 +263,24 @@ export default Nav;
 
 ===== CardLayout.jsx =====
 
-import { useEffect, useState } from "react";
-const API_URL = import.meta.env.VITE_API_URL;
-
+import { useState } from "react";
 import Spinners from "../../spiners/spiners";
 import "./cardLayout.css";
 
+import { useProduct } from "./hooks/useProductForm";
+import { formatDate } from "./utils/date";
+
 const CardLayout = ({ onClose, id }) => {
-  const [formData, setFormData] = useState({});
   const [disabled, setDisabled] = useState(true);
-  const [categorias, setCategorias] = useState([]);
 
-  const [loadingProducto, setLoadingProducto] = useState(true);
-  const [loadingCategorias, setLoadingCategorias] = useState(true);
+  const {
+    formData,
+    setFormData,
+    categorias,
+    loading,
+    update,
+  } = useProduct(id);
 
-  console.log("id en cardLayout", id);
-
-  useEffect(() => {
-    const fetchProductsID = async () => {
-      try {
-        const response = await fetch(`${API_URL}/productos/${id}`);
-
-        if (!response.ok) throw new Error("Error al obtener el producto");
-
-        const data = await response.json();
-        setFormData(data);
-
-        console.log("producto data", data[0]);
-      } catch (error) {
-        console.error("Error al obtener producto:", error);
-      } finally {
-        setLoadingProducto(false);
-      }
-    };
-
-    const fetchCategorias = async () => {
-      try {
-        const response = await fetch(`${API_URL}/productos/categorias`);
-
-        if (!response.ok) throw new Error("Error al obtener categorías");
-
-        const data = await response.json();
-        setCategorias(data);
-
-        console.log("categorias data", data);
-      } catch (error) {
-        console.error("Error al obtener categorías:", error);
-      } finally {
-        setLoadingCategorias(false);
-      }
-    };
-
-    fetchProductsID();
-    fetchCategorias();
-  }, [id]);
-
-  // ============================
-  // FORMATEO DE FECHAS
-  // ============================
-  const formatDate = (dateString) => {
-    if (!dateString) return "";
-
-    const date = new Date(dateString);
-    return date.toISOString().split("T")[0];
-  };
-
-  // ============================
-  // HANDLE CHANGE
-  // ============================
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
@@ -206,47 +290,42 @@ const CardLayout = ({ onClose, id }) => {
     }));
   };
 
-  // ============================
-  // SUBMIT FORMULARIO
-  // ============================
+  const handleInventarioChange = (index, field, value) => {
+  setFormData((prev) => {
+    const updatedInventario = [...prev.inventario];
+
+    updatedInventario[index] = {
+      ...updatedInventario[index],
+      [field]: value,
+    };
+
+    return {
+      ...prev,
+      inventario: updatedInventario,
+    };
+  });
+};
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     const updatedData = {
       ...formData,
       fecha_caducidad: formData.fecha_caducidad
         ? new Date(formData.fecha_caducidad).toISOString()
         : null,
-      fecha_creacion: formData.fecha_creacion
-        ? new Date(formData.fecha_creacion).toISOString()
-        : null,
     };
-    
-    try {
-      console.log("Datos enviados al backend:", updatedData);
-      const response = await fetch(
-        `${API_URL}/productos/actualizar/${id}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updatedData),
-        }
-      );
-
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Error al guardar los datos");
-      }
-
-      const result = await response.json();
-      console.log("Datos guardados:", result);
-
-      if (onClose) onClose();
-    } catch (error) {
-      console.error("Error al guardar:", error);
-      alert("Ocurrió un error al guardar los datos");
-    }
+    console.log("Datos a actualizar enviados desde el formulario:", updatedData);
+    await update(updatedData);
+    onClose?.();
   };
+
+  const totalCantidad = formData.inventario?.reduce(
+  (acc, item) => acc + Number(item.cantidad || 0),
+  0
+);
+
+  if (loading) return <Spinners />;
 
   return (
     <div
@@ -267,7 +346,7 @@ const CardLayout = ({ onClose, id }) => {
           />
 
           <article className="modal-content">
-            {loadingCategorias && loadingProducto ? <Spinners /> : null}
+            
 
             <button
               className="btn btn-primary position-absolute"
@@ -277,6 +356,66 @@ const CardLayout = ({ onClose, id }) => {
             </button>
 
             <header className="modal-header my-3 my-lg-0 ms-3 me-5" />
+
+              <h3 className="text-center ">Lotes de inventario</h3>
+
+  <table className="mt-3">
+    <thead>
+      <tr>
+        <th>Cantidad</th>
+        <th>Caducidad</th>
+        <th>Número de lote</th>
+      </tr>
+    </thead>
+
+   <tbody>
+       
+
+  {formData.inventario?.map((item, index) => (
+    <tr key={item.inventario_id} >
+
+      <td>
+        <input
+          type="number"
+          disabled={disabled}
+          value={item.cantidad}
+onChange={(e) =>
+    handleInventarioChange(index, "cantidad", e.target.value)
+  }
+          className="form-control"
+        />
+      </td>
+
+      <td>
+        <input
+          type="date"
+          disabled={disabled}
+          value={formatDate(item.fecha_caducidad)}
+          onChange={(e) =>
+    handleInventarioChange(index, "fecha_caducidad", e.target.value)
+  }        className="form-control"
+        />
+      </td>
+
+      <td>
+        <input type="number"
+        disabled={disabled}
+          value={item.numero_lote}
+onChange={(e) =>
+    handleInventarioChange(index, "numero_lote", e.target.value)
+  }
+          className="form-control" />
+      </td>
+
+     
+    </tr>
+  ))}
+   <tr>
+        <th>{totalCantidad} Cantidad total</th>
+        </tr>
+  
+</tbody>
+  </table>
 
             <form onSubmit={handleSubmit}>
               <div className="container-fluid mt-5">
@@ -288,8 +427,8 @@ const CardLayout = ({ onClose, id }) => {
                   <div className="col-sm-9">
                     <input
                       type="text"
-                      name="producto_nombre"
-                      value={formData.producto_nombre || ""}
+                      name="nombre"
+                      value={formData.nombre || ""}
                       onChange={handleChange}
                       className="form-control"
                       disabled={disabled}
@@ -304,8 +443,8 @@ const CardLayout = ({ onClose, id }) => {
                   </label>
                   <div className="col-sm-9">
                     <textarea
-                      name="producto_descripcion"
-                      value={formData.producto_descripcion || ""}
+                      name="descripcion"
+                      value={formData.descripcion || ""}
                       onChange={handleChange}
                       className="form-control"
                       rows="2"
@@ -324,14 +463,15 @@ const CardLayout = ({ onClose, id }) => {
                       </label>
                       <div className="col-sm-6">
                         <select
-                          name="producto_categoria"
-                          value={formData.producto_categoria}
+                          name="categoria_id"
+                          value={formData.categoria_id || ""}
                           onChange={handleChange}
                           className="form-control"
                           disabled={disabled}
                         >
+                          <option value="">Selecciona una categoria</option>
                           {categorias.map((c) => (
-                            <option key={c.id} value={c.producto_categoria}>
+                            <option key={c.id} value={c.id}>
                               {c.nombre}
                             </option>
                           ))}
@@ -360,43 +500,19 @@ const CardLayout = ({ onClose, id }) => {
                           />
                         </div>
                       </div>
+                    
                     ))}
                   </div>
 
                   {/* Columna 2 */}
                   <div className="col-md-6">
-                    {/* Fecha */}
-                    <div className="mb-3 row align-items-center">
-                      <label className="col-sm-6 col-form-label text-nowrap">
-                        Caducidad
-                      </label>
-                      <div className="col-sm-6">
-                        <input
-                          type="date"
-                          name="fecha_caducidad"
-                          value={formatDate(formData.fecha_caducidad)}
-                          onChange={handleChange}
-                          className="form-control"
-                          disabled={disabled}
-                        />
-                      </div>
-                    </div>
+                        <div>
 
-                    <div className="mb-3 row align-items-center">
-                      <label className="col-sm-6 col-form-label text-nowrap">
-                        Fecha de creación
-                      </label>
-                      <div className="col-sm-6">
-                        <input
-                          type="date"
-                          name="fecha_creacion"
-                          value={formatDate(formData.fecha_creacion)}
-                          className="form-control"
-                          disabled
-                        />
-                      </div>
-                    </div>
+</div>
+                    {/* Fecha */}
+                  
                   </div>
+
 
                   <div className="d-flex justify-content-between align-items-end gap-5">
                     <button
@@ -422,6 +538,7 @@ const CardLayout = ({ onClose, id }) => {
 };
 
 export default CardLayout;
+
 
 ===== productsDashboard.jsx =====
 
@@ -731,7 +848,7 @@ export default function InventoryDashboard({ inventory }) {
 }
 
 
-===== GetProducts.jsx =====
+===== getProducts.jsx =====
 
 import { useState, useEffect } from "react";
 import { useProducts } from "./hooks/useProducts";
@@ -739,7 +856,7 @@ import { useProducts } from "./hooks/useProducts";
 import Spinners from "../spiners/spiners";
 import CardLayout from "./cardLayout/CardLayout";
 import NewProduct from "./newProduct/newProduct";
-import InventoryDashboard from "./dashboard/productsDashboard";
+//import InventoryDashboard from "./dashboard/productsDashboard";
 
 import "./getProducts.css";
 
@@ -793,6 +910,10 @@ const GetProducts = () => {
     }).format(new Date(dateString));
   };
 
+  const hoy = new Date();
+
+
+
   if (loading) return <Spinners />;
 
   return (
@@ -802,7 +923,7 @@ const GetProducts = () => {
         <h1 className="ms-4 mt-2 mb-3 ps-5 ps-md-4">
           Listado de productos
         </h1>
-        <NewProduct />
+        <NewProduct onCreated={refetch} />
       </div>
 
       <div className="bg-white pt-2 pb-2 px-5 d-flex flex-column flex-md-row justify-content-between gap-2 ">
@@ -844,15 +965,14 @@ const GetProducts = () => {
               <th className="d-none d-md-table-cell">Categoría</th>
               <th className="text-center">Cantidad</th>
               <th className="d-none d-md-table-cell text-center">
-                Precio
+                Caducidad
               </th>
-              <th className="text-center">Caducidad</th>
             </tr>
           </thead>
 
           <tbody className=" ">
             {items.map((item) => (
-              <tr key={item.inventario_id} onClick={() => handleTdClick(item)} style={{ cursor: "pointer" }}>
+              <tr key={item.producto_id} onClick={() => handleTdClick(item)} style={{ cursor: "pointer" }}>
                 <td >
                   {item.producto_nombre}
                 </td>
@@ -863,19 +983,17 @@ const GetProducts = () => {
 
                <td
   className={`text-center ${
-    item.cantidad <= item.stock_minimo ? "bg-stock-minimo" : ""
+    item.stock_total <= item.stock_minimo ? "bg-stock-minimo" : ""
   }`}
 >
-  {item.cantidad}
+  {item.stock_total}
 </td>
 
                 <td className="d-none d-md-table-cell text-center">
-                  {item.precio_compra}
-                </td>
-
-                <td className="text-center">
                   {formatDate(item.fecha_caducidad)}
                 </td>
+
+               
 
               </tr>
             ))}
@@ -887,12 +1005,12 @@ const GetProducts = () => {
         <CardLayout
           product={selectedProduct}
           formatDate={formatDate}
-          id={selectedProduct.inventario_id}
+          id={selectedProduct.producto_id}
           onClose={handleCloseCard}
         />
       )}
 
-            <InventoryDashboard inventory={items} />
+            {/*<InventoryDashboard inventory={items} />*/}
 
     </>
   );
@@ -903,105 +1021,121 @@ export default GetProducts;
 
 ===== newProduct.jsx =====
 
-  import { useEffect, useState } from "react";
-import Spinners from "../../spiners/spiners.jsx";
+import { useEffect, useState } from "react";
+import { fetchWithAuth } from "../../../services/authService";
 
-const NewProduct = () => {
+const API_URL = import.meta.env.VITE_API_URL;
 
-  const API_URL = import.meta.env.VITE_API_URL;
-
-const [categorias, setCategorias] = useState([]);
-const [loadingCategorias, setLoadingCategorias] = useState(true);
-
-   const [showModal, setShowModal] = useState(false);
-
- // Estado para el formulario
-const [form, setForm] = useState({
+const initialForm = {
   producto_nombre: "",
   producto_descripcion: "",
   producto_categoria: "",
-  ranking: "",
   cantidad: "",
   precio_compra: "",
   precio_venta: "",
   stock_minimo: "",
   fecha_caducidad: "",
-  codigo_barras: "",
   numero_lote: "",
-  sku: "",
-});
+};
 
+const numberFields = new Set([
+  "producto_categoria",
+  "cantidad",
+  "precio_compra",
+  "precio_venta",
+  "stock_minimo",
+]);
+
+const NewProduct = ({ onCreated }) => {
+  const [categorias, setCategorias] = useState([]);
+  const [loadingCategorias, setLoadingCategorias] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [form, setForm] = useState(initialForm);
 
   useEffect(() => {
-  const fetchCategorias = async () => {
-    try {
-      const res = await fetch(`${API_URL}/productos/categorias`);
-      if (!res.ok) throw new Error("Error al obtener categorías");
-      const data = await res.json();
-      setCategorias(data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingCategorias(false);
-    }
+    const fetchCategorias = async () => {
+      try {
+        const res = await fetchWithAuth(`${API_URL}/productos/categorias`);
+
+        if (!res.ok) throw new Error("Error al obtener categorias");
+
+        const data = await res.json();
+        setCategorias(data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingCategorias(false);
+      }
+    };
+
+    fetchCategorias();
+  }, []);
+
+  const handleAddClick = () => {
+    setError("");
+    setShowModal(true);
   };
 
-  fetchCategorias();
-}, []);
+  const handleCloseModal = () => {
+    if (saving) return;
+    setShowModal(false);
+    setError("");
+    setForm(initialForm);
+  };
 
-
-
-
-  const handleAddClick = () => setShowModal(true);
-  const handleCloseModal = () => setShowModal(false);
-
-  // Manejar cambios en el formulario
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-
-  const dataToSend = {
+  const buildPayload = () => ({
     ...form,
+    producto_categoria: form.producto_categoria ? Number(form.producto_categoria) : "",
+    cantidad: form.cantidad === "" ? "" : Number(form.cantidad),
+    precio_compra: form.precio_compra === "" ? "" : Number(form.precio_compra),
+    precio_venta: form.precio_venta === "" ? "" : Number(form.precio_venta),
+    stock_minimo: form.stock_minimo === "" ? "" : Number(form.stock_minimo),
     fecha_caducidad: form.fecha_caducidad
       ? new Date(form.fecha_caducidad).toISOString()
       : null,
+  });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setError("");
+
+    try {
+      const response = await fetchWithAuth(`${API_URL}/productos/newProduct`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildPayload()),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.message || "Error al guardar los datos");
+      }
+
+      await response.json();
+      onCreated?.();
+      handleCloseModal();
+    } catch (submitError) {
+      console.error("Error al guardar:", submitError);
+      setError(submitError.message || "Ocurrio un error al guardar los datos");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  try {
-    const response = await fetch(`${API_URL}/productos/newProduct`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(dataToSend),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || "Error al guardar los datos");
-    }
-
-    const result = await response.json();
-    console.log("Producto creado:", result);
-
-    handleCloseModal(); // cerrar modal
-  } catch (error) {
-    console.error("Error al guardar:", error);
-    alert("Ocurrió un error al guardar los datos");
-  }
-};
-
-
-
-
-return (
-<>
-
-<button className="btn btn-success my-3 me-5" onClick={handleAddClick}>
-        Añadir producto
+  return (
+    <>
+      <button className="btn btn-success my-3 me-5" onClick={handleAddClick}>
+        Anadir producto
       </button>
+
       {showModal && (
         <div
           className="modal d-block modal-lg"
@@ -1011,198 +1145,146 @@ return (
           <div className="modal-dialog">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title w-100 text-center">
-                  Añadir producto
-                </h5>
+                <h5 className="modal-title w-100 text-center">Anadir producto</h5>
                 <button
                   type="button"
                   className="btn-close"
                   onClick={handleCloseModal}
-                ></button>
+                  disabled={saving}
+                />
               </div>
+
               <div className="modal-body">
-               <form onSubmit={handleSubmit}>
-              <div className="container-fluid">
-                {/* Nombre y Ranking */}
-                <div className="mb-3 row align-items-center">
-                  <label className="col-sm-3 col-form-label text-nowrap">
-                    Nombre
-                  </label>
-                  <div className="col-sm-9">
-                    <input
-                      type="text"
-                      name="producto_nombre"
-                      onChange={handleChange}
-                      className="form-control"
-                    />
-                  </div>
-
-                 
-                </div>
-
-                {/* Descripción */}
-                <div className="mb-3 row align-items-center">
-                  <label className="col-sm-3 col-form-label text-nowrap">
-                    Descripción
-                  </label>
-                  <div className="col-sm-9">
-                    <textarea
-                      name="producto_descripcion"
-                      onChange={handleChange}
-                      className="form-control"
-                      rows="2"
-                    />
-                  </div>
-                </div>
-
-                <div className="row">
-                  {/* Columna 1 */}
-                  <div className="col-md-6">
-                    {/* Categoría */}
+                <form onSubmit={handleSubmit}>
+                  <div className="container-fluid">
                     <div className="mb-3 row align-items-center">
-                      <label className="col-sm-6 col-form-label text-nowrap">
-                        Categoria
-                      </label>
-                      <div className="col-sm-6">
-                      <select
-  name="producto_categoria"
-  value={form.producto_categoria}
-  onChange={handleChange}
-  className="form-control"
->
-  <option value="">Selecciona una categoría</option>
-
-  {categorias.map((c) => (
-    <option key={c.id} value={c.id}>
-      {c.nombre}
-    </option>
-  ))}
-</select>
-
+                      <label className="col-sm-3 col-form-label text-nowrap">Nombre</label>
+                      <div className="col-sm-9">
+                        <input
+                          type="text"
+                          name="producto_nombre"
+                          value={form.producto_nombre}
+                          onChange={handleChange}
+                          className="form-control"
+                          required
+                        />
                       </div>
                     </div>
 
-                    {/* Inputs dinámicos */}
-                    {[
-                      ["Ranking", "ranking", "number"],
-                      ["Cantidad", "cantidad", "number"],
-                      ["Precio de compra", "precio_compra", "number"],
-                      ["Precio de venta", "precio_venta", "number"],
-                      ["Stock minimo", "stock_minimo", "number"],
-                    ].map(([label, name, type]) => (
-                      <div className="mb-3 row align-items-center" key={name}>
-                        <label className="col-sm-6 col-form-label text-nowrap">
-                          {label}
-                        </label>
-                        <div className="col-sm-6">
-                          <input
-                            type={type}
-                            name={name}
-                            onChange={handleChange}
-                            className="form-control"
-                                />
+                    <div className="mb-3 row align-items-center">
+                      <label className="col-sm-3 col-form-label text-nowrap">Descripcion</label>
+                      <div className="col-sm-9">
+                        <textarea
+                          name="producto_descripcion"
+                          value={form.producto_descripcion}
+                          onChange={handleChange}
+                          className="form-control"
+                          rows="2"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="row">
+                      <div className="col-md-6">
+                        <div className="mb-3 row align-items-center">
+                          <label className="col-sm-6 col-form-label text-nowrap">Categoria</label>
+                          <div className="col-sm-6">
+                            <select
+                              name="producto_categoria"
+                              value={form.producto_categoria}
+                              onChange={handleChange}
+                              className="form-control"
+                              disabled={loadingCategorias}
+                              required
+                            >
+                              <option value="">
+                                {loadingCategorias ? "Cargando..." : "Selecciona una categoria"}
+                              </option>
+                              {categorias.map((c) => (
+                                <option key={c.id} value={c.id}>
+                                  {c.nombre}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
 
-                  {/* Columna 2 */}
-                  <div className="col-md-6">
-                    {/* Fecha de caducidad */}
-                    <div className="mb-3 row align-items-center">
-                      <label className="col-sm-6 col-form-label text-nowrap">
-                        Caducidad
-                      </label>
-                      <div className="col-sm-6">
-                        <input
-                          type="date"
-                          name="fecha_caducidad"
-                          onChange={handleChange}
-                          className="form-control"
-                            />
+                        {[
+                          ["Precio de compra", "precio_compra", "number"],
+                          ["Precio de venta", "precio_venta", "number"],
+                          ["Stock minimo", "stock_minimo", "number"],
+                        ].map(([label, name, type]) => (
+                          <div className="mb-3 row align-items-center" key={name}>
+                            <label className="col-sm-6 col-form-label text-nowrap">{label}</label>
+                            <div className="col-sm-6">
+                              <input
+                                type={type}
+                                name={name}
+                                value={form[name]}
+                                onChange={handleChange}
+                                className="form-control"
+                                min="0"
+                                step={numberFields.has(name) && name.includes("precio") ? "0.01" : "1"}
+                                required
+                              />
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    </div>
-                    
 
-                    {/* Código de barras */}
-                    <div className="mb-3 row align-items-center">
-                      <label className="col-sm-6 col-form-label text-nowrap">
-                        Código de barras
-                      </label>
-                      <div className="col-sm-6">
-                        <input
-                          type="text"
-                          name="codigo_barras"
-                          onChange={handleChange}
-                          className="form-control"
-                            />
-                      </div>
-                    </div>
-
-                    {/* Número de lote */}
-                    <div className="mb-3 row align-items-center">
-                      <label className="col-sm-6 col-form-label text-nowrap">
-                        Numero de lote
-                      </label>
-                      <div className="col-sm-6">
-                        <input
-                          type="text"
-                          name="numero_lote"
-                          onChange={handleChange}
-                          className="form-control"
-                            />
+                      <div className="col-md-6">
+                        {[
+                          ["Cantidad inicial", "cantidad", "number"],
+                          ["Fecha de caducidad", "fecha_caducidad", "date"],
+                          ["Numero de lote", "numero_lote", "text"],
+                        ].map(([label, name, type]) => (
+                          <div className="mb-3 row align-items-center" key={name}>
+                            <label className="col-sm-6 col-form-label text-nowrap">{label}</label>
+                            <div className="col-sm-6">
+                              <input
+                                type={type}
+                                name={name}
+                                value={form[name]}
+                                onChange={handleChange}
+                                className="form-control"
+                                min={type === "number" ? "0" : undefined}
+                                step={type === "number" ? "1" : undefined}
+                                required={name === "cantidad"}
+                              />
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
 
-                    {/* SKU */}
-                    <div className="mb-3 row align-items-center">
-                      <label className="col-sm-6 col-form-label text-nowrap">
-                        Codigo SKU
-                      </label>
-                      <div className="col-sm-6">
-                        <input
-                          type="text"
-                          name="sku"
-                          onChange={handleChange}
-                          className="form-control"
-                            />
-                      </div>
+                    {error && <div className="alert alert-danger py-2">{error}</div>}
 
-                    </div>
-
-                     
-                 
-                  </div>
-
-                  <div className="d-flex justify-content-between align-items-end gap-5">
+                    <div className="d-flex justify-content-between align-items-end gap-5">
                       <button
                         type="button"
                         className="btn btn-secondary"
                         onClick={handleCloseModal}
-
+                        disabled={saving}
                       >
                         Cancelar
                       </button>
-                      <button className="btn btn-success" type="submit">
-                        Crear producto
+                      <button className="btn btn-success" type="submit" disabled={saving}>
+                        {saving ? "Creando..." : "Crear producto"}
                       </button>
                     </div>
-
-                    
-                </div>
-              </div>
-            </form>
+                  </div>
+                </form>
               </div>
             </div>
           </div>
         </div>
       )}
-</>
-);
+    </>
+  );
 };
-    
 
 export default NewProduct;
+
 
 ===== Products.test.jsx =====
 
@@ -1527,110 +1609,6 @@ const Spinners = () => (
 );
 
 export default Spinners;
-
-
-===== logging.jsx =====
-
-import { useEffect, useState } from "react";
-const API_URL = import.meta.env.VITE_API_URL;
-
-
-const UsersManager = () => {
-
-  
-  const [users, setUsers] = useState([]);
-  const [form, setForm] = useState({
-    username: "",
-    password: "",
-    role: "user",
-  });
-
-  const fetchUsers = async () => {
-    const res = await fetch(`${API_URL}`); // asumir token ya enviado
-    const data = await res.json();
-    setUsers(data);
-  };
-
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    await fetch(`${API_URL}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    fetchUsers();
-  };
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  return (
-    <div className="container mt-5 " style={{ maxWidth: "400px" }}>
-      <h3 className="mb-4 text-center">Iniciar Sesión</h3>
-      <form className="" onSubmit={handleSubmit}>
-        {/* Usuario */}
-        <div className="mb-3">
-          <label htmlFor="username" className="form-label">
-            Usuario
-          </label>
-          <input
-            type="text"
-            className="form-control"
-            id="username"
-            name="username"
-            placeholder="Usuario"
-            onChange={handleChange}
-          />
-        </div>
-
-        {/* Contraseña */}
-        <div className="mb-3">
-          <label htmlFor="password" className="form-label">
-            Contraseña
-          </label>
-          <input
-            type="password"
-            className="form-control"
-            id="password"
-            name="password"
-            placeholder="Contraseña"
-            onChange={handleChange}
-          />
-        </div>
-
-        {/* Rol */}
-        <div className="mb-3 ">
-          <label htmlFor="role" className="form-label">
-            Rol
-          </label>
-          <select
-            className="form-select"
-            id="role"
-            name="role"
-            onChange={handleChange}
-          >
-            <option value="user">Usuario</option>
-            <option value="admin">Admin</option>
-          </select>
-        </div>
-
-        {/* Botón */}
-        <button type="submit" className="btn btn-primary w-100">
-          Iniciar sesion
-        </button>
-      </form>
-
-      
-    </div>
-  );
-};
-
-export default UsersManager;
 
 
 ===== main.jsx =====
