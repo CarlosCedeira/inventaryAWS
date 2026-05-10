@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "../../../services/authService";
+import {
+  validateProductForm,
+  buildProductPayload,
+} from "../utils/productFormUtils";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -63,51 +67,58 @@ const NewProduct = ({ onCreated }) => {
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
+  const { name, value } = e.target;
 
- const buildPayload = () => ({
-  producto_nombre: form.producto_nombre,
-  producto_descripcion: form.producto_descripcion,
-  categoria_id: form.categoria_id ? Number(form.categoria_id) : null,
-  precio_compra: form.precio_compra === "" ? null : Number(form.precio_compra),
-  precio_venta: form.precio_venta === "" ? null : Number(form.precio_venta),
-  stock_minimo: form.stock_minimo === "" ? 0 : Number(form.stock_minimo),
+  setForm((prev) => ({
+    ...prev,
+    [name]: value,
+  }));
 
-  // Esto irá a inventario
-  cantidad: form.cantidad === "" ? 0 : Number(form.cantidad),
-  fecha_caducidad: form.fecha_caducidad || null,
-  numero_lote: form.numero_lote || null,
-});
+  if (error) {
+    setError("");
+  }
+};
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    setError("");
+  e.preventDefault();
 
-    try {
-      const response = await fetchWithAuth(`${API_URL}/productos/newProduct`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildPayload()),
-      });
+  const validationError = validateProductForm(form);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || errorData.message || "Error al guardar los datos");
-      }
+  if (validationError) {
+    setError(validationError);
+    return;
+  }
 
-      await response.json();
-      onCreated?.();
-      handleCloseModal();
-    } catch (submitError) {
-      console.error("Error al guardar:", submitError);
-      setError(submitError.message || "Ocurrio un error al guardar los datos");
-    } finally {
-      setSaving(false);
+  setSaving(true);
+  setError("");
+
+  try {
+    const response = await fetchWithAuth(`${API_URL}/productos/newProduct`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(buildProductPayload(form)),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+
+      throw new Error(
+        errorData.error ||
+          errorData.message ||
+          "Error al guardar los datos"
+      );
     }
-  };
+
+    await response.json();
+    onCreated?.();
+    handleCloseModal();
+  } catch (submitError) {
+    console.error("Error al guardar:", submitError);
+    setError(submitError.message || "Ocurrió un error al guardar los datos");
+  } finally {
+    setSaving(false);
+  }
+};
 
   return (
     <>

@@ -13,6 +13,10 @@ async function createCategoryForTenant(tenantId, categoryData) {
   return await inventoryModel.createCategory(tenantId, categoryData);
 }
 
+async function categoryBelongsToTenant(tenantId, categoryId) {
+  return await inventoryModel.categoryExistsForTenant(tenantId, categoryId);
+}
+
 async function searchProducts(tenantId, name) {
   return await inventoryModel.searchProductsByName(tenantId, name);
 }
@@ -46,6 +50,7 @@ module.exports = {
   listProducts,
   listCategories,
   createCategoryForTenant,
+  categoryBelongsToTenant,
   searchProducts,
   listProductsByCategory,
   getProduct,

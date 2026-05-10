@@ -19,28 +19,86 @@ const NewCategory = ({ onCreated }) => {
 
   const handleCloseModal = () => {
     if (saving) return;
+
     setShowModal(false);
     setError("");
     setForm(initialForm);
   };
 
+  const validateForm = () => {
+  const nombre = form.nombre.trim();
+
+  // obligatorio
+  if (!nombre) {
+    return "El nombre es obligatorio";
+  }
+
+  // mínimo
+  if (nombre.length < 3) {
+    return "El nombre debe tener al menos 3 caracteres";
+  }
+
+  // máximo
+  if (nombre.length > 50) {
+    return "El nombre no puede superar los 50 caracteres";
+  }
+
+  // caracteres permitidos
+  const regex = /^[a-zA-ZÀ-ÿ0-9\s-_]+$/;
+
+  if (!regex.test(nombre)) {
+    return "El nombre contiene caracteres no válidos";
+  }
+
+  // descripción opcional
+  if (form.descripcion.length > 200) {
+    return "La descripción no puede superar los 200 caracteres";
+  }
+
+  return null;
+};
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    // limpiar error mientras escribe
+    if (error) {
+      setError("");
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const validationError = validateForm();
+
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     setSaving(true);
     setError("");
 
     try {
-      await productService.createCategory(form);
+     await productService.createCategory({
+  nombre: form.nombre.trim(),
+  descripcion: form.descripcion.trim(),
+});
+
       onCreated?.();
       handleCloseModal();
     } catch (submitError) {
       console.error("Error al crear categoria:", submitError);
-      setError(submitError.message || "No se pudo crear la categoria");
+
+      setError(
+        submitError.message || "No se pudo crear la categoria"
+      );
     } finally {
       setSaving(false);
     }
@@ -61,7 +119,10 @@ const NewCategory = ({ onCreated }) => {
           <div className="modal-dialog">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title w-100 text-center">Nueva categoria</h5>
+                <h5 className="modal-title w-100 text-center">
+                  Nueva categoria
+                </h5>
+
                 <button
                   type="button"
                   className="btn-close"
@@ -73,7 +134,10 @@ const NewCategory = ({ onCreated }) => {
               <div className="modal-body">
                 <form onSubmit={handleSubmit}>
                   <div className="mb-3">
-                    <label className="form-label">Nombre</label>
+                    <label className="form-label">
+                      Nombre
+                    </label>
+
                     <input
                       type="text"
                       name="nombre"
@@ -81,21 +145,30 @@ const NewCategory = ({ onCreated }) => {
                       onChange={handleChange}
                       className="form-control"
                       required
+                      maxLength={50}
                     />
                   </div>
 
                   <div className="mb-3">
-                    <label className="form-label">Descripcion</label>
+                    <label className="form-label">
+                      Descripcion
+                    </label>
+
                     <textarea
                       name="descripcion"
                       value={form.descripcion}
                       onChange={handleChange}
                       className="form-control"
                       rows="3"
+                      maxLength={200}
                     />
                   </div>
 
-                  {error && <div className="alert alert-danger py-2">{error}</div>}
+                  {error && (
+                    <div className="alert alert-danger py-2">
+                      {error}
+                    </div>
+                  )}
 
                   <div className="d-flex justify-content-between">
                     <button
@@ -106,7 +179,12 @@ const NewCategory = ({ onCreated }) => {
                     >
                       Cancelar
                     </button>
-                    <button type="submit" className="btn btn-warning" disabled={saving}>
+
+                    <button
+                      type="submit"
+                      className="btn btn-warning"
+                      disabled={saving}
+                    >
                       {saving ? "Creando..." : "Crear categoria"}
                     </button>
                   </div>

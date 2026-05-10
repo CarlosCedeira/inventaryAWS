@@ -104,12 +104,105 @@ const UsersManager = () => {
 export default UsersManager;
 
 
+===== GetMovements.jsx =====
+
+import { useEffect, useState } from "react";
+import Spinners from "../spiners/spiners";
+import { movementService } from "./services/movementService";
+
+const GetMovements = () => {
+  const [movements, setMovements] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const fetchMovements = async () => {
+      try {
+        const data = await movementService.getAll();
+        setMovements(data);
+      } catch (fetchError) {
+        console.error(fetchError);
+        setError(fetchError.message || "No se pudieron cargar los movimientos");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMovements();
+  }, []);
+
+  const formatDateTime = (dateString) => {
+    if (!dateString) return "";
+
+    return new Intl.DateTimeFormat("es-ES", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(dateString));
+  };
+
+  if (loading) return <Spinners />;
+
+  return (
+    <>
+      <div className="bg-white d-flex justify-content-between align-items-center sticky-top">
+        <h1 className="ms-4 mt-2 mb-3 ps-5 ps-md-4">Movimientos</h1>
+      </div>
+
+      <div className="px-5 py-3">
+        {error && <div className="alert alert-danger">{error}</div>}
+
+        {!error && movements.length === 0 && (
+          <div className="alert alert-info">No hay movimientos registrados.</div>
+        )}
+
+        {!error && movements.length > 0 && (
+          <table className="table table-hover shadow me-5">
+            <thead className="table-primary">
+              <tr>
+                <th>Fecha</th>
+                <th>Producto</th>
+                <th className="d-none d-md-table-cell">Categoria</th>
+                <th className="text-center">Tipo</th>
+                <th className="text-center">Cantidad</th>
+                <th className="d-none d-lg-table-cell">Motivo</th>
+                <th className="d-none d-lg-table-cell text-center">Referencia</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {movements.map((movement) => (
+                <tr key={movement.movimiento_id}>
+                  <td>{formatDateTime(movement.created_at)}</td>
+                  <td>{movement.producto_nombre}</td>
+                  <td className="d-none d-md-table-cell">
+                    {movement.producto_categoria || ""}
+                  </td>
+                  <td className="text-center text-capitalize">{movement.tipo}</td>
+                  <td className="text-center">{movement.cantidad}</td>
+                  <td className="d-none d-lg-table-cell">{movement.motivo || ""}</td>
+                  <td className="d-none d-lg-table-cell text-center">
+                    {movement.referencia_id || ""}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </>
+  );
+};
+
+export default GetMovements;
+
+
 ===== Nav.jsx =====
 
 import { useState } from "react";
 import { Routes, Route, Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import GetProducts from "../products/GetProducts.jsx";
+import GetMovements from "../movements/GetMovements.jsx";
 import UsersManager from "../logging.jsx";
 import { clearSession, getSession } from "../../services/authService";
 
@@ -173,7 +266,7 @@ function Nav() {
         <div
           className={`bg-dark sidebar-sticky${isCollapsed ? " collapsed" : ""}`}
           style={{
-            width: isCollapsed ? "0" : "250px",
+            width: isCollapsed ? "0" : "200px",
             padding: isCollapsed ? "0" : "0.1rem 0.1rem",
             overflowX: "hidden",
             transition:
@@ -210,9 +303,28 @@ function Nav() {
                   Productos
                 </Link>
               </li>
+              <li className="nav-item mt-2">
+                <Link
+                  to="/movimientos"
+                  className={`nav-link text-white ${
+                    location.pathname === "/movimientos" ? "active" : ""
+                  }`}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    height="25px"
+                    viewBox="0 -960 960 960"
+                    width="25px"
+                    fill="#FFFFFF"
+                  >
+                    <path d="M280-160 80-360l56-56 104 103v-487h80v487l104-103 56 56-200 200Zm400 0L480-360l56-56 104 103v-487h80v487l104-103 56 56-200 200Z" />
+                  </svg>{" "}
+                  Movimientos
+                </Link>
+              </li>
             </ul>
 
-            <div className="sidebar-user mt-auto mx-3 mb-4 p-3">
+            <div className="sidebar-user mt-auto mx-2 mb-4 ">
               <div className="d-flex align-items-center gap-3">
                 <div className="sidebar-user-avatar">{userInitial}</div>
                 <div className="sidebar-user-meta">
@@ -249,6 +361,14 @@ function Nav() {
             }
           />
           <Route
+            path="/movimientos"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <GetMovements />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/login"
             element={isAuthenticated ? <Navigate to="/productos" replace /> : <UsersManager />}
           />
@@ -269,17 +389,29 @@ import "./cardLayout.css";
 
 import { useProduct } from "./hooks/useProductForm";
 import { formatDate } from "./utils/date";
+import { validateProductForm } from "../utils/productFormUtils";
 
 const CardLayout = ({ onClose, id }) => {
   const [disabled, setDisabled] = useState(true);
+  const [error, setError] = useState("");
 
-  const {
-    formData,
-    setFormData,
-    categorias,
-    loading,
-    update,
-  } = useProduct(id);
+  const { formData, setFormData, categorias, loading, update } = useProduct(id);
+
+  const normalizeFormForValidation = () => {
+    const firstInventario = formData.inventario?.[0] || {};
+
+    return {
+      producto_nombre: formData.nombre || "",
+      producto_descripcion: formData.descripcion || "",
+      categoria_id: formData.categoria_id || "",
+      precio_compra: formData.precio_compra || "",
+      precio_venta: formData.precio_venta || "",
+      stock_minimo: formData.stock_minimo || "",
+      cantidad: firstInventario.cantidad || "",
+      fecha_caducidad: firstInventario.fecha_caducidad || "",
+      numero_lote: firstInventario.numero_lote || "",
+    };
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -288,42 +420,54 @@ const CardLayout = ({ onClose, id }) => {
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+
+    if (error) setError("");
   };
 
   const handleInventarioChange = (index, field, value) => {
-  setFormData((prev) => {
-    const updatedInventario = [...prev.inventario];
+    setFormData((prev) => {
+      const updatedInventario = [...prev.inventario];
 
-    updatedInventario[index] = {
-      ...updatedInventario[index],
-      [field]: value,
-    };
+      updatedInventario[index] = {
+        ...updatedInventario[index],
+        [field]: value,
+      };
 
-    return {
-      ...prev,
-      inventario: updatedInventario,
-    };
-  });
-};
+      return {
+        ...prev,
+        inventario: updatedInventario,
+      };
+    });
+
+    if (error) setError("");
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    const validationError = validateProductForm(normalizeFormForValidation());
+
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     const updatedData = {
       ...formData,
-      fecha_caducidad: formData.fecha_caducidad
-        ? new Date(formData.fecha_caducidad).toISOString()
-        : null,
+      nombre: formData.nombre.trim(),
+      descripcion: formData.descripcion.trim(),
     };
+
     console.log("Datos a actualizar enviados desde el formulario:", updatedData);
+
     await update(updatedData);
     onClose?.();
   };
 
   const totalCantidad = formData.inventario?.reduce(
-  (acc, item) => acc + Number(item.cantidad || 0),
-  0
-);
+    (acc, item) => acc + Number(item.cantidad || 0),
+    0
+  );
 
   if (loading) return <Spinners />;
 
@@ -346,8 +490,6 @@ const CardLayout = ({ onClose, id }) => {
           />
 
           <article className="modal-content">
-            
-
             <button
               className="btn btn-primary position-absolute"
               onClick={() => setDisabled(!disabled)}
@@ -357,73 +499,86 @@ const CardLayout = ({ onClose, id }) => {
 
             <header className="modal-header my-3 my-lg-0 ms-3 me-5" />
 
-              <h3 className="text-center ">Lotes de inventario</h3>
+            <h3 className="text-center">Lotes de inventario</h3>
 
-  <table className="mt-3">
-    <thead>
-      <tr>
-        <th>Cantidad</th>
-        <th>Caducidad</th>
-        <th>Número de lote</th>
-      </tr>
-    </thead>
+            <table className="mt-3">
+              <thead>
+                <tr>
+                  <th>Cantidad</th>
+                  <th>Caducidad</th>
+                  <th>Número de lote</th>
+                </tr>
+              </thead>
 
-   <tbody>
-       
+              <tbody>
+                {formData.inventario?.map((item, index) => (
+                  <tr key={item.inventario_id}>
+                    <td>
+                      <input
+                        type="number"
+                        disabled={disabled}
+                        value={item.cantidad || ""}
+                        onChange={(e) =>
+                          handleInventarioChange(
+                            index,
+                            "cantidad",
+                            e.target.value
+                          )
+                        }
+                        className="form-control"
+                        min="0"
+                        step="1"
+                      />
+                    </td>
 
-  {formData.inventario?.map((item, index) => (
-    <tr key={item.inventario_id} >
+                    <td>
+                      <input
+                        type="date"
+                        disabled={disabled}
+                        value={formatDate(item.fecha_caducidad)}
+                        onChange={(e) =>
+                          handleInventarioChange(
+                            index,
+                            "fecha_caducidad",
+                            e.target.value
+                          )
+                        }
+                        className="form-control"
+                      />
+                    </td>
 
-      <td>
-        <input
-          type="number"
-          disabled={disabled}
-          value={item.cantidad}
-onChange={(e) =>
-    handleInventarioChange(index, "cantidad", e.target.value)
-  }
-          className="form-control"
-        />
-      </td>
+                    <td>
+                      <input
+                        type="text"
+                        disabled={disabled}
+                        value={item.numero_lote || ""}
+                        onChange={(e) =>
+                          handleInventarioChange(
+                            index,
+                            "numero_lote",
+                            e.target.value
+                          )
+                        }
+                        className="form-control"
+                        maxLength={50}
+                      />
+                    </td>
+                  </tr>
+                ))}
 
-      <td>
-        <input
-          type="date"
-          disabled={disabled}
-          value={formatDate(item.fecha_caducidad)}
-          onChange={(e) =>
-    handleInventarioChange(index, "fecha_caducidad", e.target.value)
-  }        className="form-control"
-        />
-      </td>
-
-      <td>
-        <input type="number"
-        disabled={disabled}
-          value={item.numero_lote}
-onChange={(e) =>
-    handleInventarioChange(index, "numero_lote", e.target.value)
-  }
-          className="form-control" />
-      </td>
-
-     
-    </tr>
-  ))}
-   <tr>
-        <th>{totalCantidad} Cantidad total</th>
-        </tr>
-  
-</tbody>
-  </table>
+                <tr>
+                  <th>{totalCantidad} Cantidad total</th>
+                </tr>
+              </tbody>
+            </table>
 
             <form onSubmit={handleSubmit}>
               <div className="container-fluid mt-5">
-                {/* Nombre */}
                 <div className="mb-3 row align-items-center">
                   <label className="col-sm-3 col-form-label text-nowrap">
                     Nombre
                   </label>
+
                   <div className="col-sm-9">
                     <input
                       type="text"
@@ -432,15 +587,17 @@ onChange={(e) =>
                       onChange={handleChange}
                       className="form-control"
                       disabled={disabled}
+                      minLength={3}
+                      maxLength={80}
                     />
                   </div>
                 </div>
 
-                {/* Descripción */}
                 <div className="mb-3 row align-items-center">
                   <label className="col-sm-3 col-form-label text-nowrap">
                     Descripción
                   </label>
+
                   <div className="col-sm-9">
                     <textarea
                       name="descripcion"
@@ -449,18 +606,18 @@ onChange={(e) =>
                       className="form-control"
                       rows="2"
                       disabled={disabled}
+                      maxLength={300}
                     />
                   </div>
                 </div>
 
                 <div className="row">
-                  {/* Columna 1 */}
                   <div className="col-md-6">
-                    {/* Categoría */}
                     <div className="mb-3 row align-items-center">
                       <label className="col-sm-6 col-form-label text-nowrap">
                         Categoria
                       </label>
+
                       <div className="col-sm-6">
                         <select
                           name="categoria_id"
@@ -470,6 +627,7 @@ onChange={(e) =>
                           disabled={disabled}
                         >
                           <option value="">Selecciona una categoria</option>
+
                           {categorias.map((c) => (
                             <option key={c.id} value={c.id}>
                               {c.nombre}
@@ -479,7 +637,6 @@ onChange={(e) =>
                       </div>
                     </div>
 
-                    {/* Inputs dinámicos */}
                     {[
                       ["Precio de compra", "precio_compra", "number"],
                       ["Precio de venta", "precio_venta", "number"],
@@ -489,6 +646,7 @@ onChange={(e) =>
                         <label className="col-sm-6 col-form-label text-nowrap">
                           {label}
                         </label>
+
                         <div className="col-sm-6">
                           <input
                             type={type}
@@ -497,22 +655,19 @@ onChange={(e) =>
                             onChange={handleChange}
                             className="form-control"
                             disabled={disabled}
+                            min="0"
+                            step={name.includes("precio") ? "0.01" : "1"}
                           />
                         </div>
                       </div>
-                    
                     ))}
                   </div>
 
-                  {/* Columna 2 */}
-                  <div className="col-md-6">
-                        <div>
+                  <div className="col-md-6"></div>
 
-</div>
-                    {/* Fecha */}
-                  
-                  </div>
-
+                  {error && (
+                    <div className="alert alert-danger py-2">{error}</div>
+                  )}
 
                   <div className="d-flex justify-content-between align-items-end gap-5">
                     <button
@@ -523,7 +678,11 @@ onChange={(e) =>
                       Cancelar
                     </button>
 
-                    <button className="btn btn-success" type="submit">
+                    <button
+                      className="btn btn-success"
+                      type="submit"
+                      disabled={disabled}
+                    >
                       Guardar cambios
                     </button>
                   </div>
@@ -538,7 +697,6 @@ onChange={(e) =>
 };
 
 export default CardLayout;
-
 
 ===== productsDashboard.jsx =====
 
@@ -856,6 +1014,7 @@ import { useProducts } from "./hooks/useProducts";
 import Spinners from "../spiners/spiners";
 import CardLayout from "./cardLayout/CardLayout";
 import NewProduct from "./newProduct/newProduct";
+import NewCategory from "./newCategory/NewCategory";
 //import InventoryDashboard from "./dashboard/productsDashboard";
 
 import "./getProducts.css";
@@ -864,18 +1023,24 @@ const GetProducts = () => {
   const {
     items,
     loading,
+    categories,
+    selectedCategory,
     search,
     sortField,
     sortOrder,
     setSortField,
     setSortOrder,
+    handleCategoryFilter,
     handleSearch,
+    handleSoftDelete,
     refetch,
+    refetchCategories,
   } = useProducts();
 
   const [showCard, setShowCard] = useState(false);
   const [fadeIn, setFadeIn] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [showExpirationDays, setShowExpirationDays] = useState(false);
 
   // fade
   useEffect(() => {
@@ -903,6 +1068,19 @@ const GetProducts = () => {
     refetch();
   };
 
+  const handleDelete = async (event, productId) => {
+    event.stopPropagation();
+
+    const confirmed = window.confirm("¿Seguro que quieres eliminar este producto?");
+    if (!confirmed) return;
+
+    try {
+      await handleSoftDelete(productId);
+    } catch (error) {
+      alert(error.message || "No se pudo eliminar el producto");
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return "";
     return new Intl.DateTimeFormat("es-ES", {
@@ -910,32 +1088,77 @@ const GetProducts = () => {
     }).format(new Date(dateString));
   };
 
-  const hoy = new Date();
+  const getDaysUntilExpiration = (dateString) => {
+    if (!dateString) return null;
 
+    const today = new Date();
+    const expirationDate = new Date(dateString);
+    today.setHours(0, 0, 0, 0);
+    expirationDate.setHours(0, 0, 0, 0);
 
+    return Math.ceil((expirationDate - today) / (1000 * 60 * 60 * 24));
+  };
+
+  const formatExpiration = (dateString) => {
+    if (!showExpirationDays) return formatDate(dateString);
+
+    const days = getDaysUntilExpiration(dateString);
+    if (days === null) return "";
+    if (days < 0) return `Caducado hace ${Math.abs(days)} dias`;
+    if (days === 0) return "Caduca hoy";
+    if (days === 1) return "1 dia restante";
+    return `${days} dias restantes`;
+  };
 
   if (loading) return <Spinners />;
 
   return (
     <>
 
-      <div className="bg-white  d-flex justify-content-between align-items-center sticky-top" >
-        <h1 className="ms-4 mt-2 mb-3 ps-5 ps-md-4">
+<div className="bg-white d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 px-3 py-2">      
+  <h1 className="ms-4 mt-2 mb-3 ps-5 ps-md-4 sticky-top">
           Listado de productos
         </h1>
-        <NewProduct onCreated={refetch} />
+       
+        <div className="d-flex align-items-center gap-5">
+           
+          <NewCategory onCreated={refetchCategories} />
+          <NewProduct onCreated={refetch} />
+        </div>
       </div>
 
-      <div className="bg-white pt-2 pb-2 px-5 d-flex flex-column flex-md-row justify-content-between gap-2 ">
-        <div className="d-flex gap-3 ">
+      <div className="bg-white py-3 px-md-5 px-3 d-flex  ">
+       
+        <div className="d-flex flex-column flex-md-row gap-3 alin-items-start align-items-md-center">
+           <input
+          type="text"
+          className="form-control w-100 w-md-25"
+          placeholder="Buscar por nombre"
+          value={search}
+          onChange={(e) => handleSearch(e.target.value)}
+        />
+          <select
+            className="form-select w-auto"
+            value={selectedCategory}
+            onChange={(e) => handleCategoryFilter(e.target.value)}
+          >
+            <option value="">Todas las categorias</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.nombre}
+              </option>
+            ))}
+          </select>
+
           <select
             className="form-select w-auto"
             value={sortField}
             onChange={(e) => setSortField(e.target.value)}
           >
             <option value="predefinido">Ordenar por</option>
-            <option value="cantidad">Cantidad</option>
+            <option value="stock_total">Cantidad</option>
             <option value="precio_compra">Precio</option>
+            <option value="fecha_caducidad">Caducidad</option>
           </select>
 
           <select
@@ -943,30 +1166,33 @@ const GetProducts = () => {
             value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value)}
           >
-            <option value="asc">Menor</option>
-            <option value="desc">Mayor</option>
+            <option value="asc">Menor / más próxima</option>
+            <option value="desc">Mayor / más lejana</option>
           </select>
         </div>
 
-        <input
-          type="text"
-          className="form-control"
-          placeholder="Buscar producto..."
-          value={search}
-          onChange={(e) => handleSearch(e.target.value)}
-        />
+        
       </div>
 
-      <div className={`fade-init${fadeIn ? " fade-in" : ""} px-5 py-3`}>
+      <div className={`fade-init${fadeIn ? " fade-in" : ""} px-md-5 py-3 px-3`}>
         <table className="table table-hover shadow me-5">
           <thead className="table-primary">
             <tr>
               <th>Nombre</th>
               <th className="d-none d-md-table-cell">Categoría</th>
               <th className="text-center">Cantidad</th>
-              <th className="d-none d-md-table-cell text-center">
-                Caducidad
+              <th className="d-md-table-cell text-center">
+                <button
+                  type="button"
+                  className="btn btn-link p-0 text-decoration-none fw-semibold text-dark"
+                  title="Alternar entre fecha de caducidad y dias restantes"
+                  onClick={() => setShowExpirationDays((current) => !current)}
+                >
+                  {showExpirationDays ? "Dias restantes" : "Caducidad"}
+                </button>
               </th>
+              <th className="d-none d-md-table-cell text-center">
+                Acciones</th>
             </tr>
           </thead>
 
@@ -989,11 +1215,29 @@ const GetProducts = () => {
   {item.stock_total}
 </td>
 
-                <td className="d-none d-md-table-cell text-center">
-                  {formatDate(item.fecha_caducidad)}
+              <td
+  className={`d-md-table-cell text-center ${
+    (() => {
+      const diferenciaDias = getDaysUntilExpiration(item.fecha_caducidad);
+      if (diferenciaDias === null) return "";
+
+      return diferenciaDias <= 40 ? "bg-stock-minimo" : "";
+    })()
+  }`}
+>
+                  {formatExpiration(item.fecha_caducidad)}
                 </td>
 
-               
+                <td className="d-none d-md-table-cell text-center">
+                  <button
+                    type="button"
+                    className="btn btn-link p-0 text-decoration-none"
+                    title="Eliminar producto"
+                    onClick={(event) => handleDelete(event, item.producto_id)}
+                  >
+                    🗑️
+                  </button>
+                </td>
 
               </tr>
             ))}
@@ -1019,21 +1263,229 @@ const GetProducts = () => {
 export default GetProducts;
 
 
+===== NewCategory.jsx =====
+
+import { useState } from "react";
+import { productService } from "../services/productService";
+
+const initialForm = {
+  nombre: "",
+  descripcion: "",
+};
+
+const NewCategory = ({ onCreated }) => {
+  const [form, setForm] = useState(initialForm);
+  const [showModal, setShowModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleOpenModal = () => {
+    setError("");
+    setShowModal(true);
+  };
+
+  const handleCloseModal = () => {
+    if (saving) return;
+
+    setShowModal(false);
+    setError("");
+    setForm(initialForm);
+  };
+
+  const validateForm = () => {
+  const nombre = form.nombre.trim();
+
+  // obligatorio
+  if (!nombre) {
+    return "El nombre es obligatorio";
+  }
+
+  // mínimo
+  if (nombre.length < 3) {
+    return "El nombre debe tener al menos 3 caracteres";
+  }
+
+  // máximo
+  if (nombre.length > 50) {
+    return "El nombre no puede superar los 50 caracteres";
+  }
+
+  // caracteres permitidos
+  const regex = /^[a-zA-ZÀ-ÿ0-9\s-_]+$/;
+
+  if (!regex.test(nombre)) {
+    return "El nombre contiene caracteres no válidos";
+  }
+
+  // descripción opcional
+  if (form.descripcion.length > 200) {
+    return "La descripción no puede superar los 200 caracteres";
+  }
+
+  return null;
+};
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    // limpiar error mientras escribe
+    if (error) {
+      setError("");
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const validationError = validateForm();
+
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+
+    try {
+     await productService.createCategory({
+  nombre: form.nombre.trim(),
+  descripcion: form.descripcion.trim(),
+});
+
+      onCreated?.();
+      handleCloseModal();
+    } catch (submitError) {
+      console.error("Error al crear categoria:", submitError);
+
+      setError(
+        submitError.message || "No se pudo crear la categoria"
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <button className="btn btn-warning my-3" onClick={handleOpenModal}>
+        Nueva categoria
+      </button>
+
+      {showModal && (
+        <div
+          className="modal d-block"
+          tabIndex="-1"
+          style={{ background: "rgba(0,0,0,0.5)" }}
+        >
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title w-100 text-center">
+                  Nueva categoria
+                </h5>
+
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={handleCloseModal}
+                  disabled={saving}
+                />
+              </div>
+
+              <div className="modal-body">
+                <form onSubmit={handleSubmit}>
+                  <div className="mb-3">
+                    <label className="form-label">
+                      Nombre
+                    </label>
+
+                    <input
+                      type="text"
+                      name="nombre"
+                      value={form.nombre}
+                      onChange={handleChange}
+                      className="form-control"
+                      required
+                      maxLength={50}
+                    />
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label">
+                      Descripcion
+                    </label>
+
+                    <textarea
+                      name="descripcion"
+                      value={form.descripcion}
+                      onChange={handleChange}
+                      className="form-control"
+                      rows="3"
+                      maxLength={200}
+                    />
+                  </div>
+
+                  {error && (
+                    <div className="alert alert-danger py-2">
+                      {error}
+                    </div>
+                  )}
+
+                  <div className="d-flex justify-content-between">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={handleCloseModal}
+                      disabled={saving}
+                    >
+                      Cancelar
+                    </button>
+
+                    <button
+                      type="submit"
+                      className="btn btn-warning"
+                      disabled={saving}
+                    >
+                      {saving ? "Creando..." : "Crear categoria"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+export default NewCategory;
+
 ===== newProduct.jsx =====
 
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "../../../services/authService";
+import {
+  validateProductForm,
+  buildProductPayload,
+} from "../utils/productFormUtils";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 const initialForm = {
   producto_nombre: "",
   producto_descripcion: "",
-  producto_categoria: "",
-  cantidad: "",
+  categoria_id: "",
   precio_compra: "",
   precio_venta: "",
   stock_minimo: "",
+  cantidad: "",
   fecha_caducidad: "",
   numero_lote: "",
 };
@@ -1086,54 +1538,63 @@ const NewProduct = ({ onCreated }) => {
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
+  const { name, value } = e.target;
 
-  const buildPayload = () => ({
-    ...form,
-    producto_categoria: form.producto_categoria ? Number(form.producto_categoria) : "",
-    cantidad: form.cantidad === "" ? "" : Number(form.cantidad),
-    precio_compra: form.precio_compra === "" ? "" : Number(form.precio_compra),
-    precio_venta: form.precio_venta === "" ? "" : Number(form.precio_venta),
-    stock_minimo: form.stock_minimo === "" ? "" : Number(form.stock_minimo),
-    fecha_caducidad: form.fecha_caducidad
-      ? new Date(form.fecha_caducidad).toISOString()
-      : null,
-  });
+  setForm((prev) => ({
+    ...prev,
+    [name]: value,
+  }));
+
+  if (error) {
+    setError("");
+  }
+};
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    setError("");
+  e.preventDefault();
 
-    try {
-      const response = await fetchWithAuth(`${API_URL}/productos/newProduct`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildPayload()),
-      });
+  const validationError = validateProductForm(form);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || errorData.message || "Error al guardar los datos");
-      }
+  if (validationError) {
+    setError(validationError);
+    return;
+  }
 
-      await response.json();
-      onCreated?.();
-      handleCloseModal();
-    } catch (submitError) {
-      console.error("Error al guardar:", submitError);
-      setError(submitError.message || "Ocurrio un error al guardar los datos");
-    } finally {
-      setSaving(false);
+  setSaving(true);
+  setError("");
+
+  try {
+    const response = await fetchWithAuth(`${API_URL}/productos/newProduct`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(buildProductPayload(form)),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+
+      throw new Error(
+        errorData.error ||
+          errorData.message ||
+          "Error al guardar los datos"
+      );
     }
-  };
+
+    await response.json();
+    onCreated?.();
+    handleCloseModal();
+  } catch (submitError) {
+    console.error("Error al guardar:", submitError);
+    setError(submitError.message || "Ocurrió un error al guardar los datos");
+  } finally {
+    setSaving(false);
+  }
+};
 
   return (
     <>
       <button className="btn btn-success my-3 me-5" onClick={handleAddClick}>
-        Anadir producto
+        Nuevo producto
       </button>
 
       {showModal && (
@@ -1190,22 +1651,22 @@ const NewProduct = ({ onCreated }) => {
                           <label className="col-sm-6 col-form-label text-nowrap">Categoria</label>
                           <div className="col-sm-6">
                             <select
-                              name="producto_categoria"
-                              value={form.producto_categoria}
-                              onChange={handleChange}
-                              className="form-control"
-                              disabled={loadingCategorias}
-                              required
-                            >
-                              <option value="">
-                                {loadingCategorias ? "Cargando..." : "Selecciona una categoria"}
-                              </option>
-                              {categorias.map((c) => (
-                                <option key={c.id} value={c.id}>
-                                  {c.nombre}
-                                </option>
-                              ))}
-                            </select>
+  name="categoria_id"
+  value={form.categoria_id}
+  onChange={handleChange}
+  className="form-control"
+  disabled={loadingCategorias}
+  required
+>
+  <option value="">
+    {loadingCategorias ? "Cargando..." : "Selecciona una categoria"}
+  </option>
+  {categorias.map((c) => (
+    <option key={c.id} value={c.id}>
+      {c.nombre}
+    </option>
+  ))}
+</select>
                           </div>
                         </div>
 

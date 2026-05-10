@@ -1,4 +1,9 @@
 const inventoryService = require("./inventory.service");
+const {
+  buildCreateCategoryPayload,
+  buildCreateProductPayload,
+  buildUpdateProductPayload,
+} = require("./inventory.validators");
 
 async function getProducts(req, res) {
   console.log("Controlador Listando productos", req.body);
@@ -23,16 +28,16 @@ async function getCategories(req, res) {
 
 async function createCategory(req, res) {
   try {
-    const { nombre, descripcion } = req.body;
+    const validation = buildCreateCategoryPayload(req.body);
 
-    if (!nombre || !nombre.trim()) {
-      return res.status(400).json({ error: "El nombre de la categoria es obligatorio" });
+    if (validation.error) {
+      return res.status(400).json({ error: validation.error });
     }
 
-    const category = await inventoryService.createCategoryForTenant(req.tenantId, {
-      nombre: nombre.trim(),
-      descripcion: descripcion?.trim() || null,
-    });
+    const category = await inventoryService.createCategoryForTenant(
+      req.tenantId,
+      validation.category
+    );
 
     res.status(201).json(category);
   } catch (error) {
@@ -84,31 +89,25 @@ async function updateProduct(req, res) {
 
   try {
     const { id } = req.params;
+    const validation = buildUpdateProductPayload(req.body);
 
-    const {
-      nombre,
-      descripcion,
-      categoria_id,
-      precio_compra,
-      precio_venta,
-      stock_minimo,
-      inventario
-    } = req.body;
+    if (validation.error) {
+      return res.status(400).json({ error: validation.error });
+    }
 
-    const productoData = {
-      nombre,
-      descripcion,
-      categoria_id,
-      precio_compra,
-      precio_venta,
-      stock_minimo,
-      inventario
-    };
+    const categoryExists = await inventoryService.categoryBelongsToTenant(
+      req.tenantId,
+      validation.product.categoria_id
+    );
+
+    if (!categoryExists) {
+      return res.status(400).json({ error: "La categoria seleccionada no es valida" });
+    }
 
     await inventoryService.updateProductData(
       req.tenantId,
       id,
-      productoData,
+      validation.product,
     );
 
     res.json({ message: "Producto e inventario actualizados correctamente" });
@@ -120,36 +119,26 @@ async function updateProduct(req, res) {
 
 async function createProduct(req, res) {
   try {
-    const {
-      producto_nombre,
-      producto_descripcion,
-      producto_categoria,
-      precio_compra,
-      precio_venta,
-      stock_minimo,
-      cantidad,
-      fecha_caducidad,
-      numero_lote,
-    } = req.body;
+    const validation = buildCreateProductPayload(req.body, req.tenantId);
 
-    const productoData = {
-      tenant_id: req.tenantId,
-      nombre: producto_nombre,
-      descripcion: producto_descripcion,
-      categoria_id: producto_categoria || null,
-      precio_compra,
-      precio_venta,
-      stock_minimo,
-    };
+    if (validation.error) {
+      return res.status(400).json({ error: validation.error });
+    }
 
-    const inventarioData = {
-      tenant_id: req.tenantId,
-      cantidad,
-      fecha_caducidad,
-      numero_lote,
-    };
+    const categoryExists = await inventoryService.categoryBelongsToTenant(
+      req.tenantId,
+      validation.product.categoria_id
+    );
 
-    const result = await inventoryService.createNewProduct(productoData, inventarioData);
+    if (!categoryExists) {
+      return res.status(400).json({ error: "La categoria seleccionada no es valida" });
+    }
+
+    const result = await inventoryService.createNewProduct(
+      validation.product,
+      validation.inventory
+    );
+
     res.status(201).json({ message: "Producto creado correctamente", ...result });
   } catch (error) {
     console.error(error);

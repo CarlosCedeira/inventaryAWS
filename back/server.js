@@ -20,6 +20,7 @@ app.use(express.json());
 // Rutas
 app.use("/auth", require("./modules/auth/auth.routes"));
 app.use("/productos", require("./modules/inventory/inventory.routes"));
+app.use("/movimientos", require("./modules/movements/movements.routes"));
 
 
 app.listen(3000, "0.0.0.0", () => {

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Routes, Route, Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import GetProducts from "../products/GetProducts.jsx";
+import GetMovements from "../movements/GetMovements.jsx";
 import UsersManager from "../logging.jsx";
 import { clearSession, getSession } from "../../services/authService";
 
@@ -65,7 +66,7 @@ function Nav() {
         <div
           className={`bg-dark sidebar-sticky${isCollapsed ? " collapsed" : ""}`}
           style={{
-            width: isCollapsed ? "0" : "250px",
+            width: isCollapsed ? "0" : "200px",
             padding: isCollapsed ? "0" : "0.1rem 0.1rem",
             overflowX: "hidden",
             transition:
@@ -102,9 +103,28 @@ function Nav() {
                   Productos
                 </Link>
               </li>
+              <li className="nav-item mt-2">
+                <Link
+                  to="/movimientos"
+                  className={`nav-link text-white ${
+                    location.pathname === "/movimientos" ? "active" : ""
+                  }`}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    height="25px"
+                    viewBox="0 -960 960 960"
+                    width="25px"
+                    fill="#FFFFFF"
+                  >
+                    <path d="M280-160 80-360l56-56 104 103v-487h80v487l104-103 56 56-200 200Zm400 0L480-360l56-56 104 103v-487h80v487l104-103 56 56-200 200Z" />
+                  </svg>{" "}
+                  Movimientos
+                </Link>
+              </li>
             </ul>
 
-            <div className="sidebar-user mt-auto mx-3 mb-4 p-3">
+            <div className="sidebar-user mt-auto mx-2 mb-4 ">
               <div className="d-flex align-items-center gap-3">
                 <div className="sidebar-user-avatar">{userInitial}</div>
                 <div className="sidebar-user-meta">
@@ -137,6 +157,14 @@ function Nav() {
             element={
               <ProtectedRoute isAuthenticated={isAuthenticated}>
                 <GetProducts />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/movimientos"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <GetMovements />
               </ProtectedRoute>
             }
           />

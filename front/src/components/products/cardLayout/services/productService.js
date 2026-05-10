@@ -10,17 +10,6 @@ export async function getProductById(id) {
 
 export async function updateProduct(id, data) {
   console.log("Updating product id:", id);
-  
-  const {
-    producto_id,
-    producto_categoria,
-    nombre,
-    descripcion,
-    precio_compra,
-    precio_venta,
-    stock_minimo
-   
-  } = data;
   console.log("Updating product with data:", data);
 
   const res = await fetchWithAuth(`${API_URL}/productos/actualizar/${id}`, {

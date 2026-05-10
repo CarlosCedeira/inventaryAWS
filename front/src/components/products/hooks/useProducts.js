@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { productService } from "../services/productService";
 
 export const useProducts = () => {
@@ -84,21 +84,32 @@ export const useProducts = () => {
   }, []);
 
   // ordenar
-  useEffect(() => {
-    if (sortField === "predefinido") return;
+  const sortedItems = useMemo(() => {
+    if (sortField === "predefinido") return items;
 
-    const sorted = [...items].sort((a, b) => {
-      const aVal = Number(a[sortField]);
-      const bVal = Number(b[sortField]);
+    return [...items].sort((a, b) => {
+      let aVal;
+      let bVal;
+
+      if (sortField === "fecha_caducidad") {
+        aVal = a.fecha_caducidad
+          ? new Date(a.fecha_caducidad).getTime()
+          : Infinity;
+
+        bVal = b.fecha_caducidad
+          ? new Date(b.fecha_caducidad).getTime()
+          : Infinity;
+      } else {
+        aVal = Number(a[sortField]);
+        bVal = Number(b[sortField]);
+      }
 
       return sortOrder === "asc" ? aVal - bVal : bVal - aVal;
     });
-
-    setItems(sorted);
-  }, [sortField, sortOrder]);
+  }, [items, sortField, sortOrder]);
 
   return {
-    items,
+    items: sortedItems,
     loading,
     categories,
     selectedCategory,

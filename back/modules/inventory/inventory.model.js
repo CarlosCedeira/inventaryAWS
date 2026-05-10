@@ -88,6 +88,26 @@ async function createCategory(tenantId, categoryData) {
   }
 }
 
+// Comprobar que una categoria pertenece al tenant actual
+async function categoryExistsForTenant(tenantId, categoryId) {
+  const connection = await getConnection();
+  try {
+    const [rows] = await connection.execute(
+      `
+      SELECT id
+      FROM categorias
+      WHERE tenant_id = ? AND id = ?
+      LIMIT 1
+      `,
+      [tenantId, categoryId]
+    );
+
+    return rows.length > 0;
+  } finally {
+    await connection.end();
+  }
+}
+
 // Buscar producto por nombre
 async function searchProductsByName(tenantId, name) {
   const connection = await getConnection();
@@ -113,10 +133,10 @@ async function searchProductsByName(tenantId, name) {
         ) AS fecha_caducidad
       FROM productos p
       LEFT JOIN inventario i
-        ON i.producto_id = p.id AND i.tenant_id = p.tenant_id AND p.eliminado = 0
+        ON i.producto_id = p.id AND i.tenant_id = p.tenant_id
       LEFT JOIN categorias c
         ON p.categoria_id = c.id AND c.tenant_id = p.tenant_id
-      WHERE p.tenant_id = ? AND p.nombre LIKE CONCAT('%', ?, '%')
+      WHERE p.tenant_id = ? AND p.eliminado = 0 AND p.nombre LIKE CONCAT('%', ?, '%')
       GROUP BY
         p.id,
         p.nombre,
@@ -235,6 +255,8 @@ async function updateProduct(tenantId, productId, productoData, invnetarioData) 
   console.log("informacion inventarioData:", invnetarioData);
   const connection = await getConnection();
   try {
+    await connection.beginTransaction();
+
     await connection.execute(
       `UPDATE productos
        SET nombre = ?, descripcion = ?, categoria_id = ?, precio_compra = ?, precio_venta = ?, stock_minimo = ?
@@ -268,6 +290,11 @@ async function updateProduct(tenantId, productId, productoData, invnetarioData) 
     ]
   );
 }
+
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
     
   } finally {
     await connection.end();
@@ -345,6 +372,7 @@ module.exports = {
   getAllProducts,
   getAllCategories,
   createCategory,
+  categoryExistsForTenant,
   searchProductsByName,
   getProductsByCategory,
   getProductById,
