@@ -21,6 +21,7 @@ app.use(express.json());
 app.use("/auth", require("./modules/auth/auth.routes"));
 app.use("/productos", require("./modules/inventory/inventory.routes"));
 app.use("/movimientos", require("./modules/movements/movements.routes"));
+app.use("/ventas", require("./modules/quickSales/quickSales.routes"));
 
 
 app.listen(3000, "0.0.0.0", () => {

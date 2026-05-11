@@ -1,0 +1,5 @@
+.movement-product-results {
+  z-index: 4000;
+  max-height: 220px;
+  overflow-y: auto;
+}

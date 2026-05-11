@@ -34,9 +34,6 @@ h1 {
   background-color: #f84d2ace !important; /* naranja suave */
 }
 
-.bg-no-stock {
-  background-color: #ff7f66 !important; /* rojo cálido menos intenso */
-}
 
 .fade-init {
   opacity: 0;
@@ -50,6 +47,34 @@ h1 {
 .action-icon:hover {
   filter: brightness(1.5);
   cursor: pointer;
+}
+
+.product-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-width: 150px;
+}
+
+.quick-sale-form {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.quick-sale-input {
+  width: 70px;
+  text-align: center;
+}
+
+.quick-sale-button {
+  width: 34px;
+  height: 31px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
 }
 
 /* Estilos tarjeta */

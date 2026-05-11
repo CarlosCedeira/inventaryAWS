@@ -1,4 +1,4 @@
-import { fetchWithAuth } from "../../../services/authService";
+import { fetchWithAuth } from "../../services/authService";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -54,6 +54,21 @@ export const productService = {
     if (!res.ok) {
       const error = await res.json().catch(() => ({}));
       throw new Error(error.error || "Error al eliminar producto");
+    }
+
+    return res.json();
+  },
+
+  quickSale: async (productId, cantidad) => {
+    const res = await fetchWithAuth(`${API_URL}/ventas/${productId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cantidad }),
+    });
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || "Error al registrar la venta");
     }
 
     return res.json();

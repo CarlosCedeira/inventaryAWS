@@ -1,11 +1,10 @@
 const express = require("express");
 const router = express.Router();
-const movementsController = require("./movements.controller");
+const quickSalesController = require("./quickSales.controller");
 const { requireAuth } = require("../auth/auth.middleware");
 
 router.use(requireAuth);
 
-router.get("/", movementsController.getMovements);
-router.post("/", movementsController.createMovement);
+router.put("/:productId", quickSalesController.registerQuickSale);
 
 module.exports = router;

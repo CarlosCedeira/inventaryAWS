@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { productService } from "../services/productService";
+import { productService } from "../productService";
 
 const initialForm = {
   nombre: "",

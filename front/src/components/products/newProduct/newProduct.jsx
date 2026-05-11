@@ -3,7 +3,7 @@ import { fetchWithAuth } from "../../../services/authService";
 import {
   validateProductForm,
   buildProductPayload,
-} from "../utils/productFormUtils";
+} from "../productFormUtils";
 
 const API_URL = import.meta.env.VITE_API_URL;
 

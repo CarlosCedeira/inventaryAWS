@@ -1,11 +1,15 @@
 import { useState, useEffect } from "react";
-import { useProducts } from "./hooks/useProducts";
+import { useProducts } from "./useProducts";
 
 import Spinners from "../spiners/spiners";
 import CardLayout from "./cardLayout/CardLayout";
 import NewProduct from "./newProduct/newProduct";
 import NewCategory from "./newCategory/NewCategory";
 //import InventoryDashboard from "./dashboard/productsDashboard";
+import {
+  normalizeStockQuantity,
+  validateStockQuantity,
+} from "../../utils/stockQuantity";
 
 import "./getProducts.css";
 
@@ -22,7 +26,7 @@ const GetProducts = () => {
     setSortOrder,
     handleCategoryFilter,
     handleSearch,
-    handleSoftDelete,
+    handleQuickSale,
     refetch,
     refetchCategories,
   } = useProducts();
@@ -32,6 +36,8 @@ const GetProducts = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showExpirationDays, setShowExpirationDays] = useState(false);
   const [showStockComparison, setShowStockComparison] = useState(false);
+  const [saleQuantities, setSaleQuantities] = useState({});
+  const [sellingProductId, setSellingProductId] = useState(null);
 
   useEffect(() => {
     if (!loading) {
@@ -57,16 +63,39 @@ const GetProducts = () => {
     refetch();
   };
 
-  const handleDelete = async (event, productId) => {
+  const handleSaleQuantityChange = (productId, value) => {
+    setSaleQuantities((current) => ({
+      ...current,
+      [productId]: value,
+    }));
+  };
+
+  const handleQuickSaleSubmit = async (event, productId) => {
+    event.preventDefault();
     event.stopPropagation();
 
-    const confirmed = window.confirm("¿Seguro que quieres eliminar este producto?");
-    if (!confirmed) return;
+    const quantityError = validateStockQuantity(saleQuantities[productId], {
+      label: "La cantidad vendida",
+    });
+
+    if (quantityError) {
+      alert(quantityError);
+      return;
+    }
+
+    const quantity = normalizeStockQuantity(saleQuantities[productId]);
 
     try {
-      await handleSoftDelete(productId);
+      setSellingProductId(productId);
+      await handleQuickSale(productId, quantity);
+      setSaleQuantities((current) => ({
+        ...current,
+        [productId]: "",
+      }));
     } catch (error) {
-      alert(error.message || "No se pudo eliminar el producto");
+      alert(error.message || "No se pudo registrar la venta");
+    } finally {
+      setSellingProductId(null);
     }
   };
 
@@ -132,7 +161,7 @@ const GetProducts = () => {
 
   return (
     <>
-      <div className="bg-white d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 px-3 py-2">
+      <div className="bg-white d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center pt-2 ">
         <h1 className="ms-4 mt-2 mb-3 ps-5 ps-md-4 sticky-top">
           Listado de productos
         </h1>
@@ -207,7 +236,7 @@ const GetProducts = () => {
                 </button>
               </th>
 
-              <th className="d-md-table-cell text-center">
+              <th className="d-none d-md-table-cell text-center">
                 <button
                   type="button"
                   className="btn btn-link p-0 text-decoration-none fw-semibold text-dark"
@@ -218,7 +247,7 @@ const GetProducts = () => {
                 </button>
               </th>
 
-              <th className="d-none d-md-table-cell text-center">
+              <th className="d-md-table-cell text-center">
                 Acciones
               </th>
             </tr>
@@ -246,7 +275,7 @@ const GetProducts = () => {
                 </td>
 
                 <td
-                  className={`d-md-table-cell text-center ${
+                  className={`d-none d-md-table-cell text-center ${
                     (() => {
                       const diferenciaDias = getDaysUntilExpiration(
                         item.fecha_caducidad
@@ -261,15 +290,52 @@ const GetProducts = () => {
                   {formatExpiration(item.fecha_caducidad)}
                 </td>
 
-                <td className="d-none d-md-table-cell text-center">
-                  <button
-                    type="button"
-                    className="btn btn-link p-0 text-decoration-none"
-                    title="Eliminar producto"
-                    onClick={(event) => handleDelete(event, item.producto_id)}
+                <td className="d-md-table-cell text-center">
+                  <div
+                    className="product-actions"
+                    onClick={(event) => event.stopPropagation()}
                   >
-                    🗑️
-                  </button>
+                    {/*<button
+                      type="button"
+                      className="btn btn-link p-0 text-decoration-none"
+                      title="Eliminar producto"
+                      onClick={(event) => handleDelete(event, item.producto_id)}
+                    >
+                      🗑️
+                    </button></td>*/}
+                    <form
+                      className="quick-sale-form"
+                      onSubmit={(event) =>
+                        handleQuickSaleSubmit(event, item.producto_id)
+                      }
+                    >
+                      <input
+                        type="number"
+                        className="form-control form-control-sm quick-sale-input"
+                        min="1"
+                        max={item.stock_total}
+                        placeholder="0"
+                        value={saleQuantities[item.producto_id] || ""}
+                        onChange={(event) =>
+                          handleSaleQuantityChange(
+                            item.producto_id,
+                            event.target.value
+                          )
+                        }
+                        aria-label={`Cantidad vendida de ${item.producto_nombre}`}
+                      />
+                      <button
+                        type="submit"
+                        className="btn btn-sm quick-sale-button"
+                        title="Registrar venta rapida"
+                        disabled={sellingProductId === item.producto_id}
+                      >
+                        🛒
+                      </button>
+                    </form>
+
+                    
+                  </div>
                 </td>
               </tr>
             ))}

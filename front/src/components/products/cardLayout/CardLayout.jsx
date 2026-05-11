@@ -4,7 +4,7 @@ import "./cardLayout.css";
 
 import { useProduct } from "./hooks/useProductForm";
 import { formatDate } from "./utils/date";
-import { validateProductForm } from "../utils/productFormUtils";
+import { validateProductForm } from "../productFormUtils";
 
 const CardLayout = ({ onClose, id }) => {
   const [disabled, setDisabled] = useState(true);

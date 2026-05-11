@@ -110,27 +110,18 @@ function Nav() {
                     location.pathname === "/movimientos" ? "active" : ""
                   }`}
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    height="25px"
-                    viewBox="0 -960 960 960"
-                    width="25px"
-                    fill="#FFFFFF"
-                  >
-                    <path d="M280-160 80-360l56-56 104 103v-487h80v487l104-103 56 56-200 200Zm400 0L480-360l56-56 104 103v-487h80v487l104-103 56 56-200 200Z" />
-                  </svg>{" "}
+             <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="25px" fill="#FFFFFF"><path d="m320-160-56-57 103-103H80v-80h287L264-503l56-57 200 200-200 200Zm320-240L440-600l200-200 56 57-103 103h287v80H593l103 103-56 57Z"/></svg>
                   Movimientos
                 </Link>
               </li>
             </ul>
 
-            <div className="sidebar-user mt-auto mx-2 mb-4 ">
+            <div className=" mt-auto mx-2 mb-4 ">
               <div className="d-flex align-items-center gap-3">
                 <div className="sidebar-user-avatar">{userInitial}</div>
                 <div className="sidebar-user-meta">
                   <div className="sidebar-user-name">{user?.nombre || "Usuario"}</div>
                   <div className="sidebar-user-email">{user?.email || ""}</div>
-                  <div className="sidebar-user-tenant">{user?.tenant_nombre || ""}</div>
                 </div>
               </div>
 

@@ -1,3 +1,8 @@
+import {
+  normalizeStockQuantity,
+  validateStockQuantity,
+} from "../../utils/stockQuantity";
+
 export const validateProductForm = (form) => {
   const nombre = form.producto_nombre.trim();
   const descripcion = form.producto_descripcion.trim();
@@ -35,11 +40,10 @@ export const validateProductForm = (form) => {
     return "El stock mínimo debe ser un número entero";
   }
 
-  if (form.cantidad === "") return "La cantidad inicial es obligatoria";
-  if (Number(form.cantidad) < 0) return "La cantidad inicial no puede ser negativa";
-  if (!Number.isInteger(Number(form.cantidad))) {
-    return "La cantidad inicial debe ser un número entero";
-  }
+  const quantityError = validateStockQuantity(form.cantidad, {
+    label: "La cantidad inicial",
+  });
+  if (quantityError) return quantityError;
 
   if (lote.length > 50) {
     return "El número de lote no puede superar los 50 caracteres";
@@ -55,7 +59,7 @@ export const buildProductPayload = (form) => ({
   precio_compra: Number(form.precio_compra),
   precio_venta: Number(form.precio_venta),
   stock_minimo: Number(form.stock_minimo),
-  cantidad: Number(form.cantidad),
+  cantidad: normalizeStockQuantity(form.cantidad),
   fecha_caducidad: form.fecha_caducidad || null,
   numero_lote: form.numero_lote.trim() || null,
 });

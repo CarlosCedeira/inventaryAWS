@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { productService } from "../services/productService";
+import { productService } from "./productService";
 
 export const useProducts = () => {
   const [items, setItems] = useState([]);
@@ -77,6 +77,23 @@ export const useProducts = () => {
     }
   };
 
+  const handleQuickSale = async (productId, quantity) => {
+    try {
+      const result = await productService.quickSale(productId, quantity);
+      setItems((prev) =>
+        prev.map((item) =>
+          item.producto_id === productId
+            ? { ...item, stock_total: result.stock_nuevo }
+            : item
+        )
+      );
+      return result;
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  };
+
   // inicial
   useEffect(() => {
     fetchProducts();
@@ -121,6 +138,7 @@ export const useProducts = () => {
     handleCategoryFilter,
     handleSearch,
     handleSoftDelete,
+    handleQuickSale,
     refetch: fetchProducts,
     refetchCategories: fetchCategories,
   };

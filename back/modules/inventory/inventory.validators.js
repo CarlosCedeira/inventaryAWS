@@ -1,5 +1,10 @@
-const productNameRegex = /^[a-zA-ZÀ-ÿ0-9\s\-_.,()]+$/;
-const categoryNameRegex = /^[a-zA-ZÀ-ÿ0-9\s\-_]+$/;
+const {
+  normalizeStockQuantity,
+  validateStockQuantity,
+} = require("../../utils/stockQuantity");
+
+const productNameRegex = /^[\p{L}0-9\s_.(),-]+$/u;
+const categoryNameRegex = /^[\p{L}0-9\s_-]+$/u;
 
 function isBlank(value) {
   return value === undefined || value === null || String(value).trim() === "";
@@ -84,10 +89,9 @@ function validateProductFields(product) {
 }
 
 function validateInventoryItem(item) {
-  const quantityError = validateRequiredInteger(
-    item.cantidad,
-    "La cantidad inicial"
-  );
+  const quantityError = validateStockQuantity(item.cantidad, {
+    label: "La cantidad inicial",
+  });
   if (quantityError) return quantityError;
 
   const lot = toTrimmedString(item.numero_lote);
@@ -112,7 +116,7 @@ function normalizeProductFields(product) {
 function normalizeInventoryItem(item) {
   return {
     ...item,
-    cantidad: Number(item.cantidad),
+    cantidad: normalizeStockQuantity(item.cantidad),
     fecha_caducidad: isBlank(item.fecha_caducidad) ? null : item.fecha_caducidad,
     numero_lote: toTrimmedString(item.numero_lote) || null,
   };
