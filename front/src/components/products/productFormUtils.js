@@ -3,7 +3,7 @@ import {
   validateStockQuantity,
 } from "../../utils/stockQuantity";
 
-export const validateProductForm = (form) => {
+export const validateProductForm = (form, { allowZeroQuantity = false } = {}) => {
   const nombre = form.producto_nombre.trim();
   const descripcion = form.producto_descripcion.trim();
   const lote = form.numero_lote.trim();
@@ -40,9 +40,11 @@ export const validateProductForm = (form) => {
     return "El stock mínimo debe ser un número entero";
   }
 
-  const quantityError = validateStockQuantity(form.cantidad, {
-    label: "La cantidad inicial",
-  });
+  const quantityError = allowZeroQuantity
+    ? validateEditableStockQuantity(form.cantidad)
+    : validateStockQuantity(form.cantidad, {
+        label: "La cantidad inicial",
+      });
   if (quantityError) return quantityError;
 
   if (lote.length > 50) {
@@ -51,6 +53,20 @@ export const validateProductForm = (form) => {
 
   return null;
 };
+
+function validateEditableStockQuantity(value) {
+  if (value === undefined || value === null || String(value).trim() === "") {
+    return "La cantidad es obligatoria";
+  }
+
+  const quantity = Number(value);
+
+  if (!Number.isFinite(quantity)) return "La cantidad debe ser un numero valido";
+  if (!Number.isInteger(quantity)) return "La cantidad debe ser un numero entero";
+  if (quantity < 0) return "La cantidad no puede ser negativa";
+
+  return null;
+}
 
 export const buildProductPayload = (form) => ({
   producto_nombre: form.producto_nombre.trim(),

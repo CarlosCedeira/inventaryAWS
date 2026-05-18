@@ -19,8 +19,8 @@ export async function updateProduct(id, data) {
   });
 
   if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.message || "Error al actualizar");
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || err.message || "Error al actualizar");
   }
 
   return res.json();

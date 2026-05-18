@@ -1,34 +1,425 @@
+.product-modal-backdrop {
+  inset: 0;
+  width: 100%;
+  min-height: 100vh;
+  padding: 1rem;
+}
+
 .product-modal-card {
-  min-width: 70vw !important;  
-  min-height: 90vh !important;
+  width: min(980px, calc(100vw - 2rem));
+  max-height: min(88vh, 780px);
+  overflow: hidden;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 1.5rem 3rem rgba(15, 23, 42, 0.22);
+  animation: detailMistIn 0.25s ease both;
+}
+
+.product-detail {
+  display: flex;
+  flex-direction: column;
+  max-height: inherit;
+}
+
+.product-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+}
+
+.product-detail-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.product-detail-heading h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.product-detail-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  font-weight: 700;
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.product-category-pill {
+  margin-top: 0.45rem;
+  background: #ecfdf5;
+  border: 1px solid #bbf7d0;
+  color: #047857;
+}
+
+.product-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.product-detail-actions .btn-close {
+  margin-top: 0.45rem;
+}
+
+.product-detail-body {
   overflow-y: auto;
-  border-radius: 12px;
+  padding: 1rem 1.25rem 1.25rem;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(14, 165, 233, 0.1), transparent 28%),
+    #f8fafc;
 }
 
+.product-detail-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
 
-/* FULLSCREEN EN MÓVIL */
-@media (max-width: 576px) {
+.product-detail-metric,
+.product-detail-section {
+  border: 1px solid rgba(226, 232, 240, 0.75);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 0.75rem 1.5rem rgba(15, 23, 42, 0.06);
+}
+
+.product-detail-metric {
+  min-height: 112px;
+  padding: 1rem;
+  animation: mistIn 0.42s ease both;
+}
+
+.product-detail-metric:nth-child(2) {
+  animation-delay: 0.04s;
+}
+
+.product-detail-metric:nth-child(3) {
+  animation-delay: 0.08s;
+}
+
+.product-detail-metric span,
+.product-detail-metric small {
+  display: block;
+  color: #64748b;
+}
+
+.product-detail-metric strong {
+  display: block;
+  margin: 0.25rem 0;
+  font-size: 1.6rem;
+  line-height: 1.15;
+  color: #0f172a;
+}
+
+.product-detail-section {
+  overflow: hidden;
+  margin-bottom: 1rem;
+  animation: mistIn 0.46s ease both;
+}
+
+.product-detail-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.product-detail-section-title h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.product-detail-section-title span {
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.product-lots-table {
+  --bs-table-hover-bg: #f8fafc;
+}
+
+.product-lots-table thead th {
+  padding: 0.85rem 1rem;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.product-lots-table tbody td {
+  padding: 0.85rem 1rem;
+  color: #1f2937;
+  vertical-align: middle;
+}
+
+.product-lots-table tbody tr {
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.product-lots-table tbody tr:hover {
+  transform: translateY(-1px);
+}
+
+.product-lots-table .form-control {
+  min-width: 140px;
+}
+
+.product-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.product-form-field {
+  min-width: 0;
+}
+
+.product-form-field-wide {
+  grid-column: 1 / -1;
+}
+
+.product-form-field .form-label {
+  margin-bottom: 0.35rem;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.product-detail-empty {
+  padding: 1.5rem !important;
+  text-align: center;
+  color: #64748b !important;
+}
+
+.product-detail-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 0.25rem;
+}
+
+@keyframes detailMistIn {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
+@keyframes mistIn {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 767.98px) {
+  .product-modal-backdrop {
+    padding: 0;
+  }
+
   .product-modal-card {
-    width: 100vw !important;
-    max-height: 90vh !important;
-
-    margin: 3 !important;
-    border-radius: 0 !important;
-
-    box-shadow: none !important;
+    width: 100vw;
+    max-height: 100vh;
+    height: 100vh;
+    border-radius: 0;
   }
 
-  /* Contenido interno: sin padding extra */
-  .product-modal-card .card-body {
-    padding: 1rem !important;
+  .product-detail-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    flex-direction: column;
+    gap: 0.85rem;
+    padding: 1rem;
   }
 
-  /* Botón cerrar más accesible */
-  .product-modal-card .btn-close {
-    top: 10px !important;
-    right: 10px !important;
+  .product-detail-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .product-detail-actions .btn {
+    flex: 1;
+  }
+
+  .product-detail-actions .btn-close {
+    flex: 0 0 auto;
+    margin-top: 0;
+  }
+
+  .product-detail-heading {
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .product-detail-heading h2 {
+    font-size: 1.2rem;
+    overflow-wrap: anywhere;
+  }
+
+  .product-detail-avatar {
+    width: 42px;
+    height: 42px;
+  }
+
+  .product-detail-summary,
+  .product-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .product-detail-metric {
+    min-height: auto;
+  }
+
+  .product-detail-metric strong {
+    font-size: 1.45rem;
+  }
+
+  .product-detail-body {
+    padding: 1rem;
+  }
+
+  .product-detail-section {
+    overflow: visible;
+  }
+
+  .product-detail-section-title {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .product-detail-section .table-responsive {
+    overflow: visible;
+  }
+
+  .product-lots-table {
+    display: block;
+  }
+
+  .product-lots-table thead {
+    display: none;
+  }
+
+  .product-lots-table tbody {
+    display: grid;
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+
+  .product-lots-table tbody tr {
+    display: block;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+  }
+
+  .product-lots-table tbody td {
+    display: block;
+    width: 100%;
+    padding: 0.85rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .product-lots-table tbody td:last-child {
+    border-bottom: 0;
+  }
+
+  .product-lots-table tbody td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.4rem;
+    color: #64748b;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .product-lots-table .form-control,
+  .product-form-grid .form-control,
+  .product-form-grid .form-select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .product-form-grid {
+    gap: 0.85rem;
+    padding: 1rem;
+  }
+
+  .product-detail-footer {
+    position: sticky;
+    bottom: -1rem;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    margin: 0 -1rem -1rem;
+    padding: 1rem;
+    border-top: 1px solid #e5e7eb;
+    background: #f8fafc;
+  }
+
+  .product-detail-footer .btn {
+    width: 100%;
   }
 }
 
-
-
+@media (prefers-reduced-motion: reduce) {
+  .product-modal-card,
+  .product-detail-metric,
+  .product-detail-section,
+  .product-lots-table tbody tr {
+    animation: none !important;
+    transition: none !important;
+    filter: none !important;
+    transform: none !important;
+  }
+}

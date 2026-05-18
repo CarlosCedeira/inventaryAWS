@@ -2,7 +2,13 @@ const { getConnection } = require("../../db");
 
 const ADD_TYPES = new Set(["entrada", "devolucion"]);
 const SUBTRACT_TYPES = new Set(["salida", "merma"]);
-const MOVEMENT_TYPES = new Set(["entrada", "salida", "ajuste", "devolucion", "merma"]);
+const MOVEMENT_TYPES = new Set([
+  "entrada",
+  "salida",
+  "ajuste",
+  "devolucion",
+  "merma",
+]);
 
 function createHttpError(statusCode, message) {
   const error = new Error(message);
@@ -26,6 +32,14 @@ function normalizeOptionalDate(value) {
   return value;
 }
 
+function validateQuantity(quantity) {
+  if (!Number.isInteger(Number(quantity)) || Number(quantity) <= 0) {
+    throw createHttpError(400, "La cantidad debe ser un numero entero positivo");
+  }
+
+  return Number(quantity);
+}
+
 async function getCurrentStock(connection, tenantId, productId) {
   const [rows] = await connection.execute(
     `
@@ -37,6 +51,30 @@ async function getCurrentStock(connection, tenantId, productId) {
   );
 
   return Number(rows[0]?.stock_total || 0);
+}
+
+async function getCurrentLotStock(
+  connection,
+  tenantId,
+  productId,
+  lotNumber,
+  expirationDate
+) {
+  const [rows] = await connection.execute(
+    `
+    SELECT cantidad
+    FROM inventario
+    WHERE tenant_id = ?
+      AND producto_id = ?
+      AND numero_lote <=> ?
+      AND fecha_caducidad <=> ?
+    LIMIT 1
+    FOR UPDATE
+    `,
+    [tenantId, productId, lotNumber, expirationDate]
+  );
+
+  return Number(rows[0]?.cantidad || 0);
 }
 
 async function insertMovement(connection, data) {
@@ -80,51 +118,52 @@ async function insertMovement(connection, data) {
 
 async function getAllMovements(tenantId) {
   const connection = await getConnection();
+
   try {
     const [rows] = await connection.execute(
       `
       SELECT
-  m.id AS movimiento_id,
-  m.tenant_id,
+        m.id AS movimiento_id,
+        m.tenant_id,
 
-  m.producto_id,
-  p.nombre AS producto_nombre,
+        m.producto_id,
+        p.nombre AS producto_nombre,
 
-  c.id AS categoria_id,
-  c.nombre AS producto_categoria,
+        c.id AS categoria_id,
+        c.nombre AS producto_categoria,
 
-  m.inventario_id,
-  m.tipo,
-  m.cantidad,
-  m.stock_anterior,
-  m.stock_nuevo,
-  m.numero_lote,
-  m.fecha_caducidad,
-  m.motivo,
-  m.descripcion,
+        m.inventario_id,
+        m.tipo,
+        m.cantidad,
+        m.stock_anterior,
+        m.stock_nuevo,
+        m.numero_lote,
+        m.fecha_caducidad,
+        m.motivo,
+        m.descripcion,
 
-  m.usuario_id,
-  u.nombre AS usuario_nombre,
+        m.usuario_id,
+        u.nombre AS usuario_nombre,
 
-  m.fecha_movimiento
+        m.created_at
 
-FROM movimientos_inventario m
+      FROM movimientos_inventario m
 
-INNER JOIN productos p
-  ON p.id = m.producto_id
- AND p.tenant_id = m.tenant_id
+      INNER JOIN productos p
+        ON p.id = m.producto_id
+       AND p.tenant_id = m.tenant_id
 
-LEFT JOIN categorias c
-  ON c.id = p.categoria_id
- AND c.tenant_id = p.tenant_id
+      LEFT JOIN categorias c
+        ON c.id = p.categoria_id
+       AND c.tenant_id = p.tenant_id
 
-LEFT JOIN usuarios u
-  ON u.id = m.usuario_id
- AND u.tenant_id = m.tenant_id
+      LEFT JOIN usuarios u
+        ON u.id = m.usuario_id
+       AND u.tenant_id = m.tenant_id
 
-WHERE m.tenant_id = ?
+      WHERE m.tenant_id = ?
 
-ORDER BY m.fecha_movimiento DESC, m.id DESC;
+      ORDER BY m.created_at DESC, m.id DESC
       `,
       [tenantId]
     );
@@ -136,13 +175,20 @@ ORDER BY m.fecha_movimiento DESC, m.id DESC;
 }
 
 async function addStockMovement(connection, data) {
+  const stockBefore = await getCurrentStock(
+    connection,
+    data.tenantId,
+    data.productId
+  );
+
   const [existingRows] = await connection.execute(
     `
     SELECT id, cantidad
     FROM inventario
     WHERE tenant_id = ?
       AND producto_id = ?
-      AND ((numero_lote <=> ?) AND (fecha_caducidad <=> ?))
+      AND numero_lote <=> ?
+      AND fecha_caducidad <=> ?
     LIMIT 1
     FOR UPDATE
     `,
@@ -153,10 +199,11 @@ async function addStockMovement(connection, data) {
 
   if (existingRows.length) {
     inventoryId = existingRows[0].id;
+
     await connection.execute(
       `
       UPDATE inventario
-      SET cantidad = cantidad + ?, ultima_actualizacion = NOW()
+      SET cantidad = cantidad + ?
       WHERE tenant_id = ? AND id = ?
       `,
       [data.quantity, data.tenantId, inventoryId]
@@ -165,8 +212,8 @@ async function addStockMovement(connection, data) {
     const [inventoryResult] = await connection.execute(
       `
       INSERT INTO inventario
-        (tenant_id, producto_id, cantidad, numero_lote, fecha_caducidad, ultima_actualizacion)
-      VALUES (?, ?, ?, ?, ?, NOW())
+        (tenant_id, producto_id, cantidad, numero_lote, fecha_caducidad)
+      VALUES (?, ?, ?, ?, ?)
       `,
       [
         data.tenantId,
@@ -176,11 +223,12 @@ async function addStockMovement(connection, data) {
         data.expirationDate,
       ]
     );
+
     inventoryId = inventoryResult.insertId;
   }
 
-  const previousStock = await getCurrentStock(connection, data.tenantId, data.productId) - data.quantity;
-  const newStock = previousStock + data.quantity;
+  const previousStock = stockBefore;
+  const newStock = stockBefore + data.quantity;
 
   const movementId = await insertMovement(connection, {
     ...data,
@@ -197,7 +245,11 @@ async function addStockMovement(connection, data) {
 }
 
 async function subtractStockMovement(connection, data) {
-  const stockBefore = await getCurrentStock(connection, data.tenantId, data.productId);
+  const stockBefore = await getCurrentStock(
+    connection,
+    data.tenantId,
+    data.productId
+  );
 
   if (stockBefore < data.quantity) {
     throw createHttpError(409, "Stock insuficiente para registrar el movimiento");
@@ -207,7 +259,9 @@ async function subtractStockMovement(connection, data) {
     `
     SELECT id, cantidad, numero_lote, fecha_caducidad
     FROM inventario
-    WHERE tenant_id = ? AND producto_id = ? AND cantidad > 0
+    WHERE tenant_id = ?
+      AND producto_id = ?
+      AND cantidad > 0
     ORDER BY
       CASE WHEN fecha_caducidad IS NULL THEN 1 ELSE 0 END,
       fecha_caducidad ASC,
@@ -224,17 +278,19 @@ async function subtractStockMovement(connection, data) {
   for (const item of inventoryRows) {
     if (remaining <= 0) break;
 
-    const amountToDiscount = Math.min(Number(item.cantidad), remaining);
+    const itemQuantity = Number(item.cantidad);
+    const amountToDiscount = Math.min(itemQuantity, remaining);
+
     const previousStock = runningStock;
     const newStock = runningStock - amountToDiscount;
 
     await connection.execute(
       `
       UPDATE inventario
-      SET cantidad = ?, ultima_actualizacion = NOW()
+      SET cantidad = ?
       WHERE tenant_id = ? AND id = ?
       `,
-      [Number(item.cantidad) - amountToDiscount, data.tenantId, item.id]
+      [itemQuantity - amountToDiscount, data.tenantId, item.id]
     );
 
     const movementId = await insertMovement(connection, {
@@ -280,7 +336,7 @@ async function createMovement({
     userId,
     productId,
     type,
-    quantity,
+    quantity: validateQuantity(quantity),
     lotNumber: normalizeOptionalString(lotNumber),
     expirationDate: normalizeOptionalDate(expirationDate),
     reason: normalizeOptionalString(reason),
@@ -313,11 +369,18 @@ async function createMovement({
     } else if (SUBTRACT_TYPES.has(type)) {
       result = await subtractStockMovement(connection, normalizedData);
     } else {
-      const currentStock = await getCurrentStock(connection, tenantId, productId);
-      const difference = quantity - currentStock;
+      const currentLotStock = await getCurrentLotStock(
+        connection,
+        tenantId,
+        productId,
+        normalizedData.lotNumber,
+        normalizedData.expirationDate
+      );
+
+      const difference = normalizedData.quantity - currentLotStock;
 
       if (difference === 0) {
-        throw createHttpError(400, "El ajuste no cambia el stock actual");
+        throw createHttpError(400, "El ajuste no cambia el stock actual del lote");
       }
 
       result =

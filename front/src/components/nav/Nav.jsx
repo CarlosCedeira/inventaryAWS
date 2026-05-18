@@ -63,8 +63,8 @@ function Nav() {
       )}
 
       {isAuthenticated && (
-        <div
-          className={`bg-dark sidebar-sticky${isCollapsed ? " collapsed" : ""}`}
+        <aside
+          className={`sidebar-sticky${isCollapsed ? " collapsed" : ""}`}
           style={{
             width: isCollapsed ? "0" : "200px",
             padding: isCollapsed ? "0" : "0.1rem 0.1rem",
@@ -74,12 +74,17 @@ function Nav() {
           }}
         >
           <div className="sidebar-content d-flex flex-column h-100">
+            <div className="sidebar-brand">
+              <span className="sidebar-brand-mark">B</span>
+              <span>Brétema</span>
+            </div>
+
             <div className="d-flex justify-content-center">
               <button
-                className="btn btn-light mb-5 mt-5 w-15"
+                className="btn btn-outline-light btn-sm sidebar-toggle-button"
                 onClick={toggleSidebar}
               >
-                {isCollapsed ? "" : "Ocultar menu"}
+                {isCollapsed ? "" : "Ocultar"}
               </button>
             </div>
 
@@ -134,7 +139,7 @@ function Nav() {
               </button>
             </div>
           </div>
-        </div>
+        </aside>
       )}
 
       <div className="flex-grow-1 ps-md-3">

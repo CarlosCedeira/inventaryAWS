@@ -33,13 +33,19 @@ async function getProduct(tenantId, id) {
 
 
 
-async function updateProductData(tenantId, productId, productoData) {
-const { inventario } = productoData;
-  return await inventoryModel.updateProduct(tenantId, productId, productoData, inventario);
+async function updateProductData(tenantId, productId, productoData, userId) {
+  const { inventario } = productoData;
+  return await inventoryModel.updateProduct(
+    tenantId,
+    productId,
+    productoData,
+    inventario,
+    userId
+  );
 }
 
-async function createNewProduct(productoData, inventarioData) {
-  return await inventoryModel.createProduct(productoData, inventarioData);
+async function createNewProduct(productoData, inventarioData, userId) {
+  return await inventoryModel.createProduct(productoData, inventarioData, userId);
 }
 
 async function removeProduct(tenantId, productId) {

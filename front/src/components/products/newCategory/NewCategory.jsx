@@ -106,7 +106,7 @@ const NewCategory = ({ onCreated }) => {
 
   return (
     <>
-      <button className="btn btn-warning my-3" onClick={handleOpenModal}>
+      <button className="btn btn-outline-secondary" onClick={handleOpenModal}>
         Nueva categoria
       </button>
 

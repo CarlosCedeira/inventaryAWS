@@ -122,7 +122,7 @@ const NewProduct = ({ onCreated }) => {
 
   return (
     <>
-      <button className="btn btn-success my-3 me-5" onClick={handleAddClick}>
+      <button className="btn btn-primary" onClick={handleAddClick}>
         Nuevo producto
       </button>
 

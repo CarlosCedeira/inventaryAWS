@@ -102,6 +102,18 @@ function validateInventoryItem(item) {
   return validateOptionalDate(item.fecha_caducidad, "La fecha de caducidad");
 }
 
+function validateInventoryUpdateItem(item) {
+  const quantityError = validateRequiredInteger(item.cantidad, "La cantidad");
+  if (quantityError) return quantityError;
+
+  const lot = toTrimmedString(item.numero_lote);
+  if (lot.length > 50) {
+    return "El numero de lote no puede superar los 50 caracteres";
+  }
+
+  return validateOptionalDate(item.fecha_caducidad, "La fecha de caducidad");
+}
+
 function normalizeProductFields(product) {
   return {
     nombre: toTrimmedString(product.nombre),
@@ -202,7 +214,7 @@ function buildUpdateProductPayload(body) {
       return { error: "El lote de inventario no es valido" };
     }
 
-    const inventoryError = validateInventoryItem(item);
+    const inventoryError = validateInventoryUpdateItem(item);
     if (inventoryError) return { error: inventoryError };
 
     normalizedInventory.push(normalizeInventoryItem(item));

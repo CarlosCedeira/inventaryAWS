@@ -1,0 +1,293 @@
+.login-page {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 1.5rem;
+  background:
+    radial-gradient(circle at 24% 18%, rgba(14, 165, 233, 0.24), transparent 28%),
+    radial-gradient(circle at 80% 12%, rgba(20, 184, 166, 0.2), transparent 26%),
+    linear-gradient(180deg, #eaf3f8 0%, #dfeef5 52%, #edf5f8 100%);
+}
+
+.login-page::before {
+  content: "";
+  position: absolute;
+  inset: -28%;
+  background:
+    linear-gradient(100deg, transparent 0%, rgba(255, 255, 255, 0.72) 38%, transparent 66%),
+    linear-gradient(78deg, transparent 10%, rgba(56, 189, 248, 0.34) 45%, transparent 78%);
+  filter: blur(26px);
+  opacity: 0.92;
+  animation: loginMistDrift 18s linear infinite;
+}
+
+.login-mist {
+  position: absolute;
+  width: 72vw;
+  height: 20vh;
+  min-width: 520px;
+  border-radius: 999px;
+  background:
+    radial-gradient(ellipse at 12% 58%, rgba(255, 255, 255, 0.86) 0 12%, transparent 32%),
+    radial-gradient(ellipse at 28% 42%, rgba(255, 255, 255, 0.78) 0 16%, transparent 38%),
+    radial-gradient(ellipse at 48% 54%, rgba(255, 255, 255, 0.9) 0 18%, transparent 42%),
+    radial-gradient(ellipse at 68% 38%, rgba(255, 255, 255, 0.74) 0 14%, transparent 36%),
+    radial-gradient(ellipse at 86% 56%, rgba(255, 255, 255, 0.82) 0 16%, transparent 40%),
+    linear-gradient(90deg, transparent 0%, rgba(224, 242, 254, 0.35) 42%, transparent 100%);
+  filter: blur(13px);
+  pointer-events: none;
+  box-shadow:
+    0 0 42px rgba(255, 255, 255, 0.65),
+    0 0 80px rgba(14, 165, 233, 0.12);
+}
+
+.login-mist::before,
+.login-mist::after {
+  content: "";
+  position: absolute;
+  inset: -18%;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.login-mist::before {
+  background:
+    radial-gradient(ellipse at 18% 45%, rgba(255, 255, 255, 0.72) 0 10%, transparent 28%),
+    radial-gradient(ellipse at 40% 62%, rgba(255, 255, 255, 0.66) 0 12%, transparent 34%),
+    radial-gradient(ellipse at 73% 48%, rgba(255, 255, 255, 0.7) 0 10%, transparent 30%);
+  filter: blur(10px);
+  opacity: 0.78;
+  animation: loginMistTexture 7s ease-in-out infinite alternate;
+}
+
+.login-mist::after {
+  inset: 8% -12%;
+  background:
+    linear-gradient(96deg, transparent 0%, rgba(255, 255, 255, 0.55) 18%, transparent 34%),
+    linear-gradient(102deg, transparent 24%, rgba(255, 255, 255, 0.42) 48%, transparent 68%),
+    linear-gradient(88deg, transparent 58%, rgba(255, 255, 255, 0.5) 76%, transparent 100%);
+  filter: blur(7px);
+  opacity: 0.72;
+  animation: loginMistTexture 5.5s ease-in-out infinite alternate-reverse;
+}
+
+.login-mist-one {
+  top: 14%;
+  left: -78vw;
+  animation: loginMistSweep 22s linear infinite;
+}
+
+.login-mist-two {
+  right: -78vw;
+  bottom: 18%;
+  opacity: 0.92;
+  animation: loginMistSweepReverse 26s linear infinite;
+  animation-delay: -8s;
+}
+
+.login-mist-three {
+  left: -56vw;
+  bottom: 4%;
+  width: 54vw;
+  height: 16vh;
+  opacity: 0.78;
+  animation: loginMistDiagonal 20s linear infinite;
+  animation-delay: -5s;
+}
+
+.login-card {
+  position: relative;
+  z-index: 1;
+  width: min(420px, 100%);
+  padding: 1.5rem;
+  border: 1px solid rgba(226, 232, 240, 0.78);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 1.5rem 3rem rgba(15, 23, 42, 0.14);
+  animation: loginCardIn 0.5s ease both;
+}
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+
+.login-brand-mark {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  background: linear-gradient(135deg, #e0f2fe, #99f6e4);
+  color: #075985;
+  font-weight: 800;
+  box-shadow: 0 0.75rem 1.5rem rgba(14, 165, 233, 0.16);
+}
+
+.login-brand p {
+  margin: 0;
+  color: #0f3f5f;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.login-brand h1 {
+  margin: 0.15rem 0 0;
+  color: #64748b;
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+.login-card .form-label {
+  color: #475569;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.login-card .form-control {
+  border-color: #dbe7ef;
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.login-card .form-control:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 0.2rem rgba(56, 189, 248, 0.18);
+}
+
+.login-card .btn-primary {
+  border-color: #0369a1;
+  background: #0369a1;
+  box-shadow: 0 0.75rem 1.5rem rgba(3, 105, 161, 0.16);
+}
+
+.login-card .btn-primary:hover {
+  border-color: #075985;
+  background: #075985;
+}
+
+@keyframes loginMistDrift {
+  0% {
+    transform: translate3d(-10%, -2%, 0) rotate(0deg);
+  }
+
+  100% {
+    transform: translate3d(10%, 2%, 0) rotate(3deg);
+  }
+}
+
+@keyframes loginMistSweep {
+  0% {
+    transform: translate3d(0, 0, 0) scaleX(1);
+    opacity: 0.18;
+  }
+
+  18% {
+    opacity: 0.92;
+  }
+
+  72% {
+    opacity: 0.78;
+  }
+
+  100% {
+    transform: translate3d(178vw, 18px, 0) scaleX(1.08);
+    opacity: 0.16;
+  }
+}
+
+@keyframes loginMistSweepReverse {
+  0% {
+    transform: translate3d(0, 0, 0) scaleX(1.05);
+    opacity: 0.16;
+  }
+
+  16% {
+    opacity: 0.82;
+  }
+
+  68% {
+    opacity: 0.86;
+  }
+
+  100% {
+    transform: translate3d(-178vw, -12px, 0) scaleX(0.96);
+    opacity: 0.14;
+  }
+}
+
+@keyframes loginMistDiagonal {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(-4deg);
+    opacity: 0.12;
+  }
+
+  20% {
+    opacity: 0.66;
+  }
+
+  76% {
+    opacity: 0.68;
+  }
+
+  100% {
+    transform: translate3d(150vw, -42px, 0) rotate(2deg);
+    opacity: 0.12;
+  }
+}
+
+@keyframes loginMistTexture {
+  from {
+    transform: translate3d(-2.5%, 3%, 0) scale(1);
+  }
+
+  to {
+    transform: translate3d(3%, -2%, 0) scale(1.04);
+  }
+}
+
+@keyframes loginCardIn {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 575.98px) {
+  .login-page {
+    align-items: stretch;
+    padding: 1rem;
+  }
+
+  .login-card {
+    align-self: center;
+  }
+
+  .login-mist {
+    min-width: 320px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-page::before,
+  .login-mist,
+  .login-card {
+    animation: none !important;
+  }
+}

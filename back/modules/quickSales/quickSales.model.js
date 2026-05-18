@@ -74,7 +74,7 @@ async function registerQuickSale({ tenantId, userId, productId, quantity }) {
       await connection.execute(
         `
         UPDATE inventario
-        SET cantidad = ?, ultima_actualizacion = NOW()
+        SET cantidad = ?
         WHERE tenant_id = ? AND id = ?
         `,
         [newInventoryQuantity, tenantId, item.id]

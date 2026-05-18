@@ -1,5 +1,57 @@
 const { getConnection } = require("../../db");
 
+async function getCurrentStock(connection, tenantId, productId) {
+  const [rows] = await connection.execute(
+    `
+    SELECT COALESCE(SUM(cantidad), 0) AS stock_total
+    FROM inventario
+    WHERE tenant_id = ? AND producto_id = ?
+    `,
+    [tenantId, productId]
+  );
+
+  return Number(rows[0]?.stock_total || 0);
+}
+
+async function insertInventoryMovement(connection, data) {
+  const [result] = await connection.execute(
+    `
+    INSERT INTO movimientos_inventario
+      (
+        tenant_id,
+        producto_id,
+        inventario_id,
+        tipo,
+        cantidad,
+        stock_anterior,
+        stock_nuevo,
+        numero_lote,
+        fecha_caducidad,
+        motivo,
+        descripcion,
+        usuario_id
+      )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    [
+      data.tenantId,
+      data.productId,
+      data.inventoryId,
+      data.type,
+      data.quantity,
+      data.previousStock,
+      data.newStock,
+      data.lotNumber,
+      data.expirationDate,
+      data.reason,
+      data.description,
+      data.userId,
+    ]
+  );
+
+  return result.insertId;
+}
+
 // Listar todos los productos
 async function getAllProducts(tenantId) {
   const connection = await getConnection();
@@ -226,7 +278,7 @@ async function getProductById(tenantId, id) {
   p.precio_venta,
 
   i.fecha_caducidad,
-  i.ultima_actualizacion,
+  i.updated_at,
   i.numero_lote
 
 FROM inventario i
@@ -245,11 +297,9 @@ WHERE i.tenant_id = ? AND i.producto_id = ? AND p.eliminado = 0;
   }
 }
 
-// Actualizar flags (publicado, destacado, recomendado)
-
 
 // Actualizar producto e inventario
-async function updateProduct(tenantId, productId, productoData, invnetarioData) {
+async function updateProduct(tenantId, productId, productoData, invnetarioData, userId) {
   console.log("NOdal Actualizando producto id:", productId, );
   console.log("informacion productoData:", productoData);
   console.log("informacion inventarioData:", invnetarioData);
@@ -274,22 +324,71 @@ async function updateProduct(tenantId, productId, productoData, invnetarioData) 
     );
 
 
-    
-    
- for (const item of invnetarioData) {
-  await connection.execute(
-    `UPDATE inventario
-     SET cantidad = ?, fecha_caducidad = ?, numero_lote = ?, ultima_actualizacion = NOW()
-     WHERE tenant_id = ? AND id = ?`,
-    [
-      item.cantidad,
-      item.fecha_caducidad ? new Date(item.fecha_caducidad) : null,
-      item.numero_lote || null,
-      tenantId,
-      item.inventario_id, 
-    ]
-  );
-}
+    let runningStock = await getCurrentStock(connection, tenantId, productId);
+
+    for (const item of invnetarioData) {
+      const [inventoryRows] = await connection.execute(
+        `
+        SELECT id, cantidad
+        FROM inventario
+        WHERE tenant_id = ? AND producto_id = ? AND id = ?
+        LIMIT 1
+        FOR UPDATE
+        `,
+        [tenantId, productId, item.inventario_id]
+      );
+
+      if (!inventoryRows.length) {
+        const error = new Error("Lote de inventario no encontrado");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      const previousQuantity = Number(inventoryRows[0].cantidad);
+      const newQuantity = Number(item.cantidad);
+      const quantityDifference = newQuantity - previousQuantity;
+      const previousStock = runningStock;
+      const newStock = runningStock + quantityDifference;
+      const expirationDate = item.fecha_caducidad
+        ? new Date(item.fecha_caducidad)
+        : null;
+      const lotNumber = item.numero_lote || null;
+
+      await connection.execute(
+        `
+        UPDATE inventario
+        SET cantidad = ?, fecha_caducidad = ?, numero_lote = ?
+        WHERE tenant_id = ? AND producto_id = ? AND id = ?
+        `,
+        [
+          newQuantity,
+          expirationDate,
+          lotNumber,
+          tenantId,
+          productId,
+          item.inventario_id,
+        ]
+      );
+
+      if (quantityDifference !== 0) {
+        await insertInventoryMovement(connection, {
+          tenantId,
+          productId,
+          inventoryId: item.inventario_id,
+          type: "ajuste",
+          quantity: Math.abs(quantityDifference),
+          previousStock,
+          newStock,
+          lotNumber,
+          expirationDate,
+          reason: "Edicion de producto",
+          description: "Ajuste generado al editar el inventario del producto",
+          userId,
+        });
+
+        runningStock = newStock;
+      }
+    }
 
     await connection.commit();
   } catch (error) {
@@ -302,7 +401,7 @@ async function updateProduct(tenantId, productId, productoData, invnetarioData) 
 }
 
 // Crear nuevo producto e inventario
-async function createProduct(productoData, inventarioData) {
+async function createProduct(productoData, inventarioData, userId) {
   console.log("Creando nuevo producto con id:", productoData.categoria_id);
   const connection = await getConnection();
   try {
@@ -327,8 +426,8 @@ async function createProduct(productoData, inventarioData) {
 
     const [inventarioResult] = await connection.execute(
       `INSERT INTO inventario
-       (tenant_id, producto_id, cantidad, fecha_caducidad, numero_lote, ultima_actualizacion)
-       VALUES (?, ?, ?, ?, ?, NOW())`,
+       (tenant_id, producto_id, cantidad, fecha_caducidad, numero_lote)
+       VALUES (?, ?, ?, ?, ?)`,
       [
         inventarioData.tenant_id,
         productoId,
@@ -337,6 +436,23 @@ async function createProduct(productoData, inventarioData) {
         inventarioData.numero_lote,
       ]
     );
+
+    await insertInventoryMovement(connection, {
+      tenantId: productoData.tenant_id,
+      productId: productoId,
+      inventoryId: inventarioResult.insertId,
+      type: "entrada",
+      quantity: inventarioData.cantidad,
+      previousStock: 0,
+      newStock: inventarioData.cantidad,
+      lotNumber: inventarioData.numero_lote || null,
+      expirationDate: inventarioData.fecha_caducidad
+        ? new Date(inventarioData.fecha_caducidad)
+        : null,
+      reason: "Creacion de producto",
+      description: "Entrada inicial generada al crear el producto",
+      userId,
+    });
 
     await connection.commit();
 

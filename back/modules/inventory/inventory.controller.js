@@ -41,6 +41,10 @@ async function createCategory(req, res) {
 
     res.status(201).json(category);
   } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+
     console.error(error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
@@ -66,6 +70,10 @@ async function getProductsByCategory(req, res) {
     const products = await inventoryService.listProductsByCategory(req.tenantId, categoryId);
     res.json(products);
   } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+
     console.error(error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
@@ -108,10 +116,15 @@ async function updateProduct(req, res) {
       req.tenantId,
       id,
       validation.product,
+      req.user.id
     );
 
     res.json({ message: "Producto e inventario actualizados correctamente" });
   } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+
     console.error(error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
@@ -136,7 +149,8 @@ async function createProduct(req, res) {
 
     const result = await inventoryService.createNewProduct(
       validation.product,
-      validation.inventory
+      validation.inventory,
+      req.user.id
     );
 
     res.status(201).json({ message: "Producto creado correctamente", ...result });
@@ -160,6 +174,10 @@ async function deleteProduct(req, res) {
 
     res.json({ message: "Producto eliminado correctamente" });
   } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+
     console.error(error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
