@@ -43,7 +43,7 @@ const UsersManager = () => {
           <span className="login-brand-mark">B</span>
           <div>
             <p>Brétema</p>
-            <h1>Inventario claro.</h1>
+            <h1>Inventario claro .</h1>
           </div>
         </div>
 

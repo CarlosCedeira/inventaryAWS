@@ -60,7 +60,7 @@
 }
 
 .movement-table-card {
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid rgba(226, 232, 240, 0.75);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.9);
@@ -73,6 +73,9 @@
 }
 
 .movement-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   padding: 0.85rem 1rem;
   background: #f8fafc;
   color: #475569;
@@ -90,6 +93,7 @@
 }
 
 .movement-table tbody tr {
+  cursor: pointer;
   animation: mistIn 0.42s ease both;
   transition:
     background 0.2s ease,
@@ -178,6 +182,64 @@
   color: #64748b !important;
 }
 
+.skeleton-text,
+.skeleton-line,
+.skeleton-pill,
+.skeleton-avatar {
+  display: inline-block;
+  overflow: hidden;
+  position: relative;
+  color: transparent !important;
+  background: linear-gradient(90deg, #e5edf3 0%, #f8fafc 50%, #e5edf3 100%);
+  background-size: 220% 100%;
+  animation: skeletonShimmer 1.35s ease-in-out infinite;
+}
+
+.skeleton-text {
+  width: 8.5rem;
+  height: 2rem;
+  border-radius: 8px;
+}
+
+.skeleton-text-short {
+  width: 3.5rem;
+}
+
+.skeleton-line {
+  width: 8rem;
+  height: 0.9rem;
+  border-radius: 999px;
+}
+
+.skeleton-line-title {
+  width: 11rem;
+  height: 1rem;
+}
+
+.skeleton-line-small {
+  width: 5.5rem;
+  height: 0.75rem;
+}
+
+.skeleton-line-number {
+  width: 4rem;
+}
+
+.skeleton-cell-stack {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.skeleton-pill {
+  width: 6.5rem;
+  height: 1.45rem;
+  border-radius: 999px;
+}
+
+.skeleton-avatar {
+  flex: 0 0 auto;
+}
+
 .fade-init {
   opacity: 0;
   transition: opacity 0.35s ease;
@@ -204,6 +266,16 @@
     opacity: 1;
     filter: blur(0);
     transform: translateY(0);
+  }
+}
+
+@keyframes skeletonShimmer {
+  from {
+    background-position: 120% 0;
+  }
+
+  to {
+    background-position: -120% 0;
   }
 }
 
@@ -278,6 +350,10 @@
     border-bottom: 0;
   }
 
+  .movement-table tbody tr.skeleton-table-row {
+    min-height: 380px;
+  }
+
   .movement-table tbody td::before {
     content: attr(data-label);
     flex: 0 0 auto;
@@ -312,7 +388,11 @@
   .movement-metric-card,
   .movement-table tbody tr,
   .fade-init,
-  .fade-in {
+  .fade-in,
+  .skeleton-text,
+  .skeleton-line,
+  .skeleton-pill,
+  .skeleton-avatar {
     animation: none !important;
     transition: none !important;
     filter: none !important;

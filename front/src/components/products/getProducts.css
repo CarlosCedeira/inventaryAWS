@@ -64,7 +64,7 @@
 }
 
 .product-table-card {
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid rgba(226, 232, 240, 0.75);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.9);
@@ -94,6 +94,9 @@
 }
 
 .product-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   padding: 0.85rem 1rem;
   background: #f8fafc;
   color: #475569;

@@ -22,12 +22,12 @@ async function createMovement(req, res) {
       tenantId: req.tenantId,
       userId: req.user.id,
       productId,
+      inventoryId: req.body.inventario_id,
       type: req.body.tipo,
       quantity,
       lotNumber: req.body.numero_lote,
       expirationDate: req.body.fecha_caducidad,
       reason: req.body.motivo,
-      description: req.body.descripcion,
     });
 
     res.status(201).json({

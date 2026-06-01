@@ -6,26 +6,55 @@ import {
   validateStockQuantity,
 } from "../../utils/stockQuantity";
 
-const MOVEMENT_TYPES = ["entrada", "salida", "ajuste", "devolucion", "merma"];
+const MOVEMENT_TYPES = ["entrada", "salida", "ajuste"];
+const OTHER_REASON = "__otro__";
+
+const MOVEMENT_REASONS = {
+  entrada: [
+    "Compra proveedor",
+    "Reposicion",
+    "Devolucion cliente",
+    "Entrada manual",
+  ],
+  salida: [
+    "Venta",
+    "Rotura",
+    "Caducado",
+    "Perdida",
+    "Consumo interno",
+    "Salida manual",
+  ],
+  ajuste: [
+    "Conteo inventario",
+    "Correccion manual",
+    "Regularizacion",
+    "Error previo",
+  ],
+};
 
 const initialForm = {
   tipo: "entrada",
   producto_id: "",
   producto_nombre: "",
+  inventario_id: "",
   cantidad: "",
   numero_lote: "",
   fecha_caducidad: "",
   motivo: "",
-  descripcion: "",
+  motivo_personalizado: "",
 };
 
 const NewMovement = ({ onCreated }) => {
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [loadingLots, setLoadingLots] = useState(false);
   const [error, setError] = useState("");
   const [products, setProducts] = useState([]);
+  const [availableLots, setAvailableLots] = useState([]);
   const [form, setForm] = useState(initialForm);
+
+  const isEntry = form.tipo === "entrada";
 
   useEffect(() => {
     if (!showModal || form.producto_nombre.trim().length < 2 || form.producto_id) {
@@ -58,7 +87,19 @@ const NewMovement = ({ onCreated }) => {
     setShowModal(false);
     setError("");
     setProducts([]);
+    setAvailableLots([]);
     setForm(initialForm);
+  };
+
+  const normalizeDateValue = (date) => {
+    if (!date) return "";
+    return String(date).slice(0, 10);
+  };
+
+  const getLotLabel = (lot) => {
+    const lotNumber = lot.numero_lote || "Sin lote";
+    const expiration = normalizeDateValue(lot.fecha_caducidad) || "Sin caducidad";
+    return `${lotNumber} - Cad: ${expiration} - Stock: ${lot.cantidad}`;
   };
 
   const handleChange = (event) => {
@@ -67,19 +108,73 @@ const NewMovement = ({ onCreated }) => {
     setForm((current) => ({
       ...current,
       [name]: value,
-      ...(name === "producto_nombre" ? { producto_id: "" } : {}),
+      ...(name === "producto_nombre"
+        ? {
+            producto_id: "",
+            inventario_id: "",
+            numero_lote: "",
+            fecha_caducidad: "",
+          }
+        : {}),
+      ...(name === "tipo"
+        ? {
+            motivo: "",
+            motivo_personalizado: "",
+            inventario_id: "",
+            numero_lote: "",
+            fecha_caducidad: "",
+          }
+        : {}),
+      ...(name === "motivo" && value !== OTHER_REASON
+        ? { motivo_personalizado: "" }
+        : {}),
     }));
+
+    if (name === "producto_nombre") {
+      setAvailableLots([]);
+    }
 
     if (error) setError("");
   };
 
-  const handleSelectProduct = (product) => {
+  const handleSelectProduct = async (product) => {
     setForm((current) => ({
       ...current,
       producto_id: product.producto_id,
       producto_nombre: product.producto_nombre,
+      inventario_id: "",
+      numero_lote: "",
+      fecha_caducidad: "",
     }));
     setProducts([]);
+
+    try {
+      setLoadingLots(true);
+      const productDetail = await productService.getById(product.producto_id);
+      setAvailableLots(productDetail?.inventario || []);
+    } catch (lotError) {
+      console.error(lotError);
+      setAvailableLots([]);
+      setError(lotError.message || "No se pudieron cargar los lotes del producto");
+    } finally {
+      setLoadingLots(false);
+    }
+  };
+
+  const handleSelectLot = (event) => {
+    const inventoryId = event.target.value;
+    const selectedLot = availableLots.find(
+      (lot) => String(lot.inventario_id) === inventoryId
+    );
+
+    setForm((current) => ({
+      ...current,
+      inventario_id: inventoryId,
+      numero_lote: selectedLot?.numero_lote || "",
+      fecha_caducidad: normalizeDateValue(selectedLot?.fecha_caducidad),
+    }));
+
+    if (error) setError("");
   };
 
   const validateForm = () => {
@@ -93,7 +188,20 @@ const NewMovement = ({ onCreated }) => {
       return "El numero de lote no puede superar los 100 caracteres";
     }
 
-    if (form.motivo.length > 255) {
+    if (!isEntry && !form.inventario_id) {
+      return "Selecciona el lote que quieres modificar";
+    }
+
+    const finalReason =
+      form.motivo === OTHER_REASON
+        ? form.motivo_personalizado.trim()
+        : form.motivo.trim();
+
+    if (form.motivo === OTHER_REASON && !finalReason) {
+      return "Escribe el motivo personalizado";
+    }
+
+    if (finalReason.length > 255) {
       return "El motivo no puede superar los 255 caracteres";
     }
 
@@ -113,14 +221,19 @@ const NewMovement = ({ onCreated }) => {
     setError("");
 
     try {
+      const finalReason =
+        form.motivo === OTHER_REASON
+          ? form.motivo_personalizado.trim()
+          : form.motivo.trim();
+
       await movementService.create({
         tipo: form.tipo,
         producto_id: Number(form.producto_id),
+        inventario_id: isEntry ? null : Number(form.inventario_id),
         cantidad: normalizeStockQuantity(form.cantidad),
-        numero_lote: form.numero_lote.trim() || null,
-        fecha_caducidad: form.fecha_caducidad || null,
-        motivo: form.motivo.trim() || null,
-        descripcion: form.descripcion.trim() || null,
+        numero_lote: isEntry ? form.numero_lote.trim() || null : null,
+        fecha_caducidad: isEntry ? form.fecha_caducidad || null : null,
+        motivo: finalReason || null,
       });
 
       await onCreated?.();
@@ -238,57 +351,98 @@ const NewMovement = ({ onCreated }) => {
                         <div className="mb-3 row align-items-center">
                           <label className="col-sm-5 col-form-label text-nowrap">Motivo</label>
                           <div className="col-sm-7">
-                            <input
-                              type="text"
+                            <select
                               name="motivo"
                               value={form.motivo}
                               onChange={handleChange}
                               className="form-control"
-                            />
+                            >
+                              <option value="">Selecciona un motivo</option>
+                              {MOVEMENT_REASONS[form.tipo].map((reason) => (
+                                <option key={reason} value={reason}>
+                                  {reason}
+                                </option>
+                              ))}
+                              <option value={OTHER_REASON}>Otro</option>
+                            </select>
+
+                            {form.motivo === OTHER_REASON && (
+                              <input
+                                type="text"
+                                name="motivo_personalizado"
+                                value={form.motivo_personalizado}
+                                onChange={handleChange}
+                                className="form-control mt-2"
+                                placeholder="Escribe el motivo"
+                              />
+                            )}
                           </div>
                         </div>
                       </div>
 
                       <div className="col-md-6">
-                        <div className="mb-3 row align-items-center">
-                          <label className="col-sm-5 col-form-label text-nowrap">Lote</label>
-                          <div className="col-sm-7">
-                            <input
-                              type="text"
-                              name="numero_lote"
-                              value={form.numero_lote}
-                              onChange={handleChange}
-                              className="form-control"
-                            />
-                          </div>
-                        </div>
+                        {isEntry ? (
+                          <>
+                            <div className="mb-3 row align-items-center">
+                              <label className="col-sm-5 col-form-label text-nowrap">Lote</label>
+                              <div className="col-sm-7">
+                                <input
+                                  type="text"
+                                  name="numero_lote"
+                                  value={form.numero_lote}
+                                  onChange={handleChange}
+                                  className="form-control"
+                                />
+                              </div>
+                            </div>
 
-                        <div className="mb-3 row align-items-center">
-                          <label className="col-sm-5 col-form-label text-nowrap">Caducidad</label>
-                          <div className="col-sm-7">
-                            <input
-                              type="date"
-                              name="fecha_caducidad"
-                              value={form.fecha_caducidad}
-                              onChange={handleChange}
-                              className="form-control"
-                            />
+                            <div className="mb-3 row align-items-center">
+                              <label className="col-sm-5 col-form-label text-nowrap">Caducidad</label>
+                              <div className="col-sm-7">
+                                <input
+                                  type="date"
+                                  name="fecha_caducidad"
+                                  value={form.fecha_caducidad}
+                                  onChange={handleChange}
+                                  className="form-control"
+                                />
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="mb-3 row align-items-center">
+                            <label className="col-sm-5 col-form-label text-nowrap">Lote</label>
+                            <div className="col-sm-7">
+                              <select
+                                name="inventario_id"
+                                value={form.inventario_id}
+                                onChange={handleSelectLot}
+                                className="form-control"
+                                disabled={!form.producto_id || loadingLots}
+                                required
+                              >
+                                <option value="">
+                                  {loadingLots ? "Cargando lotes..." : "Selecciona un lote"}
+                                </option>
+                                {availableLots.map((lot) => (
+                                  <option
+                                    key={lot.inventario_id}
+                                    value={lot.inventario_id}
+                                  >
+                                    {getLotLabel(lot)}
+                                  </option>
+                                ))}
+                              </select>
+                              {!loadingLots && form.producto_id && !availableLots.length && (
+                                <div className="form-text">
+                                  Este producto no tiene lotes con stock.
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
                     </div>
-
-                    <div className="mb-3">
-                      <label className="form-label">Descripcion</label>
-                      <textarea
-                        name="descripcion"
-                        value={form.descripcion}
-                        onChange={handleChange}
-                        className="form-control"
-                        rows="2"
-                      />
-                    </div>
-
                     {error && <div className="alert alert-danger py-2">{error}</div>}
 
                     <div className="d-flex justify-content-between align-items-end gap-5">

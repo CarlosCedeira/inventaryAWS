@@ -1,9 +1,12 @@
-const dotenv = require("dotenv");
 const express = require("express");
+const helmet = require("helmet");
+const dotenv = require("dotenv");
+const { loginLimiter } = require("./middleware/rateLimit");
 const cors = require("cors");
 dotenv.config();
 
 const app = express();
+app.use(helmet());
 const PORT = process.env.PORT;
 const HOST = process.env.HOST;
 
@@ -14,11 +17,10 @@ app.use(
 );
 
 // Middleware
-app.use(cors());
 app.use(express.json());
 
 // Rutas
-app.use("/auth", require("./modules/auth/auth.routes"));
+app.use("/auth", loginLimiter, require("./modules/auth/auth.routes"));
 app.use("/productos", require("./modules/inventory/inventory.routes"));
 app.use("/movimientos", require("./modules/movements/movements.routes"));
 app.use("/ventas", require("./modules/quickSales/quickSales.routes"));

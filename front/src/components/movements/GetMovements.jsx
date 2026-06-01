@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import Spinners from "../spiners/spiners";
 import { movementService } from "./movementService";
 import NewMovement from "./NewMovement";
+import MovementCardLayout from "./cardLayout/MovementCardLayout";
 import "./GetMovements.css";
 
 const GetMovements = () => {
@@ -9,6 +9,7 @@ const GetMovements = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [fadeIn, setFadeIn] = useState(false);
+  const [selectedMovement, setSelectedMovement] = useState(null);
 
   const fetchMovements = async () => {
     try {
@@ -36,16 +37,21 @@ const GetMovements = () => {
     setFadeIn(false);
   }, [loading]);
 
+  useEffect(() => {
+    document.body.style.overflow = selectedMovement ? "hidden" : "";
+    return () => (document.body.style.overflow = "");
+  }, [selectedMovement]);
+
   const metrics = useMemo(() => {
     const totalQuantity = movements.reduce(
       (total, movement) => total + Number(movement.cantidad || 0),
       0
     );
-    const entries = movements.filter((movement) =>
-      ["entrada", "devolucion"].includes(movement.tipo)
+    const entries = movements.filter(
+      (movement) => movement.tipo === "entrada"
     ).length;
-    const exits = movements.filter((movement) =>
-      ["salida", "merma"].includes(movement.tipo)
+    const exits = movements.filter(
+      (movement) => movement.tipo === "salida"
     ).length;
     const adjustments = movements.filter(
       (movement) => movement.tipo === "ajuste"
@@ -86,16 +92,6 @@ const GetMovements = () => {
         className: "movement-type-adjust",
         symbol: "",
       },
-      devolucion: {
-        label: "Devolucion",
-        className: "movement-type-return",
-        symbol: "+",
-      },
-      merma: {
-        label: "Merma",
-        className: "movement-type-loss",
-        symbol: "-",
-      },
     };
 
     return (
@@ -115,8 +111,6 @@ const GetMovements = () => {
       .map((word) => word[0]?.toUpperCase())
       .join("") || "MV";
 
-  if (loading) return <Spinners />;
-
   return (
     <main className="movements-page">
       <header className="movements-header">
@@ -131,35 +125,53 @@ const GetMovements = () => {
       <section className="movements-metrics">
         <article className="movement-metric-card">
           <span>Movimientos</span>
-          <strong>{metrics.totalMovements}</strong>
+          {loading ? (
+            <strong className="skeleton-text skeleton-text-short" />
+          ) : (
+            <strong>{metrics.totalMovements}</strong>
+          )}
           <small>Registros actuales</small>
         </article>
 
         <article className="movement-metric-card">
           <span>Unidades movidas</span>
-          <strong>{metrics.totalQuantity}</strong>
+          {loading ? (
+            <strong className="skeleton-text skeleton-text-short" />
+          ) : (
+            <strong>{metrics.totalQuantity}</strong>
+          )}
           <small>Suma de cantidades</small>
         </article>
 
         <article className="movement-metric-card">
           <span>Entradas</span>
-          <strong className="text-success">{metrics.entries}</strong>
-          <small>Incluye devoluciones</small>
+          {loading ? (
+            <strong className="skeleton-text skeleton-text-short" />
+          ) : (
+            <strong className="text-success">{metrics.entries}</strong>
+          )}
+          <small>Compras, reposiciones y devoluciones</small>
         </article>
 
         <article className="movement-metric-card">
           <span>Salidas y ajustes</span>
-          <strong className="text-warning">
-            {metrics.exits + metrics.adjustments}
-          </strong>
-          <small>Salidas, mermas y ajustes</small>
+          {loading ? (
+            <strong className="skeleton-text skeleton-text-short" />
+          ) : (
+            <strong className="text-warning">
+              {metrics.exits + metrics.adjustments}
+            </strong>
+          )}
+          <small>Ventas, mermas y ajustes</small>
         </article>
       </section>
 
       {error && <div className="alert alert-danger">{error}</div>}
 
       {!error && (
-        <section className={`movement-table-card fade-init${fadeIn ? " fade-in" : ""}`}>
+        <section
+          className={`movement-table-card${loading ? "" : ` fade-init${fadeIn ? " fade-in" : ""}`}`}
+        >
           <div className="table-responsive">
             <table className="table table-hover align-middle mb-0 movement-table">
               <thead>
@@ -175,11 +187,53 @@ const GetMovements = () => {
               </thead>
 
               <tbody>
-                {movements.map((movement) => {
+                {loading &&
+                  Array.from({ length: 6 }).map((_, index) => (
+                    <tr className="skeleton-table-row" key={`movement-skeleton-${index}`}>
+                      <td data-label="Producto">
+                        <div className="movement-product-identity">
+                          <span className="movement-product-avatar skeleton-avatar" />
+                          <div className="skeleton-cell-stack">
+                            <span className="skeleton-line skeleton-line-title" />
+                            <span className="skeleton-line skeleton-line-small" />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="d-none d-md-table-cell" data-label="Categoria">
+                        <span className="skeleton-line" />
+                      </td>
+                      <td data-label="Tipo">
+                        <span className="skeleton-pill" />
+                      </td>
+                      <td className="text-center fw-semibold" data-label="Stock">
+                        <span className="skeleton-line skeleton-line-number" />
+                      </td>
+                      <td
+                        className="d-none d-lg-table-cell text-center"
+                        data-label="Lote"
+                      >
+                        <span className="skeleton-line skeleton-line-number" />
+                      </td>
+                      <td className="d-none d-xl-table-cell" data-label="Fecha">
+                        <span className="skeleton-line" />
+                      </td>
+                      <td
+                        className="d-none d-lg-table-cell text-end"
+                        data-label="Usuario"
+                      >
+                        <span className="skeleton-line" />
+                      </td>
+                    </tr>
+                  ))}
+
+                {!loading && movements.map((movement) => {
                   const type = getMovementType(movement.tipo);
 
                   return (
-                    <tr key={movement.movimiento_id}>
+                    <tr
+                      key={movement.movimiento_id}
+                      onClick={() => setSelectedMovement(movement)}
+                    >
                       <td data-label="Producto">
                         <div className="movement-product-identity">
                           <span className="movement-product-avatar">
@@ -232,7 +286,7 @@ const GetMovements = () => {
                   );
                 })}
 
-                {!movements.length && (
+                {!loading && !movements.length && (
                   <tr>
                     <td colSpan="7" className="movement-empty-state">
                       No hay movimientos registrados.
@@ -243,6 +297,13 @@ const GetMovements = () => {
             </table>
           </div>
         </section>
+      )}
+
+      {selectedMovement && (
+        <MovementCardLayout
+          movement={selectedMovement}
+          onClose={() => setSelectedMovement(null)}
+        />
       )}
     </main>
   );

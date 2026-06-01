@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useProducts } from "./useProducts";
 
-import Spinners from "../spiners/spiners";
 import CardLayout from "./cardLayout/CardLayout";
 import NewProduct from "./newProduct/newProduct";
 import NewCategory from "./newCategory/NewCategory";
@@ -198,6 +197,22 @@ const GetProducts = () => {
     return total > minimo ? `+${rounded}%` : `-${rounded}%`;
   };
 
+  const getExpirationStatus = (item) => {
+  const days = getDaysUntilExpiration(item.fecha_caducidad);
+
+  if (days === null) return null;
+
+  if (days < 0) {
+    return { label: "Caducado", className: "text-bg-danger" };
+  }
+
+  if (days <= 45) {
+    return { label: "Caduca pronto", className: "text-bg-warning" };
+  }
+
+  return null;
+};
+
   const getStockStatus = (item) => {
     const stock = Number(item.stock_total);
     const minStock = Number(item.stock_minimo);
@@ -221,8 +236,6 @@ const GetProducts = () => {
       .map((word) => word[0]?.toUpperCase())
       .join("") || "PR";
 
-  if (loading) return <Spinners />;
-
   return (
     <main className="inventory-page">
       <header className="inventory-header">
@@ -240,30 +253,48 @@ const GetProducts = () => {
       <section className="inventory-metrics">
         <article className="metric-card">
           <span>Productos activos</span>
-          <strong>{metrics.activeProducts}</strong>
+          {loading ? (
+            <strong className="skeleton-text skeleton-text-short" />
+          ) : (
+            <strong>{metrics.activeProducts}</strong>
+          )}
           <small>Listado actual</small>
         </article>
 
         <article className="metric-card">
           <span>Valor del inventario</span>
-          <strong>{formatCurrency(metrics.inventoryValue)}</strong>
+          {loading ? (
+            <strong className="skeleton-text" />
+          ) : (
+            <strong>{formatCurrency(metrics.inventoryValue)}</strong>
+          )}
           <small>Segun precio de compra</small>
         </article>
 
         <article className="metric-card">
           <span>Stock bajo</span>
-          <strong className="text-warning">{metrics.lowStockProducts}</strong>
+          {loading ? (
+            <strong className="skeleton-text skeleton-text-short" />
+          ) : (
+            <strong className="text-warning">{metrics.lowStockProducts}</strong>
+          )}
           <small>Requieren reposicion</small>
         </article>
 
         <article className="metric-card">
           <span>Sin stock</span>
-          <strong className="text-danger">{metrics.productsWithoutStock}</strong>
+          {loading ? (
+            <strong className="skeleton-text skeleton-text-short" />
+          ) : (
+            <strong className="text-danger">{metrics.productsWithoutStock}</strong>
+          )}
           <small>Ventas detenidas</small>
         </article>
       </section>
 
-      <section className={`product-table-card fade-init${fadeIn ? " fade-in" : ""}`}>
+      <section
+        className={`product-table-card${loading ? "" : ` fade-init${fadeIn ? " fade-in" : ""}`}`}
+      >
         <div className="product-table-toolbar">
           <div className="toolbar-field toolbar-search">
             <label className="form-label small text-secondary">Buscar producto</label>
@@ -352,9 +383,48 @@ const GetProducts = () => {
             </thead>
 
             <tbody>
-              {items.map((item) => {
-                const status = getStockStatus(item);
+              {loading &&
+                Array.from({ length: 6 }).map((_, index) => (
+                  <tr className="skeleton-table-row" key={`product-skeleton-${index}`}>
+                    <td data-label="Producto">
+                      <div className="product-identity">
+                        <span className="product-avatar skeleton-avatar" />
+                        <div className="skeleton-cell-stack">
+                          <span className="skeleton-line skeleton-line-title" />
+                          <span className="skeleton-line skeleton-line-small" />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="d-none d-md-table-cell" data-label="Categoria">
+                      <span className="skeleton-line" />
+                    </td>
+                    <td className="text-center fw-semibold" data-label="Cantidad">
+                      <span className="skeleton-line skeleton-line-number" />
+                    </td>
+                    <td
+                      className="d-none d-lg-table-cell text-center"
+                      data-label="Precio venta"
+                    >
+                      <span className="skeleton-line skeleton-line-number" />
+                    </td>
+                    <td
+                      className="d-none d-md-table-cell text-center"
+                      data-label="Caducidad"
+                    >
+                      <span className="skeleton-line" />
+                    </td>
+                    <td data-label="Estado">
+                      <span className="skeleton-pill" />
+                    </td>
+                    <td className="text-end" data-label="Venta rapida">
+                      <span className="skeleton-line skeleton-line-action" />
+                    </td>
+                  </tr>
+                ))}
 
+              {!loading && items.map((item) => {
+const stockStatus = getStockStatus(item);
+const expirationStatus = getExpirationStatus(item);
                 return (
                   <tr
                     key={item.producto_id}
@@ -397,10 +467,18 @@ const GetProducts = () => {
                     </td>
 
                     <td data-label="Estado">
-                      <span className={`badge rounded-pill ${status.className}`}>
-                        {status.label}
-                      </span>
-                    </td>
+  <div className="d-flex flex-column gap-1 align-items-start">
+    <span className={`badge rounded-pill ${stockStatus.className}`}>
+      {stockStatus.label}
+    </span>
+
+    {expirationStatus && (
+      <span className={`badge rounded-pill ${expirationStatus.className}`}>
+        {expirationStatus.label}
+      </span>
+    )}
+  </div>
+</td>
 
                     <td className="text-end" data-label="Venta rapida">
                       <form
@@ -438,7 +516,7 @@ const GetProducts = () => {
                 );
               })}
 
-              {!items.length && (
+              {!loading && !items.length && (
                 <tr>
                   <td colSpan="7" className="empty-state">
                     No hay productos para mostrar.

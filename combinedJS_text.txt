@@ -166,7 +166,7 @@ module.exports = {
 const jwt = require("jsonwebtoken");
 
 function getSecret() {
-  return process.env.AUTH_SECRET || "dev-secret-change-me";
+  return process.env.AUTH_SECRET;
 }
 
 function createToken(payload) {
@@ -234,6 +234,10 @@ async function createCategory(req, res) {
 
     res.status(201).json(category);
   } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+
     console.error(error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
@@ -259,6 +263,10 @@ async function getProductsByCategory(req, res) {
     const products = await inventoryService.listProductsByCategory(req.tenantId, categoryId);
     res.json(products);
   } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+
     console.error(error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
@@ -301,10 +309,15 @@ async function updateProduct(req, res) {
       req.tenantId,
       id,
       validation.product,
+      req.user.id
     );
 
     res.json({ message: "Producto e inventario actualizados correctamente" });
   } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+
     console.error(error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
@@ -329,7 +342,8 @@ async function createProduct(req, res) {
 
     const result = await inventoryService.createNewProduct(
       validation.product,
-      validation.inventory
+      validation.inventory,
+      req.user.id
     );
 
     res.status(201).json({ message: "Producto creado correctamente", ...result });
@@ -353,6 +367,10 @@ async function deleteProduct(req, res) {
 
     res.json({ message: "Producto eliminado correctamente" });
   } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+
     console.error(error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
@@ -410,6 +428,58 @@ module.exports = {
 ===== inventory.model.js =====
 
 const { getConnection } = require("../../db");
+
+async function getCurrentStock(connection, tenantId, productId) {
+  const [rows] = await connection.execute(
+    `
+    SELECT COALESCE(SUM(cantidad), 0) AS stock_total
+    FROM inventario
+    WHERE tenant_id = ? AND producto_id = ?
+    `,
+    [tenantId, productId]
+  );
+
+  return Number(rows[0]?.stock_total || 0);
+}
+
+async function insertInventoryMovement(connection, data) {
+  const [result] = await connection.execute(
+    `
+    INSERT INTO movimientos_inventario
+      (
+        tenant_id,
+        producto_id,
+        inventario_id,
+        tipo,
+        cantidad,
+        stock_anterior,
+        stock_nuevo,
+        numero_lote,
+        fecha_caducidad,
+        motivo,
+        descripcion,
+        usuario_id
+      )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    [
+      data.tenantId,
+      data.productId,
+      data.inventoryId,
+      data.type,
+      data.quantity,
+      data.previousStock,
+      data.newStock,
+      data.lotNumber,
+      data.expirationDate,
+      data.reason,
+      data.description,
+      data.userId,
+    ]
+  );
+
+  return result.insertId;
+}
 
 // Listar todos los productos
 async function getAllProducts(tenantId) {
@@ -637,7 +707,7 @@ async function getProductById(tenantId, id) {
   p.precio_venta,
 
   i.fecha_caducidad,
-  i.ultima_actualizacion,
+  i.updated_at,
   i.numero_lote
 
 FROM inventario i
@@ -646,7 +716,7 @@ INNER JOIN productos p
 LEFT JOIN categorias c 
   ON p.categoria_id = c.id AND c.tenant_id = p.tenant_id
 
-WHERE i.tenant_id = ? AND i.producto_id = ? AND p.eliminado = 0;
+WHERE i.tenant_id = ? AND i.producto_id = ? AND p.eliminado = 0 AND i.cantidad > 0;
       `,
       [tenantId, id]
     );
@@ -656,11 +726,9 @@ WHERE i.tenant_id = ? AND i.producto_id = ? AND p.eliminado = 0;
   }
 }
 
-// Actualizar flags (publicado, destacado, recomendado)
-
 
 // Actualizar producto e inventario
-async function updateProduct(tenantId, productId, productoData, invnetarioData) {
+async function updateProduct(tenantId, productId, productoData, invnetarioData, userId) {
   console.log("NOdal Actualizando producto id:", productId, );
   console.log("informacion productoData:", productoData);
   console.log("informacion inventarioData:", invnetarioData);
@@ -668,7 +736,7 @@ async function updateProduct(tenantId, productId, productoData, invnetarioData) 
   try {
     await connection.beginTransaction();
 
-    await connection.execute(
+    const [productResult] = await connection.execute(
       `UPDATE productos
        SET nombre = ?, descripcion = ?, categoria_id = ?, precio_compra = ?, precio_venta = ?, stock_minimo = ?
        WHERE tenant_id = ? AND id = ?`,
@@ -684,23 +752,77 @@ async function updateProduct(tenantId, productId, productoData, invnetarioData) 
       ]
     );
 
+    if (!productResult.affectedRows) {
+      const error = new Error("Producto no encontrado");
+      error.statusCode = 404;
+      throw error;
+    }
 
-    
-    
- for (const item of invnetarioData) {
-  await connection.execute(
-    `UPDATE inventario
-     SET cantidad = ?, fecha_caducidad = ?, numero_lote = ?, ultima_actualizacion = NOW()
-     WHERE tenant_id = ? AND id = ?`,
-    [
-      item.cantidad,
-      item.fecha_caducidad ? new Date(item.fecha_caducidad) : null,
-      item.numero_lote || null,
-      tenantId,
-      item.inventario_id, 
-    ]
-  );
-}
+    let runningStock = await getCurrentStock(connection, tenantId, productId);
+
+    for (const item of invnetarioData) {
+      const [inventoryRows] = await connection.execute(
+        `
+        SELECT id, cantidad
+        FROM inventario
+        WHERE tenant_id = ? AND producto_id = ? AND id = ?
+        LIMIT 1
+        FOR UPDATE
+        `,
+        [tenantId, productId, item.inventario_id]
+      );
+
+      if (!inventoryRows.length) {
+        const error = new Error("Lote de inventario no encontrado");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      const previousQuantity = Number(inventoryRows[0].cantidad);
+      const newQuantity = Number(item.cantidad);
+      const quantityDifference = newQuantity - previousQuantity;
+      const previousStock = runningStock;
+      const newStock = runningStock + quantityDifference;
+      const expirationDate = item.fecha_caducidad
+        ? new Date(item.fecha_caducidad)
+        : null;
+      const lotNumber = item.numero_lote || null;
+
+      await connection.execute(
+        `
+        UPDATE inventario
+        SET cantidad = ?, fecha_caducidad = ?, numero_lote = ?
+        WHERE tenant_id = ? AND producto_id = ? AND id = ?
+        `,
+        [
+          newQuantity,
+          expirationDate,
+          lotNumber,
+          tenantId,
+          productId,
+          item.inventario_id,
+        ]
+      );
+
+      if (quantityDifference !== 0) {
+        await insertInventoryMovement(connection, {
+          tenantId,
+          productId,
+          inventoryId: item.inventario_id,
+          type: "ajuste",
+          quantity: Math.abs(quantityDifference),
+          previousStock,
+          newStock,
+          lotNumber,
+          expirationDate,
+          reason: "Edicion de producto",
+          description: "Ajuste generado al editar el inventario del producto",
+          userId,
+        });
+
+        runningStock = newStock;
+      }
+    }
 
     await connection.commit();
   } catch (error) {
@@ -713,7 +835,7 @@ async function updateProduct(tenantId, productId, productoData, invnetarioData) 
 }
 
 // Crear nuevo producto e inventario
-async function createProduct(productoData, inventarioData) {
+async function createProduct(productoData, inventarioData, userId) {
   console.log("Creando nuevo producto con id:", productoData.categoria_id);
   const connection = await getConnection();
   try {
@@ -738,8 +860,8 @@ async function createProduct(productoData, inventarioData) {
 
     const [inventarioResult] = await connection.execute(
       `INSERT INTO inventario
-       (tenant_id, producto_id, cantidad, fecha_caducidad, numero_lote, ultima_actualizacion)
-       VALUES (?, ?, ?, ?, ?, NOW())`,
+       (tenant_id, producto_id, cantidad, fecha_caducidad, numero_lote)
+       VALUES (?, ?, ?, ?, ?)`,
       [
         inventarioData.tenant_id,
         productoId,
@@ -748,6 +870,23 @@ async function createProduct(productoData, inventarioData) {
         inventarioData.numero_lote,
       ]
     );
+
+    await insertInventoryMovement(connection, {
+      tenantId: productoData.tenant_id,
+      productId: productoId,
+      inventoryId: inventarioResult.insertId,
+      type: "entrada",
+      quantity: inventarioData.cantidad,
+      previousStock: 0,
+      newStock: inventarioData.cantidad,
+      lotNumber: inventarioData.numero_lote || null,
+      expirationDate: inventarioData.fecha_caducidad
+        ? new Date(inventarioData.fecha_caducidad)
+        : null,
+      reason: "Creacion de producto",
+      description: "Entrada inicial generada al crear el producto",
+      userId,
+    });
 
     await connection.commit();
 
@@ -857,13 +996,19 @@ async function getProduct(tenantId, id) {
 
 
 
-async function updateProductData(tenantId, productId, productoData) {
-const { inventario } = productoData;
-  return await inventoryModel.updateProduct(tenantId, productId, productoData, inventario);
+async function updateProductData(tenantId, productId, productoData, userId) {
+  const { inventario } = productoData;
+  return await inventoryModel.updateProduct(
+    tenantId,
+    productId,
+    productoData,
+    inventario,
+    userId
+  );
 }
 
-async function createNewProduct(productoData, inventarioData) {
-  return await inventoryModel.createProduct(productoData, inventarioData);
+async function createNewProduct(productoData, inventarioData, userId) {
+  return await inventoryModel.createProduct(productoData, inventarioData, userId);
 }
 
 async function removeProduct(tenantId, productId) {
@@ -990,6 +1135,18 @@ function validateInventoryItem(item) {
   return validateOptionalDate(item.fecha_caducidad, "La fecha de caducidad");
 }
 
+function validateInventoryUpdateItem(item) {
+  const quantityError = validateRequiredInteger(item.cantidad, "La cantidad");
+  if (quantityError) return quantityError;
+
+  const lot = toTrimmedString(item.numero_lote);
+  if (lot.length > 50) {
+    return "El numero de lote no puede superar los 50 caracteres";
+  }
+
+  return validateOptionalDate(item.fecha_caducidad, "La fecha de caducidad");
+}
+
 function normalizeProductFields(product) {
   return {
     nombre: toTrimmedString(product.nombre),
@@ -1090,7 +1247,7 @@ function buildUpdateProductPayload(body) {
       return { error: "El lote de inventario no es valido" };
     }
 
-    const inventoryError = validateInventoryItem(item);
+    const inventoryError = validateInventoryUpdateItem(item);
     if (inventoryError) return { error: inventoryError };
 
     normalizedInventory.push(normalizeInventoryItem(item));
@@ -1137,12 +1294,12 @@ async function createMovement(req, res) {
       tenantId: req.tenantId,
       userId: req.user.id,
       productId,
+      inventoryId: req.body.inventario_id,
       type: req.body.tipo,
       quantity,
       lotNumber: req.body.numero_lote,
       expirationDate: req.body.fecha_caducidad,
       reason: req.body.motivo,
-      description: req.body.descripcion,
     });
 
     res.status(201).json({
@@ -1169,9 +1326,9 @@ module.exports = {
 
 const { getConnection } = require("../../db");
 
-const ADD_TYPES = new Set(["entrada", "devolucion"]);
-const SUBTRACT_TYPES = new Set(["salida", "merma"]);
-const MOVEMENT_TYPES = new Set(["entrada", "salida", "ajuste", "devolucion", "merma"]);
+const ADD_TYPES = new Set(["entrada"]);
+const SUBTRACT_TYPES = new Set(["salida"]);
+const MOVEMENT_TYPES = new Set(["entrada", "salida", "ajuste"]);
 
 function createHttpError(statusCode, message) {
   const error = new Error(message);
@@ -1195,6 +1352,26 @@ function normalizeOptionalDate(value) {
   return value;
 }
 
+function validateQuantity(quantity) {
+  if (!Number.isInteger(Number(quantity)) || Number(quantity) <= 0) {
+    throw createHttpError(400, "La cantidad debe ser un numero entero positivo");
+  }
+
+  return Number(quantity);
+}
+
+function validateOptionalInventoryId(inventoryId) {
+  if (inventoryId === undefined || inventoryId === null || inventoryId === "") {
+    return null;
+  }
+
+  if (!Number.isInteger(Number(inventoryId)) || Number(inventoryId) <= 0) {
+    throw createHttpError(400, "El lote de inventario no es valido");
+  }
+
+  return Number(inventoryId);
+}
+
 async function getCurrentStock(connection, tenantId, productId) {
   const [rows] = await connection.execute(
     `
@@ -1206,6 +1383,51 @@ async function getCurrentStock(connection, tenantId, productId) {
   );
 
   return Number(rows[0]?.stock_total || 0);
+}
+
+async function getCurrentLotStock(
+  connection,
+  tenantId,
+  productId,
+  lotNumber,
+  expirationDate
+) {
+  const [rows] = await connection.execute(
+    `
+    SELECT cantidad
+    FROM inventario
+    WHERE tenant_id = ?
+      AND producto_id = ?
+      AND numero_lote <=> ?
+      AND fecha_caducidad <=> ?
+    LIMIT 1
+    FOR UPDATE
+    `,
+    [tenantId, productId, lotNumber, expirationDate]
+  );
+
+  return Number(rows[0]?.cantidad || 0);
+}
+
+async function getInventoryLotForUpdate(connection, tenantId, productId, inventoryId) {
+  const [rows] = await connection.execute(
+    `
+    SELECT id, cantidad, numero_lote, fecha_caducidad
+    FROM inventario
+    WHERE tenant_id = ?
+      AND producto_id = ?
+      AND id = ?
+    LIMIT 1
+    FOR UPDATE
+    `,
+    [tenantId, productId, inventoryId]
+  );
+
+  if (!rows.length) {
+    throw createHttpError(404, "Lote de inventario no encontrado");
+  }
+
+  return rows[0];
 }
 
 async function insertMovement(connection, data) {
@@ -1223,10 +1445,9 @@ async function insertMovement(connection, data) {
         numero_lote,
         fecha_caducidad,
         motivo,
-        descripcion,
         usuario_id
       )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       data.tenantId,
@@ -1239,7 +1460,6 @@ async function insertMovement(connection, data) {
       data.lotNumber,
       data.expirationDate,
       data.reason,
-      data.description,
       data.userId,
     ]
   );
@@ -1249,51 +1469,52 @@ async function insertMovement(connection, data) {
 
 async function getAllMovements(tenantId) {
   const connection = await getConnection();
+
   try {
     const [rows] = await connection.execute(
       `
       SELECT
-  m.id AS movimiento_id,
-  m.tenant_id,
+        m.id AS movimiento_id,
+        m.tenant_id,
 
-  m.producto_id,
-  p.nombre AS producto_nombre,
+        m.producto_id,
+        p.nombre AS producto_nombre,
 
-  c.id AS categoria_id,
-  c.nombre AS producto_categoria,
+        c.id AS categoria_id,
+        c.nombre AS producto_categoria,
 
-  m.inventario_id,
-  m.tipo,
-  m.cantidad,
-  m.stock_anterior,
-  m.stock_nuevo,
-  m.numero_lote,
-  m.fecha_caducidad,
-  m.motivo,
-  m.descripcion,
+        m.inventario_id,
+        m.tipo,
+        m.cantidad,
+        m.stock_anterior,
+        m.stock_nuevo,
+        m.numero_lote,
+        m.fecha_caducidad,
+        m.motivo,
+        m.descripcion,
 
-  m.usuario_id,
-  u.nombre AS usuario_nombre,
+        m.usuario_id,
+        u.nombre AS usuario_nombre,
 
-  m.fecha_movimiento
+        m.created_at
 
-FROM movimientos_inventario m
+      FROM movimientos_inventario m
 
-INNER JOIN productos p
-  ON p.id = m.producto_id
- AND p.tenant_id = m.tenant_id
+      INNER JOIN productos p
+        ON p.id = m.producto_id
+       AND p.tenant_id = m.tenant_id
 
-LEFT JOIN categorias c
-  ON c.id = p.categoria_id
- AND c.tenant_id = p.tenant_id
+      LEFT JOIN categorias c
+        ON c.id = p.categoria_id
+       AND c.tenant_id = p.tenant_id
 
-LEFT JOIN usuarios u
-  ON u.id = m.usuario_id
- AND u.tenant_id = m.tenant_id
+      LEFT JOIN usuarios u
+        ON u.id = m.usuario_id
+       AND u.tenant_id = m.tenant_id
 
-WHERE m.tenant_id = ?
+      WHERE m.tenant_id = ?
 
-ORDER BY m.fecha_movimiento DESC, m.id DESC;
+      ORDER BY m.created_at DESC, m.id DESC
       `,
       [tenantId]
     );
@@ -1305,13 +1526,20 @@ ORDER BY m.fecha_movimiento DESC, m.id DESC;
 }
 
 async function addStockMovement(connection, data) {
+  const stockBefore = await getCurrentStock(
+    connection,
+    data.tenantId,
+    data.productId
+  );
+
   const [existingRows] = await connection.execute(
     `
     SELECT id, cantidad
     FROM inventario
     WHERE tenant_id = ?
       AND producto_id = ?
-      AND ((numero_lote <=> ?) AND (fecha_caducidad <=> ?))
+      AND numero_lote <=> ?
+      AND fecha_caducidad <=> ?
     LIMIT 1
     FOR UPDATE
     `,
@@ -1322,10 +1550,11 @@ async function addStockMovement(connection, data) {
 
   if (existingRows.length) {
     inventoryId = existingRows[0].id;
+
     await connection.execute(
       `
       UPDATE inventario
-      SET cantidad = cantidad + ?, ultima_actualizacion = NOW()
+      SET cantidad = cantidad + ?
       WHERE tenant_id = ? AND id = ?
       `,
       [data.quantity, data.tenantId, inventoryId]
@@ -1334,8 +1563,8 @@ async function addStockMovement(connection, data) {
     const [inventoryResult] = await connection.execute(
       `
       INSERT INTO inventario
-        (tenant_id, producto_id, cantidad, numero_lote, fecha_caducidad, ultima_actualizacion)
-      VALUES (?, ?, ?, ?, ?, NOW())
+        (tenant_id, producto_id, cantidad, numero_lote, fecha_caducidad)
+      VALUES (?, ?, ?, ?, ?)
       `,
       [
         data.tenantId,
@@ -1345,11 +1574,12 @@ async function addStockMovement(connection, data) {
         data.expirationDate,
       ]
     );
+
     inventoryId = inventoryResult.insertId;
   }
 
-  const previousStock = await getCurrentStock(connection, data.tenantId, data.productId) - data.quantity;
-  const newStock = previousStock + data.quantity;
+  const previousStock = stockBefore;
+  const newStock = stockBefore + data.quantity;
 
   const movementId = await insertMovement(connection, {
     ...data,
@@ -1366,17 +1596,68 @@ async function addStockMovement(connection, data) {
 }
 
 async function subtractStockMovement(connection, data) {
-  const stockBefore = await getCurrentStock(connection, data.tenantId, data.productId);
+  const stockBefore = await getCurrentStock(
+    connection,
+    data.tenantId,
+    data.productId
+  );
 
   if (stockBefore < data.quantity) {
     throw createHttpError(409, "Stock insuficiente para registrar el movimiento");
+  }
+
+  if (data.inventoryId) {
+    const inventoryLot = await getInventoryLotForUpdate(
+      connection,
+      data.tenantId,
+      data.productId,
+      data.inventoryId
+    );
+    const lotQuantity = Number(inventoryLot.cantidad);
+
+    if (lotQuantity < data.quantity) {
+      throw createHttpError(409, "Stock insuficiente en el lote seleccionado");
+    }
+
+    await connection.execute(
+      `
+      UPDATE inventario
+      SET cantidad = ?
+      WHERE tenant_id = ? AND producto_id = ? AND id = ?
+      `,
+      [
+        lotQuantity - data.quantity,
+        data.tenantId,
+        data.productId,
+        data.inventoryId,
+      ]
+    );
+
+    const newStock = stockBefore - data.quantity;
+    const movementId = await insertMovement(connection, {
+      ...data,
+      inventoryId: inventoryLot.id,
+      previousStock: stockBefore,
+      newStock,
+      lotNumber: inventoryLot.numero_lote || null,
+      expirationDate: inventoryLot.fecha_caducidad || null,
+    });
+
+    return {
+      movementId,
+      movementIds: [movementId],
+      stock_anterior: stockBefore,
+      stock_nuevo: newStock,
+    };
   }
 
   const [inventoryRows] = await connection.execute(
     `
     SELECT id, cantidad, numero_lote, fecha_caducidad
     FROM inventario
-    WHERE tenant_id = ? AND producto_id = ? AND cantidad > 0
+    WHERE tenant_id = ?
+      AND producto_id = ?
+      AND cantidad > 0
     ORDER BY
       CASE WHEN fecha_caducidad IS NULL THEN 1 ELSE 0 END,
       fecha_caducidad ASC,
@@ -1393,17 +1674,19 @@ async function subtractStockMovement(connection, data) {
   for (const item of inventoryRows) {
     if (remaining <= 0) break;
 
-    const amountToDiscount = Math.min(Number(item.cantidad), remaining);
+    const itemQuantity = Number(item.cantidad);
+    const amountToDiscount = Math.min(itemQuantity, remaining);
+
     const previousStock = runningStock;
     const newStock = runningStock - amountToDiscount;
 
     await connection.execute(
       `
       UPDATE inventario
-      SET cantidad = ?, ultima_actualizacion = NOW()
+      SET cantidad = ?
       WHERE tenant_id = ? AND id = ?
       `,
-      [Number(item.cantidad) - amountToDiscount, data.tenantId, item.id]
+      [itemQuantity - amountToDiscount, data.tenantId, item.id]
     );
 
     const movementId = await insertMovement(connection, {
@@ -1429,16 +1712,62 @@ async function subtractStockMovement(connection, data) {
   };
 }
 
+async function adjustSelectedLotMovement(connection, data) {
+  const stockBefore = await getCurrentStock(
+    connection,
+    data.tenantId,
+    data.productId
+  );
+  const inventoryLot = await getInventoryLotForUpdate(
+    connection,
+    data.tenantId,
+    data.productId,
+    data.inventoryId
+  );
+  const currentLotStock = Number(inventoryLot.cantidad);
+  const difference = data.quantity - currentLotStock;
+
+  if (difference === 0) {
+    throw createHttpError(400, "El ajuste no cambia el stock actual del lote");
+  }
+
+  await connection.execute(
+    `
+    UPDATE inventario
+    SET cantidad = ?
+    WHERE tenant_id = ? AND producto_id = ? AND id = ?
+    `,
+    [data.quantity, data.tenantId, data.productId, data.inventoryId]
+  );
+
+  const newStock = stockBefore + difference;
+  const movementId = await insertMovement(connection, {
+    ...data,
+    inventoryId: inventoryLot.id,
+    quantity: Math.abs(difference),
+    previousStock: stockBefore,
+    newStock,
+    lotNumber: inventoryLot.numero_lote || null,
+    expirationDate: inventoryLot.fecha_caducidad || null,
+  });
+
+  return {
+    movementId,
+    stock_anterior: stockBefore,
+    stock_nuevo: newStock,
+  };
+}
+
 async function createMovement({
   tenantId,
   userId,
   productId,
+  inventoryId,
   type,
   quantity,
   lotNumber,
   expirationDate,
   reason,
-  description,
 }) {
   if (!MOVEMENT_TYPES.has(type)) {
     throw createHttpError(400, "Tipo de movimiento no valido");
@@ -1448,13 +1777,17 @@ async function createMovement({
     tenantId,
     userId,
     productId,
+    inventoryId: validateOptionalInventoryId(inventoryId),
     type,
-    quantity,
+    quantity: validateQuantity(quantity),
     lotNumber: normalizeOptionalString(lotNumber),
     expirationDate: normalizeOptionalDate(expirationDate),
     reason: normalizeOptionalString(reason),
-    description: normalizeOptionalString(description),
   };
+
+  if ((type === "salida" || type === "ajuste") && !normalizedData.inventoryId) {
+    throw createHttpError(400, "Selecciona el lote de inventario");
+  }
 
   const connection = await getConnection();
 
@@ -1482,23 +1815,7 @@ async function createMovement({
     } else if (SUBTRACT_TYPES.has(type)) {
       result = await subtractStockMovement(connection, normalizedData);
     } else {
-      const currentStock = await getCurrentStock(connection, tenantId, productId);
-      const difference = quantity - currentStock;
-
-      if (difference === 0) {
-        throw createHttpError(400, "El ajuste no cambia el stock actual");
-      }
-
-      result =
-        difference > 0
-          ? await addStockMovement(connection, {
-              ...normalizedData,
-              quantity: difference,
-            })
-          : await subtractStockMovement(connection, {
-              ...normalizedData,
-              quantity: Math.abs(difference),
-            });
+      result = await adjustSelectedLotMovement(connection, normalizedData);
     }
 
     await connection.commit();
@@ -1666,7 +1983,7 @@ async function registerQuickSale({ tenantId, userId, productId, quantity }) {
       await connection.execute(
         `
         UPDATE inventario
-        SET cantidad = ?, ultima_actualizacion = NOW()
+        SET cantidad = ?
         WHERE tenant_id = ? AND id = ?
         `,
         [newInventoryQuantity, tenantId, item.id]

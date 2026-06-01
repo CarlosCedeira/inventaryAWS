@@ -1,4 +1,4 @@
-not// joinJsxFiles.js
+// joinJsxFiles.js
 const fs = require("fs");
 const path = require("path");
 

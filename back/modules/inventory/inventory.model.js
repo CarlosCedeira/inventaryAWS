@@ -287,7 +287,7 @@ INNER JOIN productos p
 LEFT JOIN categorias c 
   ON p.categoria_id = c.id AND c.tenant_id = p.tenant_id
 
-WHERE i.tenant_id = ? AND i.producto_id = ? AND p.eliminado = 0;
+WHERE i.tenant_id = ? AND i.producto_id = ? AND p.eliminado = 0 AND i.cantidad > 0;
       `,
       [tenantId, id]
     );
@@ -307,7 +307,7 @@ async function updateProduct(tenantId, productId, productoData, invnetarioData, 
   try {
     await connection.beginTransaction();
 
-    await connection.execute(
+    const [productResult] = await connection.execute(
       `UPDATE productos
        SET nombre = ?, descripcion = ?, categoria_id = ?, precio_compra = ?, precio_venta = ?, stock_minimo = ?
        WHERE tenant_id = ? AND id = ?`,
@@ -323,6 +323,11 @@ async function updateProduct(tenantId, productId, productoData, invnetarioData, 
       ]
     );
 
+    if (!productResult.affectedRows) {
+      const error = new Error("Producto no encontrado");
+      error.statusCode = 404;
+      throw error;
+    }
 
     let runningStock = await getCurrentStock(connection, tenantId, productId);
 

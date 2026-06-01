@@ -1,136 +1,292 @@
-# 📘 Project Technical Documentation
+# Inventory AWS
 
-## 🧾 General Information
+Aplicacion web de inventario con frontend React/Vite, backend Node.js/Express y base de datos MySQL. El sistema gestiona productos, categorias, autenticacion por usuario/tenant y movimientos de stock con trazabilidad por lote.
 
-- **Project Name:**
-- **Overview:**  
-  Inventory web application that retrieves products from a MySQL database hosted on Amazon RDS using AWS Lambda functions, exposing the endpoints with Amazon Cognito.
+## Estado actual
 
-- **Main Technologies:**
-  - **Frontend:** React, Bootstrap
-  - **Backend:** AWS Lambda (Node.js)
-  - **Database:** Amazon RDS (MySQL)
-  - **Network:** Lambda API Gateway
-  - **Other Services:** IAM, CloudWatch and cognito
+El repositorio contiene una aplicacion full-stack en desarrollo:
 
----
+- `front/`: interfaz React con Vite, Bootstrap y React Router.
+- `back/`: API Express modular con MySQL, JWT, bcrypt, helmet y rate limiting.
+- `documentation/`: recursos de base de datos y documentacion auxiliar.
+- `arquitectura_flujos_invariantes_testing_md.md`: flujos funcionales, invariantes y pruebas manuales del nucleo de inventario.
 
-## 📦 Project Structure
+El README anterior describia principalmente una arquitectura Lambda/API Gateway. El codigo actual usa un servidor Express local en `back/server.js`, aunque el frontend puede apuntar a una URL remota mediante `VITE_API_URL`.
 
-### 🛢️ Database (RDS)
+## Tecnologias
 
-- **Engine:** MySQL
-- **Schema Example:**
+### Frontend
 
-  ./documentation/Database/imageRelationalDiagram
-  ./documentation/Database/QueryDatabase
+- React 19
+- Vite
+- React Router
+- Bootstrap
+- Vitest y Testing Library
 
-### 🖥️ Frontend
+### Backend
 
-- **Frameworks:**
+- Node.js
+- Express 5
+- MySQL con `mysql2/promise`
+- JWT para autenticacion
+- bcrypt para password hashing
+- helmet para cabeceras de seguridad
+- express-rate-limit para limitar intentos de login
 
-  - React
-  - Bootstrap
+### Base de datos
 
-- **Main Components:**
+- MySQL
+- Preparado para modelo multi-tenant mediante `tenant_id`
+- Tablas principales esperadas: usuarios, productos, categorias, inventario y movimientos de inventario
 
-  - `getProducts`
-  - `addProduct`
-  - `editProduct`
-  - `deleteProduct`
+## Estructura principal
 
-  - `getClients`
-  - `addClient`
-  - `editClient`
-  - `deleteClient`
+```text
+.
+|-- back/
+|   |-- db.js
+|   |-- server.js
+|   |-- middleware/
+|   |   `-- rateLimit.js
+|   `-- modules/
+|       |-- auth/
+|       |-- inventory/
+|       |-- movements/
+|       `-- quickSales/
+|-- front/
+|   `-- src/
+|       |-- components/
+|       |   |-- dashboard/
+|       |   |-- movements/
+|       |   |-- nav/
+|       |   |-- products/
+|       |   `-- spiners/
+|       |-- services/
+|       `-- utils/
+|-- documentation/
+|-- ToDo.md
+`-- arquitectura_flujos_invariantes_testing_md.md
+```
 
-### ⚙️ Backend (AWS Lambda)
+## Funcionalidades
 
-- **Language:** Node.js
-- **Functions:**
+### Autenticacion
 
-  - `getProducts`: Retrieves all products
-  - `addProduct`: Adds a new product
-  - `editProduct`: Updates an existing product
-  - `deleteProduct`: Deletes a product
+- Login mediante `/auth/login`.
+- Passwords validadas con bcrypt.
+- Sesion guardada en `localStorage` bajo `inventory_session`.
+- Token JWT enviado como `Authorization: Bearer <token>`.
+- Las rutas privadas del backend rellenan `req.user` y `req.tenantId` desde el token.
+- Rate limit aplicado a rutas bajo `/auth`.
 
-  - `getClients`: Retrieves all clients
-  - `addClient`: Adds a new client
-  - `editClient`: Updates an existing client
-  - `deleteClient`: Deletes a client
+### Productos e inventario
 
-  - `getcategory` : Retrieves all categories
-  - `addcategoty` : adds a new category
+- Listado de productos.
+- Busqueda de productos.
+- Consulta por categoria.
+- Creacion y actualizacion de productos.
+- Borrado logico mediante marca `eliminado`.
+- Stock calculado desde lotes de inventario.
+- Categorias asociadas a tenant.
 
-  - `getsupliers` : Retrieves all supliers
-  - `addsuplier` : Adds a new suplier
+### Movimientos de stock
 
-  - `getsells`: Retrieves all sells
+- Historial de movimientos.
+- Creacion de movimientos tipo:
+  - `entrada`
+  - `salida`
+  - `ajuste`
+- Trazabilidad por producto, lote, usuario, stock anterior y stock nuevo.
+- Las operaciones criticas usan transacciones.
+- Las salidas y ajustes requieren lote de inventario seleccionado.
+- La salida sin lote en la logica interna puede aplicar FIFO, usado por venta rapida.
 
-  - `getmovements` : Retrieves all movements
+### Venta rapida
 
-  - `getpurchases` : Retrieves all purchases
+- Endpoint `/ventas/:productId`.
+- Descuenta stock aplicando FIFO.
+- Registra movimientos de salida.
 
-## 🔐 Security
+### Frontend
 
-- **IAM Role with minimal permissions:**
+- Login protegido.
+- Navegacion lateral con usuario y cierre de sesion.
+- Vista de productos.
+- Vista de movimientos con metricas, tabla responsive y detalle en modal/card.
+- Servicios HTTP centralizados con `fetchWithAuth`.
 
-  - `rds-db:connect`
-  - `logs:*` (for debugging with CloudWatch)
+## API actual
 
-- **Network Configuration:**
+### Publica
 
-  - RDS hosted inside a private VPC
-  - Lambda has VPC access (if not using RDS Proxy)
-  - RDS security group restricted by IP or Lambda ENI
+```text
+POST /auth/login
+```
 
-- **Endpoint Protection:**
-  - Proper CORS configuration
-  - Potential use of API Gateway + Cognito/Auth
+### Protegidas
 
----
+Todas requieren `Authorization: Bearer <token>`.
 
-## ⚙️ Environment
+```text
+GET    /productos
+GET    /productos/categorias
+POST   /productos/categorias
+GET    /productos/categoria/:categoryId
+GET    /productos/buscar/:name
+GET    /productos/:id
+PUT    /productos/actualizar/:id
+POST   /productos/newProduct
+PATCH  /productos/eliminar/:id
 
-- **AWS Environment:**
-  - Region: `eu-west-1`
-  - Active Lambda URL:  
-    `https://xyz.lambda-url.eu-west-1.on.aws/`
+GET    /movimientos
+POST   /movimientos
 
----
+PUT    /ventas/:productId
+```
 
-## 🚀 Deployment
+## Configuracion
 
-### Manual
+### Backend
 
-- **Lambda:**
+Crear `back/.env` o `back/.env.development` con las variables necesarias:
 
-  - Upload `index.js`, `node_modules`, and `package.json` as a `.zip` file
+```env
+PORT=3000
+HOST=0.0.0.0
+DB_HOST=localhost
+DATABASE=inventory
+DB_USER=root
+DB_PASSWORD=password
+JWT_SECRET=change-me
+```
 
-- **Frontend:**
-  - Use `Vite` or `React-scripts` and deploy to S3 or another web service
+La conexion MySQL se configura en `back/db.js`.
 
-### Automated (Future)
+### Frontend
 
-- **CI:** GitHub Actions
-- **CD:** AWS CodePipeline or AWS Amplify
+Crear o ajustar `front/.env`:
 
----
+```env
+VITE_API_URL=http://localhost:3000
+```
 
-## 🧪 Testing
+Actualmente el repositorio puede tener `VITE_API_URL` apuntando a una URL remota de AWS/API Gateway. Para desarrollo local debe apuntar al backend Express local.
 
-- Unit tests: _Pending implementation_
-- Manual browser testing
-- Load testing with Postman/JMeter (optional)
+## Desarrollo local
 
----
+Instalar dependencias:
 
-## 📊 Monitoring
+```bash
+cd back
+npm install
 
-- CloudWatch Logs for Lambda functions
-- CloudWatch Metrics (errors, execution time, memory usage)
-- Alarms via CloudWatch Alarms in case of errors
+cd ../front
+npm install
+```
 
----
+Levantar backend:
 
-## 📝 To-Do / Future Improvements
+```bash
+cd back
+node server.js
+```
+
+Levantar frontend:
+
+```bash
+cd front
+npm run dev
+```
+
+Por defecto:
+
+- Backend: `http://localhost:3000`
+- Frontend Vite: URL indicada por Vite, normalmente `http://localhost:5173`
+
+## Scripts
+
+### Backend
+
+```bash
+npm test
+```
+
+Actualmente el backend no tiene tests implementados y el script devuelve error por defecto.
+
+### Frontend
+
+```bash
+npm run dev
+npm run build
+npm run lint
+npm run test
+npm run test:watch
+npm run preview
+```
+
+## Seguridad
+
+Estado actual:
+
+- JWT para rutas privadas.
+- `tenant_id` se extrae del token y se usa como limite de datos.
+- Rate limiting en login.
+- Helmet activado en Express.
+- Passwords con bcrypt.
+
+Pendiente o a revisar:
+
+- Restringir CORS. Actualmente `server.js` permite `origin: "*"` para desarrollo.
+- Completar sanitizacion/validacion en todos los endpoints.
+- Confirmar que todos los accesos a datos filtran siempre por `tenant_id`.
+- Revisar secretos y archivos `.env` antes de despliegue.
+
+## Testing
+
+Hay documentacion de pruebas manuales en `arquitectura_flujos_invariantes_testing_md.md`.
+
+Estado actual:
+
+- Frontend preparado con Vitest.
+- Backend sin suite de tests.
+- `ToDo.md` contiene tareas pendientes de tests para productos.
+
+Pruebas prioritarias recomendadas:
+
+- Login valido e invalido.
+- Token ausente, invalido y expirado.
+- Crear producto con stock inicial.
+- Crear entrada sobre lote existente y lote nuevo.
+- Crear salida con lote seleccionado.
+- Rechazar salida con stock insuficiente.
+- Crear ajuste de lote.
+- Venta rapida FIFO.
+- Aislamiento por tenant.
+
+## Pendientes principales
+
+Ver `ToDo.md` para la lista completa. Los puntos mas relevantes son:
+
+- Completar filtros avanzados de productos.
+- Normalizar formato de fechas en entrada y salida.
+- Completar selects de variante/valor.
+- Consolidar sanitizacion backend/frontend.
+- Completar filtrado por `tenant_id`.
+- Ampliar modelo de producto con campos como marca, peso o medida.
+- Implementar tests unitarios y de integracion.
+- Actualizar documentacion de base de datos si cambia el esquema.
+
+## Notas de despliegue
+
+El proyecto conserva referencias a AWS en documentacion y configuracion. Si se despliega en AWS, hay dos caminos posibles:
+
+- Mantener backend Express en un runtime compatible, por ejemplo EC2, ECS, Elastic Beanstalk o Lambda con adaptador.
+- Separar una version Lambda/API Gateway si se quiere volver a la arquitectura serverless descrita originalmente.
+
+Antes de desplegar:
+
+- Definir origen CORS permitido.
+- Configurar variables de entorno seguras.
+- Confirmar conectividad con RDS/MySQL.
+- Revisar indices y restricciones de tenant/lote en base de datos.
+- Ejecutar build del frontend.

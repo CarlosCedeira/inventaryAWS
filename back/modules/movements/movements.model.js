@@ -1,14 +1,8 @@
 const { getConnection } = require("../../db");
 
-const ADD_TYPES = new Set(["entrada", "devolucion"]);
-const SUBTRACT_TYPES = new Set(["salida", "merma"]);
-const MOVEMENT_TYPES = new Set([
-  "entrada",
-  "salida",
-  "ajuste",
-  "devolucion",
-  "merma",
-]);
+const ADD_TYPES = new Set(["entrada"]);
+const SUBTRACT_TYPES = new Set(["salida"]);
+const MOVEMENT_TYPES = new Set(["entrada", "salida", "ajuste"]);
 
 function createHttpError(statusCode, message) {
   const error = new Error(message);
@@ -38,6 +32,18 @@ function validateQuantity(quantity) {
   }
 
   return Number(quantity);
+}
+
+function validateOptionalInventoryId(inventoryId) {
+  if (inventoryId === undefined || inventoryId === null || inventoryId === "") {
+    return null;
+  }
+
+  if (!Number.isInteger(Number(inventoryId)) || Number(inventoryId) <= 0) {
+    throw createHttpError(400, "El lote de inventario no es valido");
+  }
+
+  return Number(inventoryId);
 }
 
 async function getCurrentStock(connection, tenantId, productId) {
@@ -77,6 +83,27 @@ async function getCurrentLotStock(
   return Number(rows[0]?.cantidad || 0);
 }
 
+async function getInventoryLotForUpdate(connection, tenantId, productId, inventoryId) {
+  const [rows] = await connection.execute(
+    `
+    SELECT id, cantidad, numero_lote, fecha_caducidad
+    FROM inventario
+    WHERE tenant_id = ?
+      AND producto_id = ?
+      AND id = ?
+    LIMIT 1
+    FOR UPDATE
+    `,
+    [tenantId, productId, inventoryId]
+  );
+
+  if (!rows.length) {
+    throw createHttpError(404, "Lote de inventario no encontrado");
+  }
+
+  return rows[0];
+}
+
 async function insertMovement(connection, data) {
   const [result] = await connection.execute(
     `
@@ -92,10 +119,9 @@ async function insertMovement(connection, data) {
         numero_lote,
         fecha_caducidad,
         motivo,
-        descripcion,
         usuario_id
       )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       data.tenantId,
@@ -108,7 +134,6 @@ async function insertMovement(connection, data) {
       data.lotNumber,
       data.expirationDate,
       data.reason,
-      data.description,
       data.userId,
     ]
   );
@@ -255,6 +280,51 @@ async function subtractStockMovement(connection, data) {
     throw createHttpError(409, "Stock insuficiente para registrar el movimiento");
   }
 
+  if (data.inventoryId) {
+    const inventoryLot = await getInventoryLotForUpdate(
+      connection,
+      data.tenantId,
+      data.productId,
+      data.inventoryId
+    );
+    const lotQuantity = Number(inventoryLot.cantidad);
+
+    if (lotQuantity < data.quantity) {
+      throw createHttpError(409, "Stock insuficiente en el lote seleccionado");
+    }
+
+    await connection.execute(
+      `
+      UPDATE inventario
+      SET cantidad = ?
+      WHERE tenant_id = ? AND producto_id = ? AND id = ?
+      `,
+      [
+        lotQuantity - data.quantity,
+        data.tenantId,
+        data.productId,
+        data.inventoryId,
+      ]
+    );
+
+    const newStock = stockBefore - data.quantity;
+    const movementId = await insertMovement(connection, {
+      ...data,
+      inventoryId: inventoryLot.id,
+      previousStock: stockBefore,
+      newStock,
+      lotNumber: inventoryLot.numero_lote || null,
+      expirationDate: inventoryLot.fecha_caducidad || null,
+    });
+
+    return {
+      movementId,
+      movementIds: [movementId],
+      stock_anterior: stockBefore,
+      stock_nuevo: newStock,
+    };
+  }
+
   const [inventoryRows] = await connection.execute(
     `
     SELECT id, cantidad, numero_lote, fecha_caducidad
@@ -316,16 +386,62 @@ async function subtractStockMovement(connection, data) {
   };
 }
 
+async function adjustSelectedLotMovement(connection, data) {
+  const stockBefore = await getCurrentStock(
+    connection,
+    data.tenantId,
+    data.productId
+  );
+  const inventoryLot = await getInventoryLotForUpdate(
+    connection,
+    data.tenantId,
+    data.productId,
+    data.inventoryId
+  );
+  const currentLotStock = Number(inventoryLot.cantidad);
+  const difference = data.quantity - currentLotStock;
+
+  if (difference === 0) {
+    throw createHttpError(400, "El ajuste no cambia el stock actual del lote");
+  }
+
+  await connection.execute(
+    `
+    UPDATE inventario
+    SET cantidad = ?
+    WHERE tenant_id = ? AND producto_id = ? AND id = ?
+    `,
+    [data.quantity, data.tenantId, data.productId, data.inventoryId]
+  );
+
+  const newStock = stockBefore + difference;
+  const movementId = await insertMovement(connection, {
+    ...data,
+    inventoryId: inventoryLot.id,
+    quantity: Math.abs(difference),
+    previousStock: stockBefore,
+    newStock,
+    lotNumber: inventoryLot.numero_lote || null,
+    expirationDate: inventoryLot.fecha_caducidad || null,
+  });
+
+  return {
+    movementId,
+    stock_anterior: stockBefore,
+    stock_nuevo: newStock,
+  };
+}
+
 async function createMovement({
   tenantId,
   userId,
   productId,
+  inventoryId,
   type,
   quantity,
   lotNumber,
   expirationDate,
   reason,
-  description,
 }) {
   if (!MOVEMENT_TYPES.has(type)) {
     throw createHttpError(400, "Tipo de movimiento no valido");
@@ -335,13 +451,17 @@ async function createMovement({
     tenantId,
     userId,
     productId,
+    inventoryId: validateOptionalInventoryId(inventoryId),
     type,
     quantity: validateQuantity(quantity),
     lotNumber: normalizeOptionalString(lotNumber),
     expirationDate: normalizeOptionalDate(expirationDate),
     reason: normalizeOptionalString(reason),
-    description: normalizeOptionalString(description),
   };
+
+  if ((type === "salida" || type === "ajuste") && !normalizedData.inventoryId) {
+    throw createHttpError(400, "Selecciona el lote de inventario");
+  }
 
   const connection = await getConnection();
 
@@ -369,30 +489,7 @@ async function createMovement({
     } else if (SUBTRACT_TYPES.has(type)) {
       result = await subtractStockMovement(connection, normalizedData);
     } else {
-      const currentLotStock = await getCurrentLotStock(
-        connection,
-        tenantId,
-        productId,
-        normalizedData.lotNumber,
-        normalizedData.expirationDate
-      );
-
-      const difference = normalizedData.quantity - currentLotStock;
-
-      if (difference === 0) {
-        throw createHttpError(400, "El ajuste no cambia el stock actual del lote");
-      }
-
-      result =
-        difference > 0
-          ? await addStockMovement(connection, {
-              ...normalizedData,
-              quantity: difference,
-            })
-          : await subtractStockMovement(connection, {
-              ...normalizedData,
-              quantity: Math.abs(difference),
-            });
+      result = await adjustSelectedLotMovement(connection, normalizedData);
     }
 
     await connection.commit();

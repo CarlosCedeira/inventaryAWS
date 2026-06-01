@@ -19,6 +19,12 @@ export const productService = {
     return res.json();
   },
 
+  getById: async (productId) => {
+    const res = await fetchWithAuth(`${API_URL}/productos/${productId}`);
+    if (!res.ok) throw new Error("Error al obtener el producto");
+    return res.json();
+  },
+
   getCategories: async () => {
     const res = await fetchWithAuth(`${API_URL}/productos/categorias`);
     if (!res.ok) throw new Error("Error al obtener categorias");

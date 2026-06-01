@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 
 function getSecret() {
-  return process.env.AUTH_SECRET || "dev-secret-change-me";
+  return process.env.AUTH_SECRET;
 }
 
 function createToken(payload) {

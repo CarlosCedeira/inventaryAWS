@@ -44,19 +44,26 @@ export async function fetchWithAuth(input, init = {}) {
 }
 
 export async function login(email, password) {
-  console.log("Attempting login with email:", email, password);
+  console.log("API_URL:", API_URL);
+
   const res = await fetch(`${API_URL}/auth/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({ email, password }),
   });
 
+  console.log("STATUS:", res.status);
+
+  const data = await res.json().catch(() => null);
+
+  console.log("RESPUESTA:", data);
+
   if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(error.error || "No se pudo iniciar sesion");
+    throw new Error(data?.error || "No se pudo iniciar sesión");
   }
 
-  const session = await res.json();
-  saveSession(session);
-  return session;
+  saveSession(data);
+  return data;
 }
