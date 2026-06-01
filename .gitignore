@@ -1,0 +1,16 @@
+# dependencias
+node_modules/
+**/node_modules/
+
+# variables de entorno
+.env
+.env.*
+!.env.example
+
+# archivos generados
+combinedJS_text.txt
+combinedJSX_text.txt
+mermaid-diagram.png
+
+# windows
+desktop.ini
