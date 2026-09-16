@@ -1,13 +1,23 @@
 const DEFAULT_MAX_STOCK_QUANTITY = 999999;
 
-function isBlank(value) {
+type StockQuantityValue = string | number | null | undefined;
+
+interface StockQuantityOptions {
+  label?: string;
+  max?: number;
+}
+
+function isBlank(value: StockQuantityValue): boolean {
   return value === undefined || value === null || String(value).trim() === "";
 }
 
 export function validateStockQuantity(
-  value,
-  { label = "La cantidad", max = DEFAULT_MAX_STOCK_QUANTITY } = {}
-) {
+  value: StockQuantityValue,
+  {
+    label = "La cantidad",
+    max = DEFAULT_MAX_STOCK_QUANTITY,
+  }: StockQuantityOptions = {},
+): string | null {
   if (isBlank(value)) return `${label} es obligatoria`;
 
   const quantity = Number(value);
@@ -31,6 +41,8 @@ export function validateStockQuantity(
   return null;
 }
 
-export function normalizeStockQuantity(value) {
+export function normalizeStockQuantity(
+  value: StockQuantityValue,
+): number {
   return Number(value);
 }

@@ -33,7 +33,7 @@
 
 .inventory-metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 1rem;
   margin-bottom: 1rem;
 }
@@ -61,6 +61,109 @@
   font-size: 1.75rem;
   line-height: 1.15;
   color: #0f172a;
+}
+
+.metric-filter {
+  position: relative;
+  overflow: hidden;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: background-color 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+}
+
+.metric-filter::before {
+  content: "";
+  position: absolute;
+  inset: -30%;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 25% 60%, rgba(100, 121, 155, 0.16), transparent 55%),
+    radial-gradient(ellipse at 80% 25%, rgba(148, 163, 184, 0.12), transparent 60%);
+  filter: blur(15px);
+  opacity: 0;
+  transform: translateX(-8%);
+  transition: opacity 300ms ease, transform 600ms ease;
+}
+
+.metric-filter > * {
+  position: relative;
+}
+
+.metric-filter:hover:not(:disabled),
+.metric-filter.is-active {
+  background-color: #253e64;
+  border-color: #526681;
+  box-shadow: 0 0.75rem 1.5rem rgba(15, 23, 42, 0.2);
+}
+
+.metric-filter:hover:not(:disabled)::before,
+.metric-filter.is-active::before {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.metric-filter.is-active {
+  background-color: #172a4b;
+  border-color: #7084a2;
+  box-shadow: inset 0 0 0 1px #7084a2, 0 0.75rem 1.5rem rgba(15, 23, 42, 0.24);
+}
+
+.metric-filter:focus-visible {
+  outline: 3px solid #526681;
+  outline-offset: 3px;
+}
+
+.metric-filter:disabled {
+  cursor: wait;
+}
+
+.metric-card .metric-filter-hint {
+  margin-top: 0.65rem;
+  color: #243b5a;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.metric-filter-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem 1rem;
+  color: #475569;
+  font-size: 0.85rem;
+}
+
+.metric-filter-summary button {
+  border: 1px solid #526681;
+  border-radius: 6px;
+  background: #101d33;
+  padding: 0.3rem 0.65rem;
+  color: #f1f5f9;
+}
+
+.metric-filter:hover:not(:disabled) > span,
+.metric-filter.is-active > span {
+  color: #f1f5f9;
+}
+
+.metric-filter:hover:not(:disabled) > small,
+.metric-filter.is-active > small {
+  color: #cbd5e1;
+}
+
+.metric-filter:hover:not(:disabled) > .text-danger,
+.metric-filter.is-active > .text-danger {
+  color: #fda4af !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .metric-filter,
+  .metric-filter::before {
+    transition: none;
+    animation: none;
+  }
 }
 
 .product-table-card {

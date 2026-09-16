@@ -72,7 +72,7 @@ async function getAllProducts(tenantId) {
   COALESCE(SUM(i.cantidad), 0) AS stock_total,
   MIN(
     CASE
-      WHEN i.fecha_caducidad IS NOT NULL AND i.fecha_caducidad >= CURDATE()
+      WHEN i.cantidad > 0 AND i.fecha_caducidad IS NOT NULL
       THEN i.fecha_caducidad
       ELSE NULL
     END
@@ -178,7 +178,7 @@ async function searchProductsByName(tenantId, name) {
         COALESCE(SUM(i.cantidad), 0) AS stock_total,
         MIN(
           CASE
-            WHEN i.fecha_caducidad IS NOT NULL AND i.fecha_caducidad >= CURDATE()
+            WHEN i.cantidad > 0 AND i.fecha_caducidad IS NOT NULL
             THEN i.fecha_caducidad
             ELSE NULL
           END
@@ -225,7 +225,7 @@ async function getProductsByCategory(tenantId, categoryId) {
         COALESCE(SUM(i.cantidad), 0) AS stock_total,
         MIN(
           CASE
-            WHEN i.fecha_caducidad IS NOT NULL AND i.fecha_caducidad >= CURDATE()
+            WHEN i.cantidad > 0 AND i.fecha_caducidad IS NOT NULL
             THEN i.fecha_caducidad
             ELSE NULL
           END
@@ -263,8 +263,8 @@ async function getProductById(tenantId, id) {
       `
      SELECT 
   i.id AS inventario_id,
-  i.tenant_id,
-  i.producto_id,
+  p.tenant_id,
+  p.id AS producto_id,
 
   p.nombre AS producto_nombre,
   p.descripcion AS producto_descripcion,
@@ -281,13 +281,13 @@ async function getProductById(tenantId, id) {
   i.updated_at,
   i.numero_lote
 
-FROM inventario i
-INNER JOIN productos p 
-  ON i.producto_id = p.id AND p.tenant_id = i.tenant_id
+FROM productos p
+LEFT JOIN inventario i
+  ON i.producto_id = p.id AND i.tenant_id = p.tenant_id
 LEFT JOIN categorias c 
   ON p.categoria_id = c.id AND c.tenant_id = p.tenant_id
 
-WHERE i.tenant_id = ? AND i.producto_id = ? AND p.eliminado = 0 AND i.cantidad > 0;
+WHERE p.tenant_id = ? AND p.id = ? AND p.eliminado = 0;
       `,
       [tenantId, id]
     );

@@ -11,6 +11,57 @@ import {
 
 import "./getProducts.css";
 
+const EXPIRING_SOON_DAYS = 45;
+
+const parseExpirationDate = (dateValue) => {
+  if (!dateValue) return null;
+
+  if (dateValue instanceof Date) {
+    return Number.isNaN(dateValue.getTime()) ? null : dateValue;
+  }
+
+  const textValue = String(dateValue);
+  const dateOnly = textValue.split("T")[0];
+  const [year, month, day] = dateOnly.split("-").map(Number);
+
+  if (!year || !month || !day) return null;
+
+  const parsedDate = new Date(year, month - 1, day);
+
+  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+};
+
+const getDaysUntilExpiration = (dateString) => {
+  const expirationDate = parseExpirationDate(dateString);
+
+  if (!expirationDate) return null;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  expirationDate.setHours(0, 0, 0, 0);
+
+  return Math.round((expirationDate - today) / (1000 * 60 * 60 * 24));
+};
+
+const metricFilters = {
+  lowStock: {
+    label: "Stock bajo",
+    matches: (item) => Number(item.stock_total) > 0 && Number(item.stock_minimo) > 0 && Number(item.stock_total) <= Number(item.stock_minimo),
+  },
+  noStock: {
+    label: "Sin stock",
+    matches: (item) => Number(item.stock_total) <= 0,
+  },
+  expiring: {
+    label: "Próximos a caducar",
+    matches: (item) => {
+      const days = getDaysUntilExpiration(item.fecha_caducidad);
+      return days !== null && days >= 0 && days <= EXPIRING_SOON_DAYS;
+    },
+  },
+};
+
 const GetProducts = () => {
   const {
     items,
@@ -28,6 +79,10 @@ const GetProducts = () => {
     refetch,
     refetchCategories,
   } = useProducts();
+
+  const [activeMetric, setActiveMetric] = useState(null);
+  const visibleItems = activeMetric ? items.filter(metricFilters[activeMetric].matches) : items;
+  const toggleMetric = (key) => setActiveMetric((current) => current === key ? null : key);
 
   const [showCard, setShowCard] = useState(false);
   const [fadeIn, setFadeIn] = useState(false);
@@ -53,23 +108,20 @@ const GetProducts = () => {
 
   const metrics = useMemo(() => {
     const products = items || [];
-    const productsWithoutStock = products.filter(
-      (item) => Number(item.stock_total) <= 0
-    ).length;
-    const lowStockProducts = products.filter((item) => {
-      const stock = Number(item.stock_total);
-      const minStock = Number(item.stock_minimo);
-
-      return stock > 0 && minStock > 0 && stock <= minStock;
-    }).length;
+    const productsWithoutStock = products.filter(metricFilters.noStock.matches).length;
+    const lowStockProducts = products.filter(metricFilters.lowStock.matches).length;
+    const expiringSoonProducts = products.filter(metricFilters.expiring.matches).length;
     const inventoryValue = products.reduce(
       (total, item) =>
         total + Number(item.stock_total || 0) * Number(item.precio_compra || 0),
       0
     );
 
+   
+
     return {
       activeProducts: products.length,
+      expiringSoonProducts,
       lowStockProducts,
       productsWithoutStock,
       inventoryValue,
@@ -137,37 +189,6 @@ const GetProducts = () => {
     }).format(new Date(dateString));
   };
 
-  const parseExpirationDate = (dateValue) => {
-    if (!dateValue) return null;
-
-    if (dateValue instanceof Date) {
-      return Number.isNaN(dateValue.getTime()) ? null : dateValue;
-    }
-
-    const textValue = String(dateValue);
-    const dateOnly = textValue.split("T")[0];
-    const [year, month, day] = dateOnly.split("-").map(Number);
-
-    if (!year || !month || !day) return null;
-
-    const parsedDate = new Date(year, month - 1, day);
-
-    return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
-  };
-
-  const getDaysUntilExpiration = (dateString) => {
-    const expirationDate = parseExpirationDate(dateString);
-
-    if (!expirationDate) return null;
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    expirationDate.setHours(0, 0, 0, 0);
-
-    return Math.round((expirationDate - today) / (1000 * 60 * 60 * 24));
-  };
-
   const formatExpiration = (dateString) => {
     if (!dateString) return "Sin caducidad";
     if (!showExpirationDays) return formatDate(dateString);
@@ -206,7 +227,7 @@ const GetProducts = () => {
     return { label: "Caducado", className: "text-bg-danger" };
   }
 
-  if (days <= 45) {
+  if (days <= EXPIRING_SOON_DAYS) {
     return { label: "Caduca pronto", className: "text-bg-warning" };
   }
 
@@ -271,7 +292,14 @@ const GetProducts = () => {
           <small>Segun precio de compra</small>
         </article>
 
-        <article className="metric-card">
+        <button
+          type="button"
+          className={`metric-card metric-filter${activeMetric === "lowStock" ? " is-active" : ""}`}
+          aria-pressed={activeMetric === "lowStock"}
+          aria-controls="products-table"
+          disabled={loading}
+          onClick={() => toggleMetric("lowStock")}
+        >
           <span>Stock bajo</span>
           {loading ? (
             <strong className="skeleton-text skeleton-text-short" />
@@ -279,9 +307,17 @@ const GetProducts = () => {
             <strong className="text-warning">{metrics.lowStockProducts}</strong>
           )}
           <small>Requieren reposicion</small>
-        </article>
+                  <span className="metric-filter-hint">{activeMetric === "lowStock" ? "✓ Filtro activo · Desactivar" : "Filtrar productos"}</span>
+        </button>
 
-        <article className="metric-card">
+        <button
+          type="button"
+          className={`metric-card metric-filter${activeMetric === "noStock" ? " is-active" : ""}`}
+          aria-pressed={activeMetric === "noStock"}
+          aria-controls="products-table"
+          disabled={loading}
+          onClick={() => toggleMetric("noStock")}
+        >
           <span>Sin stock</span>
           {loading ? (
             <strong className="skeleton-text skeleton-text-short" />
@@ -289,7 +325,25 @@ const GetProducts = () => {
             <strong className="text-danger">{metrics.productsWithoutStock}</strong>
           )}
           <small>Ventas detenidas</small>
-        </article>
+                  <span className="metric-filter-hint">{activeMetric === "noStock" ? "✓ Filtro activo · Desactivar" : "Filtrar productos"}</span>
+        </button>
+        <button
+          type="button"
+          className={`metric-card metric-filter${activeMetric === "expiring" ? " is-active" : ""}`}
+          aria-pressed={activeMetric === "expiring"}
+          aria-controls="products-table"
+          disabled={loading}
+          onClick={() => toggleMetric("expiring")}
+        >
+          <span>Próximos a caducar</span>
+          {loading ? (
+            <strong className="skeleton-text skeleton-text-short" />
+          ) : (
+            <strong className="text-warning">{metrics.expiringSoonProducts}</strong>
+          )}
+          <small>De hoy a {EXPIRING_SOON_DAYS} días · Listado actual</small>
+                  <span className="metric-filter-hint">{activeMetric === "expiring" ? "✓ Filtro activo · Desactivar" : "Filtrar productos"}</span>
+        </button>
       </section>
 
       <section
@@ -350,8 +404,16 @@ const GetProducts = () => {
           </div>
         </div>
 
+        <div className="metric-filter-summary" role="status">
+          {activeMetric ? (
+            <>
+              <span>{metricFilters[activeMetric].label} · {visibleItems.length} productos</span>
+              <button type="button" onClick={() => setActiveMetric(null)}>Quitar filtro</button>
+            </>
+          ) : <span>Mostrando {items.length} productos</span>}
+        </div>
         <div className="table-responsive">
-          <table className="table table-hover align-middle mb-0 product-table">
+          <table id="products-table" className="table table-hover align-middle mb-0 product-table">
             <thead>
               <tr >
                 <th >Producto</th>
@@ -422,7 +484,7 @@ const GetProducts = () => {
                   </tr>
                 ))}
 
-              {!loading && items.map((item) => {
+              {!loading && visibleItems.map((item) => {
 const stockStatus = getStockStatus(item);
 const expirationStatus = getExpirationStatus(item);
                 return (
@@ -516,10 +578,10 @@ const expirationStatus = getExpirationStatus(item);
                 );
               })}
 
-              {!loading && !items.length && (
+              {!loading && !visibleItems.length && (
                 <tr>
                   <td colSpan="7" className="empty-state">
-                    No hay productos para mostrar.
+                    {activeMetric ? "No hay productos que coincidan con este filtro." : "No hay productos para mostrar."}
                   </td>
                 </tr>
               )}

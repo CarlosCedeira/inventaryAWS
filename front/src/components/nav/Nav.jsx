@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Routes, Route, Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 
-import GetProducts from "../products/GetProducts.jsx";
+import GetProducts from "../products/getProducts.jsx";
 import GetMovements from "../movements/GetMovements.jsx";
 import UsersManager from "../logging.jsx";
 import { clearSession, getSession } from "../../services/authService";

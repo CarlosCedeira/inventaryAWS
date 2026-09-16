@@ -82,6 +82,9 @@ async function getProductsByCategory(req, res) {
 async function getProductById(req, res) {
   try {
     const product = await inventoryService.getProduct(req.tenantId, req.params.id);
+    if (!product) {
+      return res.status(404).json({ error: "Producto no encontrado" });
+    }
     res.json(product);
   } catch (error) {
     console.error(error);

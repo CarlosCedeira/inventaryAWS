@@ -17,7 +17,7 @@ function groupProductWithInventory(rows) {
       });
     }
 
-    map.get(row.producto_id).inventario.push({
+    if (row.inventario_id != null) map.get(row.producto_id).inventario.push({
       inventario_id: row.inventario_id,
       cantidad: row.cantidad,
       fecha_caducidad: row.fecha_caducidad,
