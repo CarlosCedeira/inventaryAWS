@@ -11,7 +11,7 @@ export const productService = {
 
   search: async (search) => {
     const url = search
-      ? `${API_URL}/productos/buscar/${search}`
+      ? `${API_URL}/productos/buscar/${encodeURIComponent(search)}`
       : `${API_URL}/productos`;
 
     const res = await fetchWithAuth(url);

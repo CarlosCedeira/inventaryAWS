@@ -1,3 +1,4 @@
+const { inventoryVersion } = require("./inventory.version");
 
 function groupProductWithInventory(rows) {
   const map = new Map();
@@ -19,6 +20,7 @@ function groupProductWithInventory(rows) {
 
     if (row.inventario_id != null) map.get(row.producto_id).inventario.push({
       inventario_id: row.inventario_id,
+      version: inventoryVersion(row),
       cantidad: row.cantidad,
       fecha_caducidad: row.fecha_caducidad,
       numero_lote: row.numero_lote

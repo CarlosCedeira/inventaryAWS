@@ -5,6 +5,7 @@ type StockQuantityValue = string | number | null | undefined;
 interface StockQuantityOptions {
   label?: string;
   max?: number;
+  allowZero?: boolean;
 }
 
 function isBlank(value: StockQuantityValue): boolean {
@@ -16,6 +17,7 @@ export function validateStockQuantity(
   {
     label = "La cantidad",
     max = DEFAULT_MAX_STOCK_QUANTITY,
+    allowZero = false,
   }: StockQuantityOptions = {},
 ): string | null {
   if (isBlank(value)) return `${label} es obligatoria`;
@@ -30,8 +32,8 @@ export function validateStockQuantity(
     return `${label} debe ser un numero entero`;
   }
 
-  if (quantity <= 0) {
-    return `${label} debe ser mayor que cero`;
+  if (quantity < 0 || (!allowZero && quantity === 0)) {
+    return allowZero ? `${label} no puede ser negativa` : `${label} debe ser mayor que cero`;
   }
 
   if (quantity > max) {

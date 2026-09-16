@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "test:integration": "node --test tests/integration/mysql.test.js"
   },
   "author": "",
   "license": "ISC",

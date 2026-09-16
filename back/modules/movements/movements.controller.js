@@ -16,7 +16,7 @@ async function createMovement(req, res) {
     const productId = parseStockQuantity(req.body.producto_id, {
       label: "Producto",
     });
-    const quantity = parseStockQuantity(req.body.cantidad);
+    const quantity = parseStockQuantity(req.body.cantidad, { allowZero: req.body.tipo === "ajuste" });
 
     const movement = await movementsService.createMovement({
       tenantId: req.tenantId,

@@ -27,7 +27,7 @@ test("crear producto exige stock inicial positivo", () => {
 
 test("editar permite agotar un lote y conservar valores cero", () => {
   const result = buildUpdateProductPayload({ ...product,
-    inventario: [{ inventario_id: 3, cantidad: "0" }],
+    inventario: [{ inventario_id: 3, version: "a".repeat(64), cantidad: "0" }],
   });
   assert.equal(result.error, undefined);
   assert.equal(result.product.inventario[0].cantidad, 0);
@@ -38,7 +38,7 @@ test("editar permite agotar un lote y conservar valores cero", () => {
 test("editar rechaza cantidades invalidas de cualquier lote", () => {
   for (const cantidad of [-1, 1.5, "texto", "", null, undefined]) {
     const result = buildUpdateProductPayload({ ...product, inventario: [
-      { inventario_id: 3, cantidad: 2 }, { inventario_id: 4, cantidad },
+      { inventario_id: 3, version: "a".repeat(64), cantidad: 2 }, { inventario_id: 4, version: "a".repeat(64), cantidad },
     ] });
     assert.ok(result.error, `Debe rechazar ${String(cantidad)}`);
     assert.equal(result.product, undefined);

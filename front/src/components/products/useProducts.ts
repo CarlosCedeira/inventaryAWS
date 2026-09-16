@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { productService } from "./productService";
 
 // MySQL decimal and aggregate values may arrive as strings.
@@ -46,61 +46,52 @@ export const useProducts = () => {
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
   const [loading, setLoading] = useState(true);
 
-  const fetchProducts = async (): Promise<void> => {
-    try {
-      const data: Product[] = await productService.getAll();
-      setItems(data);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [error, setError] = useState("");
+  const [categoryError, setCategoryError] = useState("");
+  const requestId = useRef(0);
+  const invalidateRequests = useCallback(() => { ++requestId.current; }, []);
 
-  const fetchCategories = async (): Promise<void> => {
+  const fetchProducts = useCallback(async (): Promise<void> => {
+    const currentRequest = ++requestId.current;
+    setLoading(true);
+    setError("");
+    try {
+      const data: Product[] = search
+        ? await productService.search(search)
+        : selectedCategory
+          ? await productService.getByCategory(selectedCategory)
+          : await productService.getAll();
+      const filtered = selectedCategory
+        ? data.filter((item) => String(item.categoria_id) === selectedCategory)
+        : data;
+      if (currentRequest === requestId.current) setItems(filtered);
+    } catch (failure) {
+      if (currentRequest === requestId.current) {
+        setError(failure instanceof Error ? failure.message : "No se pudieron cargar los productos");
+      }
+    } finally {
+      if (currentRequest === requestId.current) setLoading(false);
+    }
+  }, [search, selectedCategory]);
+
+  const fetchCategories = useCallback(async (): Promise<void> => {
+    setCategoryError("");
     try {
       const data: Category[] = await productService.getCategories();
       setCategories(data);
-    } catch (error) {
-      console.error(error);
+    } catch {
+      setCategoryError("No se pudieron cargar las categorías");
     }
-  };
+  }, []);
 
-  const handleCategoryFilter = async (categoryId: string): Promise<void> => {
+  const handleCategoryFilter = (categoryId: string): void => {
+    ++requestId.current;
     setSelectedCategory(categoryId);
-    setSearch("");
-
-    if (!categoryId) {
-      await fetchProducts();
-      return;
-    }
-
-    try {
-      const data: Product[] = await productService.getByCategory(categoryId);
-      setItems(data);
-    } catch (error) {
-      console.error(error);
-    }
   };
 
-  const handleSearch = async (value: string): Promise<void> => {
+  const handleSearch = (value: string): void => {
+    ++requestId.current;
     setSearch(value);
-
-    if (!value && selectedCategory) {
-      await handleCategoryFilter(selectedCategory);
-      return;
-    }
-
-    if (selectedCategory) {
-      setSelectedCategory("");
-    }
-
-    try {
-      const data: Product[] = await productService.search(value);
-      setItems(data);
-    } catch (error) {
-      console.error(error);
-    }
   };
 
   const handleSoftDelete = async (productId: Product["producto_id"]): Promise<void> => {
@@ -123,6 +114,7 @@ export const useProducts = () => {
             : item
         )
       );
+      await fetchProducts();
       return result;
     } catch (error) {
       console.error(error);
@@ -130,11 +122,22 @@ export const useProducts = () => {
     }
   };
 
-  // inicial
   useEffect(() => {
-    fetchProducts();
-    fetchCategories();
-  }, []);
+    void fetchProducts();
+    const refresh = () => { if (!document.hidden) void fetchProducts(); };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    // Refresh dates and stock while an inventory tab remains open overnight.
+    const timer = window.setInterval(refresh, 60_000);
+    return () => {
+      invalidateRequests();
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+      window.clearInterval(timer);
+    };
+  }, [fetchProducts, invalidateRequests]);
+
+  useEffect(() => { void fetchCategories(); }, [fetchCategories]);
 
   // ordenar
   const sortedItems = useMemo(() => {
@@ -163,6 +166,8 @@ export const useProducts = () => {
 
   return {
     items: sortedItems,
+    error,
+    categoryError,
     loading,
     categories,
     selectedCategory,

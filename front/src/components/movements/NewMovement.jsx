@@ -181,7 +181,7 @@ const NewMovement = ({ onCreated }) => {
     if (!form.producto_id) return "Selecciona un producto de la lista";
     if (!form.tipo) return "Selecciona el tipo de movimiento";
 
-    const quantityError = validateStockQuantity(form.cantidad);
+    const quantityError = validateStockQuantity(form.cantidad, { allowZero: form.tipo === "ajuste" });
     if (quantityError) return quantityError;
 
     if (form.numero_lote.length > 100) {
@@ -341,7 +341,7 @@ const NewMovement = ({ onCreated }) => {
                               value={form.cantidad}
                               onChange={handleChange}
                               className="form-control"
-                              min="1"
+                              min={form.tipo === "ajuste" ? "0" : "1"}
                               step="1"
                               required
                             />

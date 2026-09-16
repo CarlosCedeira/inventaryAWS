@@ -6,7 +6,7 @@ function isBlank(value) {
 
 function validateStockQuantity(
   value,
-  { label = "La cantidad", max = DEFAULT_MAX_STOCK_QUANTITY } = {}
+  { label = "La cantidad", max = DEFAULT_MAX_STOCK_QUANTITY, allowZero = false } = {}
 ) {
   if (isBlank(value)) return `${label} es obligatoria`;
 
@@ -20,8 +20,8 @@ function validateStockQuantity(
     return `${label} debe ser un numero entero`;
   }
 
-  if (quantity <= 0) {
-    return `${label} debe ser mayor que cero`;
+  if (quantity < 0 || (!allowZero && quantity === 0)) {
+    return allowZero ? `${label} no puede ser negativa` : `${label} debe ser mayor que cero`;
   }
 
   if (quantity > max) {

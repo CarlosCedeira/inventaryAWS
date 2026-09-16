@@ -1,4 +1,19 @@
+const { inventoryVersion } = require("./inventory.version");
 const { getConnection } = require("../../db");
+
+const STOCK_PROJECTION = `COALESCE(SUM(i.cantidad), 0) AS stock_total,
+        COALESCE(SUM(i.cantidad), 0) AS stock_fisico,
+        COALESCE(SUM(CASE WHEN i.fecha_caducidad IS NULL OR i.fecha_caducidad >= CURDATE()
+          THEN i.cantidad ELSE 0 END), 0) AS stock_disponible,
+        COALESCE(SUM(CASE WHEN i.fecha_caducidad < CURDATE()
+          THEN i.cantidad ELSE 0 END), 0) AS stock_caducado,
+  MIN(
+    CASE
+      WHEN i.cantidad > 0 AND i.fecha_caducidad >= CURDATE()
+      THEN i.fecha_caducidad
+      ELSE NULL
+    END
+  ) AS fecha_caducidad`;
 
 async function getCurrentStock(connection, tenantId, productId) {
   const [rows] = await connection.execute(
@@ -69,19 +84,7 @@ async function getAllProducts(tenantId) {
   p.precio_venta,
   p.stock_minimo,
 
-  COALESCE(SUM(i.cantidad), 0) AS stock_total,
-        COALESCE(SUM(i.cantidad), 0) AS stock_fisico,
-        COALESCE(SUM(CASE WHEN i.fecha_caducidad IS NULL OR i.fecha_caducidad >= CURDATE()
-          THEN i.cantidad ELSE 0 END), 0) AS stock_disponible,
-        COALESCE(SUM(CASE WHEN i.fecha_caducidad < CURDATE()
-          THEN i.cantidad ELSE 0 END), 0) AS stock_caducado,
-  MIN(
-    CASE
-      WHEN i.cantidad > 0 AND i.fecha_caducidad >= CURDATE()
-      THEN i.fecha_caducidad
-      ELSE NULL
-    END
-  ) AS fecha_caducidad
+  ${STOCK_PROJECTION}
 
 FROM productos p
 LEFT JOIN inventario i 
@@ -180,19 +183,7 @@ async function searchProductsByName(tenantId, name) {
         p.precio_compra,
         p.precio_venta,
         p.stock_minimo,
-        COALESCE(SUM(i.cantidad), 0) AS stock_total,
-        COALESCE(SUM(i.cantidad), 0) AS stock_fisico,
-        COALESCE(SUM(CASE WHEN i.fecha_caducidad IS NULL OR i.fecha_caducidad >= CURDATE()
-          THEN i.cantidad ELSE 0 END), 0) AS stock_disponible,
-        COALESCE(SUM(CASE WHEN i.fecha_caducidad < CURDATE()
-          THEN i.cantidad ELSE 0 END), 0) AS stock_caducado,
-        MIN(
-          CASE
-            WHEN i.cantidad > 0 AND i.fecha_caducidad >= CURDATE()
-            THEN i.fecha_caducidad
-            ELSE NULL
-          END
-        ) AS fecha_caducidad
+        ${STOCK_PROJECTION}
       FROM productos p
       LEFT JOIN inventario i
         ON i.producto_id = p.id AND i.tenant_id = p.tenant_id
@@ -232,19 +223,7 @@ async function getProductsByCategory(tenantId, categoryId) {
         p.precio_compra,
         p.precio_venta,
         p.stock_minimo,
-        COALESCE(SUM(i.cantidad), 0) AS stock_total,
-        COALESCE(SUM(i.cantidad), 0) AS stock_fisico,
-        COALESCE(SUM(CASE WHEN i.fecha_caducidad IS NULL OR i.fecha_caducidad >= CURDATE()
-          THEN i.cantidad ELSE 0 END), 0) AS stock_disponible,
-        COALESCE(SUM(CASE WHEN i.fecha_caducidad < CURDATE()
-          THEN i.cantidad ELSE 0 END), 0) AS stock_caducado,
-        MIN(
-          CASE
-            WHEN i.cantidad > 0 AND i.fecha_caducidad >= CURDATE()
-            THEN i.fecha_caducidad
-            ELSE NULL
-          END
-        ) AS fecha_caducidad
+        ${STOCK_PROJECTION}
       FROM productos p
       LEFT JOIN inventario i
         ON i.producto_id = p.id AND i.tenant_id = p.tenant_id
@@ -272,40 +251,42 @@ async function getProductsByCategory(tenantId, categoryId) {
 // Obtener producto por id
 async function getProductById(tenantId, id) {
   const connection = await getConnection();
+
   try {
     console.log("Consultando en base de datos producto por ID:", id);
+
     const [rows] = await connection.execute(
       `
-     SELECT 
-  i.id AS inventario_id,
-  p.tenant_id,
-  p.id AS producto_id,
-
-  p.nombre AS producto_nombre,
-  p.descripcion AS producto_descripcion,
-
-  c.id AS categoria_id,
-  c.nombre AS producto_categoria,
-
-  i.cantidad,
-  p.stock_minimo,
-  p.precio_compra,
-  p.precio_venta,
-
-  i.fecha_caducidad,
-  i.updated_at,
-  i.numero_lote
-
-FROM productos p
-LEFT JOIN inventario i
-  ON i.producto_id = p.id AND i.tenant_id = p.tenant_id
-LEFT JOIN categorias c 
-  ON p.categoria_id = c.id AND c.tenant_id = p.tenant_id
-
-WHERE p.tenant_id = ? AND p.id = ? AND p.eliminado = 0;
+      SELECT
+        i.id AS inventario_id,
+        p.tenant_id,
+        p.id AS producto_id,
+        p.nombre AS producto_nombre,
+        p.descripcion AS producto_descripcion,
+        c.id AS categoria_id,
+        c.nombre AS producto_categoria,
+        i.cantidad,
+        p.stock_minimo,
+        p.precio_compra,
+        p.precio_venta,
+        i.fecha_caducidad,
+        i.updated_at,
+        i.numero_lote
+      FROM productos p
+      LEFT JOIN inventario i
+        ON i.producto_id = p.id
+        AND i.tenant_id = p.tenant_id
+        AND i.cantidad > 0
+      LEFT JOIN categorias c
+        ON p.categoria_id = c.id
+        AND c.tenant_id = p.tenant_id
+      WHERE p.tenant_id = ?
+        AND p.id = ?
+        AND p.eliminado = 0;
       `,
       [tenantId, id]
     );
+
     return rows;
   } finally {
     connection.release();
@@ -325,7 +306,7 @@ async function updateProduct(tenantId, productId, productoData, invnetarioData, 
     const [productResult] = await connection.execute(
       `UPDATE productos
        SET nombre = ?, descripcion = ?, categoria_id = ?, precio_compra = ?, precio_venta = ?, stock_minimo = ?
-       WHERE tenant_id = ? AND id = ?`,
+       WHERE tenant_id = ? AND id = ? AND eliminado = 0`,
       [
         productoData.nombre,
         productoData.descripcion,
@@ -349,7 +330,7 @@ async function updateProduct(tenantId, productId, productoData, invnetarioData, 
     for (const item of invnetarioData) {
       const [inventoryRows] = await connection.execute(
         `
-        SELECT id, cantidad
+        SELECT id, cantidad, fecha_caducidad, numero_lote
         FROM inventario
         WHERE tenant_id = ? AND producto_id = ? AND id = ?
         LIMIT 1
@@ -364,6 +345,11 @@ async function updateProduct(tenantId, productId, productoData, invnetarioData, 
         throw error;
       }
 
+      if (item.version !== inventoryVersion(inventoryRows[0])) {
+        const error = new Error("El inventario ha cambiado. Recarga la ficha antes de guardar.");
+        error.statusCode = 409;
+        throw error;
+      }
       const previousQuantity = Number(inventoryRows[0].cantidad);
       const newQuantity = Number(item.cantidad);
       const quantityDifference = newQuantity - previousQuantity;

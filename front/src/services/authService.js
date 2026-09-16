@@ -3,7 +3,12 @@ const SESSION_KEY = "inventory_session";
 
 export function getSession() {
   const rawSession = localStorage.getItem(SESSION_KEY);
-  return rawSession ? JSON.parse(rawSession) : null;
+  try {
+    const session = rawSession ? JSON.parse(rawSession) : null;
+    if (session && typeof session.token === "string" && session.user?.tenant_id) return session;
+  } catch { /* Discard malformed or obsolete sessions. */ }
+  localStorage.removeItem(SESSION_KEY);
+  return null;
 }
 
 export function getAuthHeaders() {
@@ -44,7 +49,6 @@ export async function fetchWithAuth(input, init = {}) {
 }
 
 export async function login(email, password) {
-  console.log("API_URL:", API_URL);
 
   const res = await fetch(`${API_URL}/auth/login`, {
     method: "POST",
@@ -54,11 +58,9 @@ export async function login(email, password) {
     body: JSON.stringify({ email, password }),
   });
 
-  console.log("STATUS:", res.status);
 
   const data = await res.json().catch(() => null);
 
-  console.log("RESPUESTA:", data);
 
   if (!res.ok) {
     throw new Error(data?.error || "No se pudo iniciar sesión");

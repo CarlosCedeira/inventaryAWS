@@ -1,3 +1,4 @@
+const { parseStockQuantity } = require("../../utils/stockQuantity");
 const { getConnection } = require("../../db");
 
 const ADD_TYPES = new Set(["entrada"]);
@@ -24,14 +25,6 @@ function normalizeOptionalDate(value) {
   }
 
   return value;
-}
-
-function validateQuantity(quantity) {
-  if (!Number.isInteger(Number(quantity)) || Number(quantity) <= 0) {
-    throw createHttpError(400, "La cantidad debe ser un numero entero positivo");
-  }
-
-  return Number(quantity);
 }
 
 function validateOptionalInventoryId(inventoryId) {
@@ -453,7 +446,7 @@ async function createMovement({
     productId,
     inventoryId: validateOptionalInventoryId(inventoryId),
     type,
-    quantity: validateQuantity(quantity),
+    quantity: parseStockQuantity(quantity, { allowZero: type === "ajuste" }),
     lotNumber: normalizeOptionalString(lotNumber),
     expirationDate: normalizeOptionalDate(expirationDate),
     reason: normalizeOptionalString(reason),

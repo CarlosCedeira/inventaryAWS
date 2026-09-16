@@ -217,6 +217,9 @@ function buildUpdateProductPayload(body) {
     const inventoryError = validateInventoryUpdateItem(item);
     if (inventoryError) return { error: inventoryError };
 
+    if (typeof item.version !== "string" || !/^[a-f0-9]{64}$/.test(item.version)) {
+      return { error: "Recarga la ficha para obtener la version actual del inventario" };
+    }
     normalizedInventory.push(normalizeInventoryItem(item));
   }
 

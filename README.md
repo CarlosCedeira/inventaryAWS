@@ -148,7 +148,7 @@ PUT    /ventas/:productId
 
 ### Backend
 
-Crear `back/.env` o `back/.env.development` con las variables necesarias:
+Crear `back/.env` con las variables necesarias (se carga desde el directorio del backend):
 
 ```env
 PORT=3000
@@ -157,7 +157,7 @@ DB_HOST=localhost
 DATABASE=inventory
 DB_USER=root
 DB_PASSWORD=password
-JWT_SECRET=change-me
+AUTH_SECRET=change-me
 ```
 
 La conexion MySQL se configura en `back/db.js`.
@@ -211,7 +211,7 @@ Por defecto:
 npm test
 ```
 
-Actualmente el backend no tiene tests implementados y el script devuelve error por defecto.
+El backend usa `node:test` para validadores, inventario, conflictos de edición y ventas. Las pruebas MySQL reales requieren configuración explícita; ver `back/tests/integration/README.md`.
 
 ### Frontend
 
@@ -248,7 +248,7 @@ Hay documentacion de pruebas manuales en `arquitectura_flujos_invariantes_testin
 Estado actual:
 
 - Frontend preparado con Vitest.
-- Backend sin suite de tests.
+- Backend con pruebas unitarias y suite de integración MySQL optativa.
 - `ToDo.md` contiene tareas pendientes de tests para productos.
 
 Pruebas prioritarias recomendadas:
@@ -290,3 +290,11 @@ Antes de desplegar:
 - Confirmar conectividad con RDS/MySQL.
 - Revisar indices y restricciones de tenant/lote en base de datos.
 - Ejecutar build del frontend.
+
+## Comportamiento del inventario
+
+- La ficha devuelve una `version` por lote. Las actualizaciones deben devolver ese valor; si el lote cambió se responde HTTP 409 y se debe recargar la ficha. No requiere migración de tablas.
+- Los ajustes permiten stock final cero; entradas y salidas exigen cantidades positivas.
+- La búsqueda y categoría se combinan y se conservan al refrescar. El listado se actualiza al recuperar el foco y cada minuto mientras está visible.
+- La tarjeta Stock caducado cuenta productos con existencias vencidas y permite filtrarlos.
+- El backend valida sus variables al arrancar, usa PORT/HOST y limita el cierre ordenado a 15 segundos.

@@ -20,7 +20,8 @@ test("producto sin lotes conserva su ficha sin generar un lote ficticio", () => 
 test("conserva los lotes agotados para consultar y editar el producto", () => {
   const result = groupProductWithInventory([{ ...row, inventario_id: 10,
     cantidad: 0, numero_lote: "AGOTADO" }]);
-  assert.deepEqual(result.inventario, [{ inventario_id: 10, cantidad: 0,
+  assert.match(result.inventario[0].version, /^[a-f0-9]{64}$/);
+  assert.deepEqual(result.inventario, [{ inventario_id: 10, version: result.inventario[0].version, cantidad: 0,
     fecha_caducidad: null, numero_lote: "AGOTADO" }]);
 });
 

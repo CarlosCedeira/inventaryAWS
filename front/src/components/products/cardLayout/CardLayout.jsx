@@ -30,9 +30,10 @@ const getInitials = (name = "") =>
 
 const CardLayout = ({ onClose, id }) => {
   const [disabled, setDisabled] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const { formData, setFormData, categorias, loading, update } = useProduct(id);
+  const { formData, setFormData, categorias, loading, loadError, reload, update } = useProduct(id);
 
   const normalizeFormForValidation = () => {
     const firstInventario = formData.inventario?.[0] || {};
@@ -81,6 +82,7 @@ const CardLayout = ({ onClose, id }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (saving) return;
 
     const validationError = validateProductForm(normalizeFormForValidation(), {
       allowZeroQuantity: true,
@@ -103,11 +105,19 @@ const CardLayout = ({ onClose, id }) => {
     const updatedData = {
       ...formData,
       nombre: formData.nombre.trim(),
-      descripcion: formData.descripcion.trim(),
+      descripcion: (formData.descripcion || "").trim(),
     };
 
-    await update(updatedData);
-    onClose?.();
+    setSaving(true);
+    setError("");
+    try {
+      await update(updatedData);
+      onClose?.();
+    } catch (failure) {
+      setError(failure.message || "No se pudieron guardar los cambios");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const totalCantidad = formData.inventario?.reduce(
@@ -116,6 +126,11 @@ const CardLayout = ({ onClose, id }) => {
   );
 
   if (loading) return <Spinners />;
+  if (loadError) return <div className="product-modal-backdrop position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" role="dialog" aria-modal="true" aria-label="Error al cargar producto">
+    <div className="product-modal-card p-4"><p role="alert">{loadError}</p>
+      <button className="btn btn-primary me-2" onClick={reload}>Reintentar</button>
+      <button className="btn btn-outline-secondary" onClick={onClose}>Cerrar</button>
+    </div></div>;
 
   return (
     <div
@@ -201,7 +216,7 @@ const CardLayout = ({ onClose, id }) => {
                         <td data-label="Cantidad">
                           <input
                             type="number"
-                            disabled={disabled}
+                            disabled={disabled || saving}
                             value={item.cantidad || ""}
                             onChange={(e) =>
                               handleInventarioChange(
@@ -219,7 +234,7 @@ const CardLayout = ({ onClose, id }) => {
                         <td data-label="Caducidad">
                           <input
                             type="date"
-                            disabled={disabled}
+                            disabled={disabled || saving}
                             value={formatDate(item.fecha_caducidad)}
                             onChange={(e) =>
                               handleInventarioChange(
@@ -235,7 +250,7 @@ const CardLayout = ({ onClose, id }) => {
                         <td data-label="Numero de lote">
                           <input
                             type="text"
-                            disabled={disabled}
+                            disabled={disabled || saving}
                             value={item.numero_lote || ""}
                             onChange={(e) =>
                               handleInventarioChange(
@@ -277,7 +292,7 @@ const CardLayout = ({ onClose, id }) => {
                     value={formData.nombre || ""}
                     onChange={handleChange}
                     className="form-control"
-                    disabled={disabled}
+                    disabled={disabled || saving}
                     minLength={3}
                     maxLength={80}
                   />
@@ -291,7 +306,7 @@ const CardLayout = ({ onClose, id }) => {
                     onChange={handleChange}
                     className="form-control"
                     rows="2"
-                    disabled={disabled}
+                    disabled={disabled || saving}
                     maxLength={300}
                   />
                 </div>
@@ -303,7 +318,7 @@ const CardLayout = ({ onClose, id }) => {
                     value={formData.categoria_id || ""}
                     onChange={handleChange}
                     className="form-select"
-                    disabled={disabled}
+                    disabled={disabled || saving}
                   >
                     <option value="">Selecciona una categoria</option>
 
@@ -328,7 +343,7 @@ const CardLayout = ({ onClose, id }) => {
                       value={formData[name] || ""}
                       onChange={handleChange}
                       className="form-control"
-                      disabled={disabled}
+                      disabled={disabled || saving}
                       min="0"
                       step={name.includes("precio") ? "0.01" : "1"}
                     />
@@ -337,7 +352,7 @@ const CardLayout = ({ onClose, id }) => {
               </div>
             </section>
 
-            {error && <div className="alert alert-danger py-2">{error}</div>}
+            {error && <div className="alert alert-danger py-2" role="alert">{error} <button type="button" className="btn btn-sm btn-outline-danger" disabled={saving} onClick={() => { setError(""); reload(); }}>Recargar ficha (descarta cambios)</button></div>}
 
             <footer className="product-detail-footer">
               <button
@@ -348,8 +363,8 @@ const CardLayout = ({ onClose, id }) => {
                 Cancelar
               </button>
 
-              <button className="btn btn-success" type="submit" disabled={disabled}>
-                Guardar cambios
+              <button className="btn btn-success" type="submit" disabled={disabled || saving}>
+                {saving ? "Guardando..." : "Guardar cambios"}
               </button>
             </footer>
           </div>

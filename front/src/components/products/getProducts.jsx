@@ -45,6 +45,7 @@ const getDaysUntilExpiration = (dateString) => {
 };
 
 const metricFilters = {
+  expired: { label: "Stock caducado", matches: (item) => Number(item.stock_caducado) > 0 },
   lowStock: {
     label: "Stock bajo",
     matches: (item) => Number(item.stock_disponible) > 0 && Number(item.stock_minimo) > 0 && Number(item.stock_disponible) <= Number(item.stock_minimo),
@@ -65,6 +66,8 @@ const metricFilters = {
 const GetProducts = () => {
   const {
     items,
+    error,
+    categoryError,
     loading,
     categories,
     selectedCategory,
@@ -121,6 +124,7 @@ const GetProducts = () => {
 
     return {
       activeProducts: products.length,
+      expiredProducts: products.filter(metricFilters.expired.matches).length,
       expiringSoonProducts,
       lowStockProducts,
       productsWithoutStock,
@@ -271,6 +275,8 @@ const GetProducts = () => {
         </div>
       </header>
 
+      {error && <div className="alert alert-danger" role="alert">{error} <button type="button" className="btn btn-sm btn-outline-danger" onClick={refetch}>Reintentar</button></div>}
+      {categoryError && <div className="alert alert-warning" role="alert">{categoryError} <button type="button" className="btn btn-sm btn-outline-secondary" onClick={refetchCategories}>Reintentar categorías</button></div>}
       <section className="inventory-metrics">
         <article className="metric-card">
           <span>Productos activos</span>
@@ -343,6 +349,14 @@ const GetProducts = () => {
           )}
           <small>De hoy a {EXPIRING_SOON_DAYS} días · Listado actual</small>
                   <span className="metric-filter-hint">{activeMetric === "expiring" ? "✓ Filtro activo · Desactivar" : "Filtrar productos"}</span>
+        </button>
+        <button type="button" className={`metric-card metric-filter${activeMetric === "expired" ? " is-active" : ""}`}
+          aria-pressed={activeMetric === "expired"} aria-controls="products-table" disabled={loading}
+          onClick={() => toggleMetric("expired")}>
+          <span>Stock caducado</span>
+          {loading ? <strong className="skeleton-text skeleton-text-short" /> : <strong className="text-danger">{metrics.expiredProducts}</strong>}
+          <small>Productos pendientes de retirada</small>
+          <span className="metric-filter-hint">{activeMetric === "expired" ? "✓ Filtro activo · Desactivar" : "Filtrar productos"}</span>
         </button>
       </section>
 
@@ -581,7 +595,7 @@ const expirationStatus = getExpirationStatus(item);
                 );
               })}
 
-              {!loading && !visibleItems.length && (
+              {!loading && !error && !visibleItems.length && (
                 <tr>
                   <td colSpan="7" className="empty-state">
                     {activeMetric ? "No hay productos que coincidan con este filtro." : "No hay productos para mostrar."}
