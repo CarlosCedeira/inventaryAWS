@@ -152,7 +152,7 @@ async function registerQuickSale({ tenantId, userId, productId, quantity }) {
     await connection.rollback();
     throw error;
   } finally {
-    await connection.end();
+    connection.release();
   }
 }
 

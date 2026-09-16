@@ -195,7 +195,7 @@ async function getAllMovements(tenantId) {
 
     return rows;
   } finally {
-    await connection.end();
+    connection.release();
   }
 }
 
@@ -498,7 +498,7 @@ async function createMovement({
     await connection.rollback();
     throw error;
   } finally {
-    await connection.end();
+    connection.release();
   }
 }
 

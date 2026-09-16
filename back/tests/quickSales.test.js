@@ -15,7 +15,7 @@ function setup({ physical = 20, lots = [], failInsert = false } = {}) {
     beginTransaction: async () => events.push("begin"),
     commit: async () => events.push("commit"),
     rollback: async () => events.push("rollback"),
-    end: async () => events.push("end"),
+    release: () => events.push("release"),
     execute: async (sql, params) => {
       assert.equal(params.includes(7), true, "tenant included in every query");
       if (sql.includes("FROM productos")) return [[{ id: 1 }]];
@@ -45,7 +45,7 @@ const sell = (quantity) => registerQuickSale({ tenantId: 7, userId: 2, productId
 test("20 fisicas, 15 caducadas y 5 disponibles: rechaza venta de 10 sin escribir", async () => {
   const events = setup({ lots: [{ id: 3, cantidad: 5, fecha_caducidad: null }] });
   await assert.rejects(sell(10), { statusCode: 409 });
-  assert.deepEqual(events, ["begin", "rollback", "end"]);
+  assert.deepEqual(events, ["begin", "rollback", "release"]);
 });
 
 test("venta con stock mixto conserva caducados y registra saldos fisicos", async () => {
@@ -57,13 +57,13 @@ test("venta con stock mixto conserva caducados y registra saldos fisicos", async
   assert.equal(result.movimientos[0].stock_anterior, 20);
   assert.equal(result.movimientos[0].stock_nuevo, 16);
   assert.deepEqual(events.find((e) => e.update).update, [1, 7, 3]);
-  assert.deepEqual(events.slice(-2), ["commit", "end"]);
+  assert.deepEqual(events.slice(-2), ["commit", "release"]);
 });
 
 test("solo stock caducado: rechaza cualquier venta", async () => {
   const events = setup();
   await assert.rejects(sell(1), { statusCode: 409 });
-  assert.deepEqual(events, ["begin", "rollback", "end"]);
+  assert.deepEqual(events, ["begin", "rollback", "release"]);
 });
 
 test("consume lotes por orden y actualiza la proxima caducidad", async () => {
@@ -83,5 +83,5 @@ test("fallo al registrar movimiento solicita rollback y libera conexion", async 
   const events = setup({ lots: [{ id: 3, cantidad: 5 }], failInsert: true });
   await assert.rejects(sell(1), /Simulated insert failure/);
   assert.equal(events.includes("commit"), false);
-  assert.deepEqual(events.slice(-2), ["rollback", "end"]);
+  assert.deepEqual(events.slice(-2), ["rollback", "release"]);
 });

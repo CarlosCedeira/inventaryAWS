@@ -4,6 +4,7 @@ const dotenv = require("dotenv");
 const { loginLimiter } = require("./middleware/rateLimit");
 const cors = require("cors");
 dotenv.config();
+const { closePool } = require("./db");
 
 const app = express();
 app.use(helmet());
@@ -26,9 +27,28 @@ app.use("/movimientos", require("./modules/movements/movements.routes"));
 app.use("/ventas", require("./modules/quickSales/quickSales.routes"));
 
 
-app.listen(3000, "0.0.0.0", () => {
+const server = app.listen(3000, "0.0.0.0", () => {
   console.log("API escuchando en todas las interfaces");
 });
+
+let shuttingDown = false;
+function shutdown() {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  // Stop accepting requests; let active transactions finish before closing MySQL.
+  server.close(async (error) => {
+    try {
+      await closePool();
+      if (error) throw error;
+    } catch (closeError) {
+      console.error("Error al cerrar el servidor:", closeError);
+      process.exitCode = 1;
+    }
+  });
+}
+
+process.once("SIGINT", shutdown);
+process.once("SIGTERM", shutdown);
 
 /*app.listen(PORT, () => {
   console.log(`Servidor corriendo en  http://localhost:${PORT}`);

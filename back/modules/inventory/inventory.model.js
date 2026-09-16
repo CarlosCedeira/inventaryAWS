@@ -104,7 +104,7 @@ GROUP BY
   ;`, [tenantId]);
     return rows;
   } finally {
-    await connection.end();
+    connection.release();
   }
 }
 
@@ -118,7 +118,7 @@ async function getAllCategories(tenantId) {
     );
     return rows;
   } finally {
-    await connection.end();
+    connection.release();
   }
 }
 
@@ -141,7 +141,7 @@ async function createCategory(tenantId, categoryData) {
       tenant_id: tenantId,
     };
   } finally {
-    await connection.end();
+    connection.release();
   }
 }
 
@@ -161,7 +161,7 @@ async function categoryExistsForTenant(tenantId, categoryId) {
 
     return rows.length > 0;
   } finally {
-    await connection.end();
+    connection.release();
   }
 }
 
@@ -213,7 +213,7 @@ async function searchProductsByName(tenantId, name) {
     );
     return rows;
   } finally {
-    await connection.end();
+    connection.release();
   }
 }
 
@@ -265,7 +265,7 @@ async function getProductsByCategory(tenantId, categoryId) {
     );
     return rows;
   } finally {
-    await connection.end();
+    connection.release();
   }
 }
 
@@ -308,7 +308,7 @@ WHERE p.tenant_id = ? AND p.id = ? AND p.eliminado = 0;
     );
     return rows;
   } finally {
-    await connection.end();
+    connection.release();
   }
 }
 
@@ -416,7 +416,7 @@ async function updateProduct(tenantId, productId, productoData, invnetarioData, 
     throw error;
     
   } finally {
-    await connection.end();
+    connection.release();
   }
 }
 
@@ -481,7 +481,7 @@ async function createProduct(productoData, inventarioData, userId) {
     await connection.rollback();
     throw error;
   } finally {
-    await connection.end();
+    connection.release();
   }
 }
 
@@ -500,7 +500,7 @@ async function softDeleteProduct(tenantId, productId) {
 
     return result.affectedRows;
   } finally {
-    await connection.end();
+    connection.release();
   }
 }
 

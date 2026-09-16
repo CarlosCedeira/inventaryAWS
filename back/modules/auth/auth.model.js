@@ -25,7 +25,7 @@ async function findActiveUserByEmail(email) {
     if (rows.length !== 1) return null;
     return rows[0];
   } finally {
-    await connection.end();
+    connection.release();
   }
 }
 
