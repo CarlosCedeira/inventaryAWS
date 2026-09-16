@@ -3,7 +3,7 @@ import { productService } from "./productService";
 
 // MySQL decimal and aggregate values may arrive as strings.
 type NumericValue = number | string;
-export type SortField = "predefinido" | "stock_total" | "precio_compra" | "fecha_caducidad";
+export type SortField = "predefinido" | "stock_total" | "stock_disponible" | "precio_compra" | "fecha_caducidad";
 export type SortOrder = "asc" | "desc";
 
 export interface Product {
@@ -16,6 +16,9 @@ export interface Product {
   precio_venta: NumericValue;
   stock_minimo: NumericValue;
   stock_total: NumericValue;
+  stock_fisico: NumericValue;
+  stock_disponible: NumericValue;
+  stock_caducado: NumericValue;
   fecha_caducidad: string | null;
 }
 
@@ -28,6 +31,10 @@ export interface Category {
 
 interface QuickSaleResult {
   stock_nuevo: NumericValue;
+  stock_fisico: NumericValue;
+  stock_disponible: NumericValue;
+  stock_caducado: NumericValue;
+  fecha_caducidad: string | null;
 }
 
 export const useProducts = () => {
@@ -112,7 +119,7 @@ export const useProducts = () => {
       setItems((prev) =>
         prev.map((item) =>
           item.producto_id === productId
-            ? { ...item, stock_total: result.stock_nuevo }
+            ? { ...item, stock_total: result.stock_nuevo, stock_fisico: result.stock_fisico, stock_disponible: result.stock_disponible, stock_caducado: result.stock_caducado, fecha_caducidad: result.fecha_caducidad }
             : item
         )
       );

@@ -47,11 +47,11 @@ const getDaysUntilExpiration = (dateString) => {
 const metricFilters = {
   lowStock: {
     label: "Stock bajo",
-    matches: (item) => Number(item.stock_total) > 0 && Number(item.stock_minimo) > 0 && Number(item.stock_total) <= Number(item.stock_minimo),
+    matches: (item) => Number(item.stock_disponible) > 0 && Number(item.stock_minimo) > 0 && Number(item.stock_disponible) <= Number(item.stock_minimo),
   },
   noStock: {
     label: "Sin stock",
-    matches: (item) => Number(item.stock_total) <= 0,
+    matches: (item) => Number(item.stock_disponible) <= 0,
   },
   expiring: {
     label: "Próximos a caducar",
@@ -235,7 +235,7 @@ const GetProducts = () => {
 };
 
   const getStockStatus = (item) => {
-    const stock = Number(item.stock_total);
+    const stock = Number(item.stock_disponible);
     const minStock = Number(item.stock_minimo);
 
     if (stock <= 0) {
@@ -385,7 +385,7 @@ const GetProducts = () => {
               onChange={(e) => setSortField(e.target.value)}
             >
               <option value="predefinido">Predefinido</option>
-              <option value="stock_total">Cantidad</option>
+              <option value="stock_disponible">Stock disponible</option>
               <option value="precio_compra">Precio compra</option>
               <option value="fecha_caducidad">Caducidad</option>
             </select>
@@ -425,7 +425,7 @@ const GetProducts = () => {
                     title="Alternar entre cantidad y comparacion con stock minimo"
                     onClick={() => setShowStockComparison((current) => !current)}
                   >
-                    {showStockComparison ? "Estado stock" : "Cantidad"}
+                    {showStockComparison ? "Estado stock" : "Disponible"}
                   </button>
                 </th>
                 <th className="d-none d-lg-table-cell text-center">Precio venta</th>
@@ -511,7 +511,8 @@ const expirationStatus = getExpirationStatus(item);
                     </td>
 
                     <td className="text-center fw-semibold" data-label="Cantidad">
-                      {formatQuantity(item.stock_total, item.stock_minimo)}
+                      {formatQuantity(item.stock_disponible, item.stock_minimo)}
+                      <div className="small text-secondary">Físico: {item.stock_fisico} · Caducado: {item.stock_caducado}</div>
                     </td>
 
                     <td
@@ -534,6 +535,7 @@ const expirationStatus = getExpirationStatus(item);
       {stockStatus.label}
     </span>
 
+    {Number(item.stock_caducado) > 0 && <span className="badge rounded-pill text-bg-danger">Stock caducado</span>}
     {expirationStatus && (
       <span className={`badge rounded-pill ${expirationStatus.className}`}>
         {expirationStatus.label}
@@ -554,7 +556,8 @@ const expirationStatus = getExpirationStatus(item);
                           type="number"
                           className="form-control form-control-sm quick-sale-input"
                           min="1"
-                          max={item.stock_total}
+                          max={item.stock_disponible}
+                          disabled={Number(item.stock_disponible) <= 0}
                           placeholder="0"
                           value={saleQuantities[item.producto_id] || ""}
                           onChange={(event) =>
@@ -568,7 +571,7 @@ const expirationStatus = getExpirationStatus(item);
                         <button
                           type="submit"
                           className="btn btn-sm btn-outline-primary"
-                          disabled={sellingProductId === item.producto_id}
+                          disabled={sellingProductId === item.producto_id || Number(item.stock_disponible) <= 0}
                         >
                           Vender
                         </button>

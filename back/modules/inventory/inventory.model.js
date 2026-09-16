@@ -70,9 +70,14 @@ async function getAllProducts(tenantId) {
   p.stock_minimo,
 
   COALESCE(SUM(i.cantidad), 0) AS stock_total,
+        COALESCE(SUM(i.cantidad), 0) AS stock_fisico,
+        COALESCE(SUM(CASE WHEN i.fecha_caducidad IS NULL OR i.fecha_caducidad >= CURDATE()
+          THEN i.cantidad ELSE 0 END), 0) AS stock_disponible,
+        COALESCE(SUM(CASE WHEN i.fecha_caducidad < CURDATE()
+          THEN i.cantidad ELSE 0 END), 0) AS stock_caducado,
   MIN(
     CASE
-      WHEN i.cantidad > 0 AND i.fecha_caducidad IS NOT NULL
+      WHEN i.cantidad > 0 AND i.fecha_caducidad >= CURDATE()
       THEN i.fecha_caducidad
       ELSE NULL
     END
@@ -176,9 +181,14 @@ async function searchProductsByName(tenantId, name) {
         p.precio_venta,
         p.stock_minimo,
         COALESCE(SUM(i.cantidad), 0) AS stock_total,
+        COALESCE(SUM(i.cantidad), 0) AS stock_fisico,
+        COALESCE(SUM(CASE WHEN i.fecha_caducidad IS NULL OR i.fecha_caducidad >= CURDATE()
+          THEN i.cantidad ELSE 0 END), 0) AS stock_disponible,
+        COALESCE(SUM(CASE WHEN i.fecha_caducidad < CURDATE()
+          THEN i.cantidad ELSE 0 END), 0) AS stock_caducado,
         MIN(
           CASE
-            WHEN i.cantidad > 0 AND i.fecha_caducidad IS NOT NULL
+            WHEN i.cantidad > 0 AND i.fecha_caducidad >= CURDATE()
             THEN i.fecha_caducidad
             ELSE NULL
           END
@@ -223,9 +233,14 @@ async function getProductsByCategory(tenantId, categoryId) {
         p.precio_venta,
         p.stock_minimo,
         COALESCE(SUM(i.cantidad), 0) AS stock_total,
+        COALESCE(SUM(i.cantidad), 0) AS stock_fisico,
+        COALESCE(SUM(CASE WHEN i.fecha_caducidad IS NULL OR i.fecha_caducidad >= CURDATE()
+          THEN i.cantidad ELSE 0 END), 0) AS stock_disponible,
+        COALESCE(SUM(CASE WHEN i.fecha_caducidad < CURDATE()
+          THEN i.cantidad ELSE 0 END), 0) AS stock_caducado,
         MIN(
           CASE
-            WHEN i.cantidad > 0 AND i.fecha_caducidad IS NOT NULL
+            WHEN i.cantidad > 0 AND i.fecha_caducidad >= CURDATE()
             THEN i.fecha_caducidad
             ELSE NULL
           END

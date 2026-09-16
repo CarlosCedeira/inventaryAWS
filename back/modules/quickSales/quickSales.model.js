@@ -41,15 +41,14 @@ async function registerQuickSale({ tenantId, userId, productId, quantity }) {
 
     const stockBeforeSale = await getCurrentStock(connection, tenantId, productId);
 
-    if (stockBeforeSale < quantity) {
-      throw createHttpError(409, "Stock insuficiente para registrar la venta");
-    }
+
 
     const [inventoryRows] = await connection.execute(
       `
       SELECT id, cantidad, numero_lote, fecha_caducidad
       FROM inventario
       WHERE tenant_id = ? AND producto_id = ? AND cantidad > 0
+        AND (fecha_caducidad IS NULL OR fecha_caducidad >= CURDATE())
       ORDER BY
         CASE WHEN fecha_caducidad IS NULL THEN 1 ELSE 0 END,
         fecha_caducidad ASC,
@@ -58,6 +57,12 @@ async function registerQuickSale({ tenantId, userId, productId, quantity }) {
       `,
       [tenantId, productId]
     );
+
+    // Count the locked, sellable lots. Movement balances remain physical stock.
+    const sellableStock = inventoryRows.reduce((total, item) => total + Number(item.cantidad), 0);
+    if (sellableStock < quantity) {
+      throw createHttpError(409, "Stock disponible insuficiente: los lotes caducados no se pueden vender");
+    }
 
     let remaining = quantity;
     let runningStock = stockBeforeSale;
@@ -122,10 +127,14 @@ async function registerQuickSale({ tenantId, userId, productId, quantity }) {
         stock_nuevo: stockNew,
       });
 
+      item.cantidad = newInventoryQuantity;
       remaining -= amountToDiscount;
       runningStock = stockNew;
     }
 
+    if (remaining > 0) {
+      throw createHttpError(409, "No se ha podido completar la venta con stock disponible");
+    }
     await connection.commit();
 
     return {
@@ -133,6 +142,10 @@ async function registerQuickSale({ tenantId, userId, productId, quantity }) {
       cantidad_vendida: quantity,
       stock_anterior: stockBeforeSale,
       stock_nuevo: runningStock,
+      stock_fisico: runningStock,
+      stock_disponible: sellableStock - quantity,
+      stock_caducado: stockBeforeSale - sellableStock,
+      fecha_caducidad: inventoryRows.find((item) => item.cantidad > 0 && item.fecha_caducidad)?.fecha_caducidad ?? null,
       movimientos: movements,
     };
   } catch (error) {
