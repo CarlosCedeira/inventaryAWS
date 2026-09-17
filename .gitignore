@@ -5,6 +5,7 @@ node_modules/
 # variables de entorno
 .env
 .env.*
+.env.test
 !.env.example
 
 # archivos generados

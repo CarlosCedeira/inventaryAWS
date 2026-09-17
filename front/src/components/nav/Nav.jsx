@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Routes, Route, Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import GetProducts from "../products/getProducts.jsx";
@@ -23,8 +23,25 @@ function Nav() {
   const session = getSession();
   const user = session?.user;
   const isAuthenticated = Boolean(session?.token && session?.user?.tenant_id);
+  const wasAuthenticated = useRef(isAuthenticated); // <-- esto faltaba
   const toggleSidebar = () => setIsCollapsed(!isCollapsed);
   const userInitial = user?.nombre?.trim()?.charAt(0)?.toUpperCase() || "U";
+
+  const isMobileViewport = () =>
+    window.matchMedia("(max-width: 668px)").matches;
+
+  useEffect(() => {
+    if (!wasAuthenticated.current && isAuthenticated && isMobileViewport()) {
+      setIsCollapsed(true);
+    }
+    wasAuthenticated.current = isAuthenticated;
+  }, [isAuthenticated]);
+
+  const handleNavLinkClick = () => {
+    if (!isCollapsed && isMobileViewport()) {
+      setIsCollapsed(true);
+    }
+  };
 
   const handleLogout = () => {
     clearSession();
@@ -89,36 +106,30 @@ function Nav() {
             </div>
 
             <ul className="navegation">
-              <li className="nav-item mt-2">
-                <Link
-                  to="/productos"
-                  className={`nav-link text-white ${
-                    location.pathname === "/productos" ? "active" : ""
-                  }`}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    height="25px"
-                    viewBox="0 -960 960 960"
-                    width="25px"
-                    fill="#FFFFFF"
-                  >
-                    <path d="M620-159 460-319l43-43 117 117 239-239 43 43-282 282Zm220-414h-60v-207h-60v90H240v-90h-60v600h251v60H180q-26 0-43-17t-17-43v-600q0-26 17-43t43-17h202q7-35 34.5-57.5T480-920q36 0 63.5 22.5T578-840h202q26 0 43 17t17 43v207ZM480-780q17 0 28.5-11.5T520-820q0-17-11.5-28.5T480-860q-17 0-28.5 11.5T440-820q0 17 11.5 28.5T480-780Z" />
-                  </svg>{" "}
-                  Productos
-                </Link>
-              </li>
-              <li className="nav-item mt-2">
-                <Link
-                  to="/movimientos"
-                  className={`nav-link text-white ${
-                    location.pathname === "/movimientos" ? "active" : ""
-                  }`}
-                >
-             <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="25px" fill="#FFFFFF"><path d="m320-160-56-57 103-103H80v-80h287L264-503l56-57 200 200-200 200Zm320-240L440-600l200-200 56 57-103 103h287v80H593l103 103-56 57Z"/></svg>
-                  Movimientos
-                </Link>
-              </li>
+            <li className="nav-item mt-2">
+  <Link
+    to="/productos"
+    onClick={handleNavLinkClick}
+    className={`nav-link text-white ${
+      location.pathname === "/productos" ? "active" : ""
+    }`}
+  >
+    {/* ...svg... */}
+    Productos
+  </Link>
+</li>
+<li className="nav-item mt-2">
+  <Link
+    to="/movimientos"
+    onClick={handleNavLinkClick}
+    className={`nav-link text-white ${
+      location.pathname === "/movimientos" ? "active" : ""
+    }`}
+  >
+    {/* ...svg... */}
+    Movimientos
+  </Link>
+</li>
             </ul>
 
             <div className=" mt-auto mx-2 mb-4 ">
