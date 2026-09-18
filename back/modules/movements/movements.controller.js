@@ -1,12 +1,13 @@
 const movementsService = require("./movements.service");
 const { parseStockQuantity } = require("../../utils/stockQuantity");
+const { log, logUnexpectedError } = require("../../utils/logger");
 
 async function getMovements(req, res) {
   try {
     const movements = await movementsService.listMovements(req.tenantId);
     res.json(movements);
   } catch (error) {
-    console.error(error);
+    logUnexpectedError(req, "movement_list_failed", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 }
@@ -30,6 +31,11 @@ async function createMovement(req, res) {
       reason: req.body.motivo,
     });
 
+    log("info", "movement_created", {
+      requestId: req.requestId, tenantId: req.tenantId, userId: req.user.id,
+      productId, inventoryId: req.body.inventario_id || null, type: req.body.tipo,
+      quantity, stockBefore: movement.stock_anterior, stockAfter: movement.stock_nuevo,
+    });
     res.status(201).json({
       message: "Movimiento registrado correctamente",
       ...movement,
@@ -39,7 +45,9 @@ async function createMovement(req, res) {
       return res.status(error.statusCode).json({ error: error.message });
     }
 
-    console.error(error);
+    logUnexpectedError(req, "movement_create_failed", error, {
+      productId: req.body.producto_id, type: req.body.tipo,
+    });
     res.status(500).json({ error: "Error interno del servidor" });
   }
 }

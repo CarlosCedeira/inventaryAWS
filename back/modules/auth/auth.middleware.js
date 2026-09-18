@@ -1,4 +1,5 @@
 const { verifyToken } = require("./auth.tokens");
+const { log } = require("../../utils/logger");
 
 function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization || "";
@@ -16,7 +17,7 @@ function requireAuth(req, res, next) {
     req.tenantId = user.tenant_id;
     next();
   } catch (error) {
-    console.error(error);
+    log("warn", "authentication_failed", { requestId: req.requestId, path: req.originalUrl });
     res.status(401).json({ error: "Token invalido" });
   }
 }

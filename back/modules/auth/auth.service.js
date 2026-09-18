@@ -3,7 +3,6 @@ const authModel = require("./auth.model");
 const { createToken } = require("./auth.tokens");
 
 async function login(email, password) {
-  console.log("auth.service.js - login function called with email:", email);
   const user = await authModel.findActiveUserByEmail(email);
   if (!user) return null;
 

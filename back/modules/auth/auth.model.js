@@ -2,7 +2,6 @@ const { getConnection } = require("../../db");
 
 async function findActiveUserByEmail(email) {
   const normalizedEmail = email.trim().toLowerCase();
-  console.log("Finding user by email:", normalizedEmail);
   const connection = await getConnection();
   try {
     const [rows] = await connection.execute(

@@ -253,8 +253,6 @@ async function getProductById(tenantId, id) {
   const connection = await getConnection();
 
   try {
-    console.log("Consultando en base de datos producto por ID:", id);
-
     const [rows] = await connection.execute(
       `
       SELECT
@@ -276,7 +274,6 @@ async function getProductById(tenantId, id) {
       LEFT JOIN inventario i
         ON i.producto_id = p.id
         AND i.tenant_id = p.tenant_id
-        AND i.cantidad > 0
       LEFT JOIN categorias c
         ON p.categoria_id = c.id
         AND c.tenant_id = p.tenant_id
@@ -296,9 +293,6 @@ async function getProductById(tenantId, id) {
 
 // Actualizar producto e inventario
 async function updateProduct(tenantId, productId, productoData, invnetarioData, userId) {
-  console.log("NOdal Actualizando producto id:", productId, );
-  console.log("informacion productoData:", productoData);
-  console.log("informacion inventarioData:", invnetarioData);
   const connection = await getConnection();
   try {
     await connection.beginTransaction();
@@ -408,7 +402,6 @@ async function updateProduct(tenantId, productId, productoData, invnetarioData, 
 
 // Crear nuevo producto e inventario
 async function createProduct(productoData, inventarioData, userId) {
-  console.log("Creando nuevo producto con id:", productoData.categoria_id);
   const connection = await getConnection();
   try {
     await connection.beginTransaction();

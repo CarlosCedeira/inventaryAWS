@@ -33,6 +33,18 @@ El README anterior describia principalmente una arquitectura Lambda/API Gateway.
 - helmet para cabeceras de seguridad
 - express-rate-limit para limitar intentos de login
 
+### Logs
+
+El backend emite logs JSON con eventos de servidor, peticiones HTTP, autenticación,
+productos, movimientos y ventas. Cada petición incluye el encabezado `X-Request-Id`
+para relacionar su respuesta con los logs del servidor.
+
+- En desarrollo, el nivel predeterminado es `debug`.
+- En producción, el nivel predeterminado es `info`.
+- En pruebas, los logs se silencian.
+- Define `LOG_LEVEL=debug|info|warn|error|silent` para cambiar el nivel.
+- Define `LOG_STACKS=false` si no quieres incluir trazas de pila en los errores del log.
+
 ### Base de datos
 
 - MySQL

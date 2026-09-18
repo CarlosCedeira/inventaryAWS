@@ -1,5 +1,6 @@
 const quickSalesService = require("./quickSales.service");
 const { parseStockQuantity } = require("../../utils/stockQuantity");
+const { log, logUnexpectedError } = require("../../utils/logger");
 
 async function registerQuickSale(req, res) {
   try {
@@ -15,6 +16,10 @@ async function registerQuickSale(req, res) {
       quantity,
     });
 
+    log("info", "quick_sale_registered", {
+      requestId: req.requestId, tenantId: req.tenantId, userId: req.user.id,
+      productId, quantity, stockBefore: result.stock_anterior, stockAfter: result.stock_nuevo,
+    });
     res.json({
       message: "Venta registrada correctamente",
       ...result,
@@ -24,7 +29,7 @@ async function registerQuickSale(req, res) {
       return res.status(error.statusCode).json({ error: error.message });
     }
 
-    console.error(error);
+    logUnexpectedError(req, "quick_sale_failed", error, { productId: req.params.productId });
     res.status(500).json({ error: "Error interno del servidor" });
   }
 }

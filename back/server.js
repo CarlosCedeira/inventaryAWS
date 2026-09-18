@@ -5,13 +5,16 @@ for (const key of ["DB_HOST", "DATABASE", "DB_USER", "AUTH_SECRET"]) {
 }
 if (process.env.DB_PASSWORD === undefined) throw new Error("Falta la variable de entorno DB_PASSWORD");
 const { closePool } = require("./db");
+const { log, logUnexpectedError } = require("./utils/logger");
 const app = require("./app");
 const PORT = Number(process.env.PORT || 3000);
 if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) throw new Error("PORT debe estar entre 1 y 65535");
 const HOST = process.env.HOST || "0.0.0.0";
 
 const server = app.listen(PORT, HOST, () => {
-  console.log(`API escuchando en http://${HOST}:${PORT}`);
+  log("info", "server_started", {
+    host: HOST, port: PORT, environment: process.env.NODE_ENV || "development",
+  });
 });
 
 let shuttingDown = false;
@@ -19,7 +22,7 @@ function shutdown() {
   if (shuttingDown) return;
   shuttingDown = true;
   const deadline = setTimeout(() => {
-    console.error("Se agotó el plazo de 15 segundos para cerrar el servidor");
+    log("error", "server_shutdown_timeout", { timeoutMs: 15_000 });
     server.closeAllConnections();
     process.exit(1);
   }, 15_000);
@@ -29,8 +32,9 @@ function shutdown() {
     try {
       await closePool();
       if (error) throw error;
+      log("info", "server_stopped");
     } catch (closeError) {
-      console.error("Error al cerrar el servidor:", closeError);
+      logUnexpectedError(null, "server_shutdown_failed", closeError);
       process.exitCode = 1;
     } finally {
       clearTimeout(deadline);

@@ -4,14 +4,14 @@ const {
   buildCreateProductPayload,
   buildUpdateProductPayload,
 } = require("./inventory.validators");
+const { log, logUnexpectedError } = require("../../utils/logger");
 
 async function getProducts(req, res) {
-  console.log("Controlador Listando productos", req.body);
   try {
     const products = await inventoryService.listProducts(req.tenantId);
     res.json(products);
   } catch (error) {
-    console.error(error);
+    logUnexpectedError(req, "inventory_list_failed", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 }
@@ -21,7 +21,7 @@ async function getCategories(req, res) {
     const categories = await inventoryService.listCategories(req.tenantId);
     res.json(categories);
   } catch (error) {
-    console.error(error);
+    logUnexpectedError(req, "category_list_failed", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 }
@@ -39,13 +39,16 @@ async function createCategory(req, res) {
       validation.category
     );
 
+    log("info", "category_created", {
+      requestId: req.requestId, tenantId: req.tenantId, userId: req.user.id, categoryId: category.id,
+    });
     res.status(201).json(category);
   } catch (error) {
     if (error.statusCode) {
       return res.status(error.statusCode).json({ error: error.message });
     }
 
-    console.error(error);
+    logUnexpectedError(req, "category_create_failed", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 }
@@ -55,7 +58,7 @@ async function searchProducts(req, res) {
     const products = await inventoryService.searchProducts(req.tenantId, req.params.name);
     res.json(products);
   } catch (error) {
-    console.error(error);
+    logUnexpectedError(req, "inventory_search_failed", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 }
@@ -74,7 +77,7 @@ async function getProductsByCategory(req, res) {
       return res.status(error.statusCode).json({ error: error.message });
     }
 
-    console.error(error);
+    logUnexpectedError(req, "inventory_category_filter_failed", error, { categoryId });
     res.status(500).json({ error: "Error interno del servidor" });
   }
 }
@@ -87,7 +90,7 @@ async function getProductById(req, res) {
     }
     res.json(product);
   } catch (error) {
-    console.error(error);
+    logUnexpectedError(req, "inventory_detail_failed", error, { productId: req.params.id });
     res.status(500).json({ error: "Error interno del servidor" });
   }
 }
@@ -95,9 +98,6 @@ async function getProductById(req, res) {
 
 
 async function updateProduct(req, res) {
-  console.log("Controlador Actualizando productoid:", req.params.id);
-  console.log("Controlador Actualizando con data:", req.body);
-
   try {
     const { id } = req.params;
     const validation = buildUpdateProductPayload(req.body);
@@ -122,13 +122,17 @@ async function updateProduct(req, res) {
       req.user.id
     );
 
+    log("info", "product_updated", {
+      requestId: req.requestId, tenantId: req.tenantId, userId: req.user.id,
+      productId: Number(id), inventoryLots: validation.product.inventario.length,
+    });
     res.json({ message: "Producto e inventario actualizados correctamente" });
   } catch (error) {
     if (error.statusCode) {
       return res.status(error.statusCode).json({ error: error.message });
     }
 
-    console.error(error);
+    logUnexpectedError(req, "product_update_failed", error, { productId: id });
     res.status(500).json({ error: "Error interno del servidor" });
   }
 }
@@ -156,9 +160,13 @@ async function createProduct(req, res) {
       req.user.id
     );
 
+    log("info", "product_created", {
+      requestId: req.requestId, tenantId: req.tenantId, userId: req.user.id,
+      productId: result.productoId, inventoryId: result.inventarioId,
+    });
     res.status(201).json({ message: "Producto creado correctamente", ...result });
   } catch (error) {
-    console.error(error);
+    logUnexpectedError(req, "product_create_failed", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
 }
@@ -175,13 +183,16 @@ async function deleteProduct(req, res) {
       return res.status(404).json({ error: "Producto no encontrado" });
     }
 
+    log("info", "product_deleted", {
+      requestId: req.requestId, tenantId: req.tenantId, userId: req.user.id, productId,
+    });
     res.json({ message: "Producto eliminado correctamente" });
   } catch (error) {
     if (error.statusCode) {
       return res.status(error.statusCode).json({ error: error.message });
     }
 
-    console.error(error);
+    logUnexpectedError(req, "product_delete_failed", error, { productId });
     res.status(500).json({ error: "Error interno del servidor" });
   }
 }
