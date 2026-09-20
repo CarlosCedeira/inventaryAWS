@@ -1,4 +1,5 @@
 const express = require("express");
+require("tsx/cjs/api").register();
 const helmet = require("helmet");
 const cors = require("cors");
 const { loginLimiter } = require("./middleware/rateLimit");

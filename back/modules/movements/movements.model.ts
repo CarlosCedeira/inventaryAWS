@@ -1,23 +1,89 @@
-const { parseStockQuantity } = require("../../utils/stockQuantity");
-const { getConnection } = require("../../db");
+import type { PoolConnection, ResultSetHeader, RowDataPacket } from "mysql2/promise";
 
-const ADD_TYPES = new Set(["entrada"]);
-const SUBTRACT_TYPES = new Set(["salida"]);
-const MOVEMENT_TYPES = new Set(["entrada", "salida", "ajuste"]);
+const { parseStockQuantity } = require("../../utils/stockQuantity") as {
+  parseStockQuantity: (value: unknown, options?: { allowZero?: boolean }) => number;
+};
+const { getConnection } = require("../../db") as {
+  getConnection: () => Promise<PoolConnection>;
+};
 
-function createHttpError(statusCode, message) {
-  const error = new Error(message);
+export type MovementType = "entrada" | "salida" | "ajuste";
+
+export interface MovementFilters {
+  productId?: number;
+  type?: MovementType;
+  startDate?: string;
+  endDate?: string;
+}
+type OptionalDate = string | Date | null;
+
+interface MovementInput {
+  tenantId: number;
+  userId: number;
+  productId: number;
+  inventoryId?: unknown;
+  type: string;
+  quantity: unknown;
+  lotNumber?: unknown;
+  expirationDate?: unknown;
+  reason?: unknown;
+}
+
+interface NormalizedMovement {
+  tenantId: number;
+  userId: number;
+  productId: number;
+  inventoryId: number | null;
+  type: MovementType;
+  quantity: number;
+  lotNumber: string | null;
+  expirationDate: OptionalDate;
+  reason: string | null;
+}
+
+interface InventoryLot extends RowDataPacket {
+  id: number;
+  cantidad: number | string;
+  numero_lote: string | null;
+  fecha_caducidad: OptionalDate;
+}
+
+interface StockRow extends RowDataPacket {
+  stock_total: number | string;
+}
+
+interface MovementResult {
+  movementId: number;
+  movementIds?: number[];
+  stock_anterior: number;
+  stock_nuevo: number;
+}
+
+interface HttpError extends Error {
+  statusCode: number;
+}
+
+const ADD_TYPES = new Set<MovementType>(["entrada"]);
+const SUBTRACT_TYPES = new Set<MovementType>(["salida"]);
+const MOVEMENT_TYPES = new Set<MovementType>(["entrada", "salida", "ajuste"]);
+
+function createHttpError(statusCode: number, message: string): HttpError {
+  const error = new Error(message) as HttpError;
   error.statusCode = statusCode;
   return error;
 }
 
-function normalizeOptionalString(value) {
+function normalizeOptionalString(value: unknown): string | null {
   const text = value === undefined || value === null ? "" : String(value).trim();
   return text || null;
 }
 
-function normalizeOptionalDate(value) {
+function normalizeOptionalDate(value: unknown): OptionalDate {
   if (!value) return null;
+
+  if (typeof value !== "string" && !(value instanceof Date)) {
+    throw createHttpError(400, "La fecha de caducidad no es valida");
+  }
 
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
@@ -27,7 +93,7 @@ function normalizeOptionalDate(value) {
   return value;
 }
 
-function validateOptionalInventoryId(inventoryId) {
+function validateOptionalInventoryId(inventoryId: unknown): number | null {
   if (inventoryId === undefined || inventoryId === null || inventoryId === "") {
     return null;
   }
@@ -39,8 +105,8 @@ function validateOptionalInventoryId(inventoryId) {
   return Number(inventoryId);
 }
 
-async function getCurrentStock(connection, tenantId, productId) {
-  const [rows] = await connection.execute(
+async function getCurrentStock(connection: PoolConnection, tenantId: number, productId: number): Promise<number> {
+  const [rows] = await connection.execute<StockRow[]>(
     `
     SELECT COALESCE(SUM(cantidad), 0) AS stock_total
     FROM inventario
@@ -53,13 +119,13 @@ async function getCurrentStock(connection, tenantId, productId) {
 }
 
 async function getCurrentLotStock(
-  connection,
-  tenantId,
-  productId,
-  lotNumber,
-  expirationDate
-) {
-  const [rows] = await connection.execute(
+  connection: PoolConnection,
+  tenantId: number,
+  productId: number,
+  lotNumber: string | null,
+  expirationDate: OptionalDate,
+): Promise<number> {
+  const [rows] = await connection.execute<InventoryLot[]>(
     `
     SELECT cantidad
     FROM inventario
@@ -76,8 +142,13 @@ async function getCurrentLotStock(
   return Number(rows[0]?.cantidad || 0);
 }
 
-async function getInventoryLotForUpdate(connection, tenantId, productId, inventoryId) {
-  const [rows] = await connection.execute(
+async function getInventoryLotForUpdate(
+  connection: PoolConnection,
+  tenantId: number,
+  productId: number,
+  inventoryId: number,
+): Promise<InventoryLot> {
+  const [rows] = await connection.execute<InventoryLot[]>(
     `
     SELECT id, cantidad, numero_lote, fecha_caducidad
     FROM inventario
@@ -97,8 +168,11 @@ async function getInventoryLotForUpdate(connection, tenantId, productId, invento
   return rows[0];
 }
 
-async function insertMovement(connection, data) {
-  const [result] = await connection.execute(
+async function insertMovement(
+  connection: PoolConnection,
+  data: NormalizedMovement & { inventoryId: number; previousStock: number; newStock: number },
+): Promise<number> {
+  const [result] = await connection.execute<ResultSetHeader>(
     `
     INSERT INTO movimientos_inventario
       (
@@ -134,11 +208,33 @@ async function insertMovement(connection, data) {
   return result.insertId;
 }
 
-async function getAllMovements(tenantId) {
+async function getAllMovements(
+  tenantId: number,
+  filters: MovementFilters = {},
+): Promise<RowDataPacket[]> {
   const connection = await getConnection();
 
   try {
-    const [rows] = await connection.execute(
+    const conditions = ["m.tenant_id = ?"];
+    const parameters: Array<number | string> = [tenantId];
+    if (filters.productId !== undefined) {
+      conditions.push("m.producto_id = ?");
+      parameters.push(filters.productId);
+    }
+    if (filters.type !== undefined) {
+      conditions.push("m.tipo = ?");
+      parameters.push(filters.type);
+    }
+    if (filters.startDate !== undefined) {
+      conditions.push("m.created_at >= ?");
+      parameters.push(filters.startDate);
+    }
+    if (filters.endDate !== undefined) {
+      conditions.push("m.created_at < DATE_ADD(?, INTERVAL 1 DAY)");
+      parameters.push(filters.endDate);
+    }
+
+    const [rows] = await connection.execute<RowDataPacket[]>(
       `
       SELECT
         m.id AS movimiento_id,
@@ -179,11 +275,11 @@ async function getAllMovements(tenantId) {
         ON u.id = m.usuario_id
        AND u.tenant_id = m.tenant_id
 
-      WHERE m.tenant_id = ?
+      WHERE ${conditions.join(" AND ")}
 
       ORDER BY m.created_at DESC, m.id DESC
       `,
-      [tenantId]
+      parameters,
     );
 
     return rows;
@@ -192,14 +288,14 @@ async function getAllMovements(tenantId) {
   }
 }
 
-async function addStockMovement(connection, data) {
+async function addStockMovement(connection: PoolConnection, data: NormalizedMovement): Promise<MovementResult> {
   const stockBefore = await getCurrentStock(
     connection,
     data.tenantId,
     data.productId
   );
 
-  const [existingRows] = await connection.execute(
+  const [existingRows] = await connection.execute<InventoryLot[]>(
     `
     SELECT id, cantidad
     FROM inventario
@@ -227,7 +323,7 @@ async function addStockMovement(connection, data) {
       [data.quantity, data.tenantId, inventoryId]
     );
   } else {
-    const [inventoryResult] = await connection.execute(
+    const [inventoryResult] = await connection.execute<ResultSetHeader>(
       `
       INSERT INTO inventario
         (tenant_id, producto_id, cantidad, numero_lote, fecha_caducidad)
@@ -262,7 +358,7 @@ async function addStockMovement(connection, data) {
   };
 }
 
-async function subtractStockMovement(connection, data) {
+async function subtractStockMovement(connection: PoolConnection, data: NormalizedMovement): Promise<MovementResult> {
   const stockBefore = await getCurrentStock(
     connection,
     data.tenantId,
@@ -273,7 +369,7 @@ async function subtractStockMovement(connection, data) {
     throw createHttpError(409, "Stock insuficiente para registrar el movimiento");
   }
 
-  if (data.inventoryId) {
+  if (data.inventoryId !== null) {
     const inventoryLot = await getInventoryLotForUpdate(
       connection,
       data.tenantId,
@@ -318,7 +414,7 @@ async function subtractStockMovement(connection, data) {
     };
   }
 
-  const [inventoryRows] = await connection.execute(
+  const [inventoryRows] = await connection.execute<InventoryLot[]>(
     `
     SELECT id, cantidad, numero_lote, fecha_caducidad
     FROM inventario
@@ -336,7 +432,7 @@ async function subtractStockMovement(connection, data) {
 
   let remaining = data.quantity;
   let runningStock = stockBefore;
-  const movementIds = [];
+  const movementIds: number[] = [];
 
   for (const item of inventoryRows) {
     if (remaining <= 0) break;
@@ -379,7 +475,10 @@ async function subtractStockMovement(connection, data) {
   };
 }
 
-async function adjustSelectedLotMovement(connection, data) {
+async function adjustSelectedLotMovement(
+  connection: PoolConnection,
+  data: NormalizedMovement & { inventoryId: number },
+): Promise<MovementResult> {
   const stockBefore = await getCurrentStock(
     connection,
     data.tenantId,
@@ -435,24 +534,24 @@ async function createMovement({
   lotNumber,
   expirationDate,
   reason,
-}) {
-  if (!MOVEMENT_TYPES.has(type)) {
+}: MovementInput): Promise<MovementResult> {
+  if (!MOVEMENT_TYPES.has(type as MovementType)) {
     throw createHttpError(400, "Tipo de movimiento no valido");
   }
 
-  const normalizedData = {
+  const normalizedData: NormalizedMovement = {
     tenantId,
     userId,
     productId,
     inventoryId: validateOptionalInventoryId(inventoryId),
-    type,
+    type: type as MovementType,
     quantity: parseStockQuantity(quantity, { allowZero: type === "ajuste" }),
     lotNumber: normalizeOptionalString(lotNumber),
     expirationDate: normalizeOptionalDate(expirationDate),
     reason: normalizeOptionalString(reason),
   };
 
-  if ((type === "salida" || type === "ajuste") && !normalizedData.inventoryId) {
+  if ((normalizedData.type === "salida" || normalizedData.type === "ajuste") && normalizedData.inventoryId === null) {
     throw createHttpError(400, "Selecciona el lote de inventario");
   }
 
@@ -461,7 +560,7 @@ async function createMovement({
   try {
     await connection.beginTransaction();
 
-    const [products] = await connection.execute(
+    const [products] = await connection.execute<RowDataPacket[]>(
       `
       SELECT id
       FROM productos
@@ -475,14 +574,14 @@ async function createMovement({
       throw createHttpError(404, "Producto no encontrado");
     }
 
-    let result;
+    let result: MovementResult;
 
-    if (ADD_TYPES.has(type)) {
+    if (ADD_TYPES.has(normalizedData.type)) {
       result = await addStockMovement(connection, normalizedData);
-    } else if (SUBTRACT_TYPES.has(type)) {
+    } else if (SUBTRACT_TYPES.has(normalizedData.type)) {
       result = await subtractStockMovement(connection, normalizedData);
     } else {
-      result = await adjustSelectedLotMovement(connection, normalizedData);
+      result = await adjustSelectedLotMovement(connection, normalizedData as NormalizedMovement & { inventoryId: number });
     }
 
     await connection.commit();
@@ -495,7 +594,4 @@ async function createMovement({
   }
 }
 
-module.exports = {
-  getAllMovements,
-  createMovement,
-};
+export { getAllMovements, createMovement };

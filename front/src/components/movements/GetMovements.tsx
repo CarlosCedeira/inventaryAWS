@@ -1,32 +1,56 @@
-import { useEffect, useMemo, useState } from "react";
-import { movementService } from "./movementService";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { movementService, type Movement, type MovementFilters, type MovementType } from "./movementService";
 import NewMovement from "./NewMovement";
 import MovementCardLayout from "./cardLayout/MovementCardLayout";
 import "./GetMovements.css";
 
 const GetMovements = () => {
-  const [movements, setMovements] = useState([]);
+  const [movements, setMovements] = useState<Movement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [fadeIn, setFadeIn] = useState(false);
-  const [selectedMovement, setSelectedMovement] = useState(null);
+  const [selectedMovement, setSelectedMovement] = useState<Movement | null>(null);
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<MovementType | "">("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const requestId = useRef(0);
 
-  const fetchMovements = async () => {
+  const apiFilters = useMemo<MovementFilters>(() => ({
+    ...(typeFilter ? { type: typeFilter } : {}),
+    ...(startDate ? { startDate } : {}),
+    ...(endDate ? { endDate } : {}),
+  }), [typeFilter, startDate, endDate]);
+
+  const fetchMovements = useCallback(async (filters: MovementFilters) => {
+    const currentRequest = ++requestId.current;
+    setLoading(true);
     try {
-      const data = await movementService.getAll();
-      setMovements(data);
-      setError("");
+      const data = await movementService.getAll(filters);
+      if (currentRequest === requestId.current) {
+        setMovements(data);
+        setError("");
+      }
     } catch (fetchError) {
-      console.error(fetchError);
-      setError(fetchError.message || "No se pudieron cargar los movimientos");
+      if (currentRequest === requestId.current) {
+        setError(fetchError instanceof Error ? fetchError.message : "No se pudieron cargar los movimientos");
+      }
     } finally {
-      setLoading(false);
+      if (currentRequest === requestId.current) setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchMovements();
-  }, []);
+    void fetchMovements(apiFilters);
+  }, [apiFilters, fetchMovements]);
+
+  const visibleMovements = useMemo(() => {
+    const normalizedSearch = search.trim().toLocaleLowerCase("es-ES");
+    if (!normalizedSearch) return movements;
+    return movements.filter((movement) =>
+      movement.producto_nombre.toLocaleLowerCase("es-ES").includes(normalizedSearch),
+    );
+  }, [movements, search]);
 
   useEffect(() => {
     if (!loading) {
@@ -39,34 +63,36 @@ const GetMovements = () => {
 
   useEffect(() => {
     document.body.style.overflow = selectedMovement ? "hidden" : "";
-    return () => (document.body.style.overflow = "");
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [selectedMovement]);
 
   const metrics = useMemo(() => {
-    const totalQuantity = movements.reduce(
+    const totalQuantity = visibleMovements.reduce(
       (total, movement) => total + Number(movement.cantidad || 0),
       0
     );
-    const entries = movements.filter(
+    const entries = visibleMovements.filter(
       (movement) => movement.tipo === "entrada"
     ).length;
-    const exits = movements.filter(
+    const exits = visibleMovements.filter(
       (movement) => movement.tipo === "salida"
     ).length;
-    const adjustments = movements.filter(
+    const adjustments = visibleMovements.filter(
       (movement) => movement.tipo === "ajuste"
     ).length;
 
     return {
-      totalMovements: movements.length,
+      totalMovements: visibleMovements.length,
       totalQuantity,
       entries,
       exits,
       adjustments,
     };
-  }, [movements]);
+  }, [visibleMovements]);
 
-  const formatDateTime = (dateString) => {
+  const formatDateTime = (dateString: string | null) => {
     if (!dateString) return "";
 
     return new Intl.DateTimeFormat("es-ES", {
@@ -75,7 +101,7 @@ const GetMovements = () => {
     }).format(new Date(dateString));
   };
 
-  const getMovementType = (type) => {
+  const getMovementType = (type: string) => {
     const types = {
       entrada: {
         label: "Entrada",
@@ -95,7 +121,7 @@ const GetMovements = () => {
     };
 
     return (
-      types[type] || {
+      types[type as MovementType] || {
         label: type || "Movimiento",
         className: "movement-type-neutral",
         symbol: "",
@@ -119,7 +145,7 @@ const GetMovements = () => {
           <h1 className="movements-title">Movimientos de inventario</h1>
         </div>
 
-        <NewMovement onCreated={fetchMovements} />
+        <NewMovement onCreated={() => void fetchMovements(apiFilters)} />
       </header>
 
       <section className="movements-metrics">
@@ -164,6 +190,52 @@ const GetMovements = () => {
           )}
           <small>Ventas, mermas y ajustes</small>
         </article>
+      </section>
+
+            <section className="movement-filters" aria-label="Filtrar movimientos">
+        <label className="movement-filter-search">
+          <span>Buscar producto</span>
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Nombre del producto"
+          />
+        </label>
+
+        <label>
+          <span>Tipo</span>
+          <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as MovementType | "")}>
+            <option value="">Todos</option>
+            <option value="entrada">Entradas</option>
+            <option value="salida">Salidas</option>
+            <option value="ajuste">Ajustes</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Desde</span>
+          <input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
+        </label>
+
+        <label>
+          <span>Hasta</span>
+          <input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
+        </label>
+
+        <button
+          type="button"
+          className="btn btn-outline-secondary btn-sm movement-filter-clear"
+          disabled={!search && !typeFilter && !startDate && !endDate}
+          onClick={() => {
+            setSearch("");
+            setTypeFilter("");
+            setStartDate("");
+            setEndDate("");
+          }}
+        >
+          Limpiar filtros
+        </button>
       </section>
 
       {error && <div className="alert alert-danger">{error}</div>}
@@ -226,7 +298,7 @@ const GetMovements = () => {
                     </tr>
                   ))}
 
-                {!loading && movements.map((movement) => {
+                {!loading && visibleMovements.map((movement) => {
                   const type = getMovementType(movement.tipo);
 
                   return (
@@ -286,10 +358,10 @@ const GetMovements = () => {
                   );
                 })}
 
-                {!loading && !movements.length && (
+                {!loading && !visibleMovements.length && (
                   <tr>
-                    <td colSpan="7" className="movement-empty-state">
-                      No hay movimientos registrados.
+                    <td colSpan={7} className="movement-empty-state">
+                      No hay movimientos que coincidan con los filtros.
                     </td>
                   </tr>
                 )}

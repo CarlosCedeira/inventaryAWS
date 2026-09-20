@@ -150,7 +150,7 @@ PUT    /productos/actualizar/:id
 POST   /productos/newProduct
 PATCH  /productos/eliminar/:id
 
-GET    /movimientos
+GET    /movimientos?producto_id=&tipo=&fecha_desde=&fecha_hasta=
 POST   /movimientos
 
 PUT    /ventas/:productId

@@ -41,7 +41,7 @@ test("MySQL real: inventario, concurrencia y aislamiento", {
     const model = require("../../modules/inventory/inventory.model");
     const { groupProductWithInventory } = require("../../modules/inventory/inventory.mappers");
     const { registerQuickSale } = require("../../modules/quickSales/quickSales.model");
-    const { createMovement } = require("../../modules/movements/movements.model");
+    const { createMovement } = require("../../modules/movements/movements.model.ts");
     const sale = (quantity: number, tenantId = 1) => registerQuickSale({ tenantId, userId: tenantId, productId: 1, quantity });
     async function reset() {
       await admin.query("DELETE FROM movimientos_inventario");

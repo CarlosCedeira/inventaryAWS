@@ -274,6 +274,7 @@ async function getProductById(tenantId, id) {
       LEFT JOIN inventario i
         ON i.producto_id = p.id
         AND i.tenant_id = p.tenant_id
+        AND i.cantidad > 0
       LEFT JOIN categorias c
         ON p.categoria_id = c.id
         AND c.tenant_id = p.tenant_id

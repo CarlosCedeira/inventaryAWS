@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Routes, Route, Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import GetProducts from "../products/getProducts.jsx";
-import GetMovements from "../movements/GetMovements.jsx";
+import GetMovements from "../movements/GetMovements.tsx";
 import UsersManager from "../logging.jsx";
 import { clearSession, getSession } from "../../services/authService";
 

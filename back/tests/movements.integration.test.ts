@@ -120,6 +120,35 @@ test("la API registra entradas, salidas y ajustes, y conserva el historial del t
     expect.objectContaining({ producto_id: productId, producto_nombre: "Detergente" }),
   ]));
 
+  const typeFilterResponse = await request(app)
+    .get(`/movimientos?producto_id=${productId}&tipo=salida`)
+    .set("Authorization", `Bearer ${token}`);
+  expect(typeFilterResponse.status).toBe(200);
+  expect(typeFilterResponse.body).toHaveLength(1);
+  expect(typeFilterResponse.body[0]).toMatchObject({ producto_id: productId, tipo: "salida" });
+
+  const connection = await getConnection();
+  try {
+    await connection.execute(
+      "UPDATE movimientos_inventario SET created_at = ? WHERE tenant_id = ? AND tipo = ?",
+      ["2020-01-02 12:00:00", currentUser.tenantId, "entrada"],
+    );
+  } finally {
+    connection.release();
+  }
+
+  const dateFilterResponse = await request(app)
+    .get("/movimientos?fecha_desde=2020-01-02&fecha_hasta=2020-01-02")
+    .set("Authorization", `Bearer ${token}`);
+  expect(dateFilterResponse.status).toBe(200);
+  expect(dateFilterResponse.body).toHaveLength(1);
+  expect(dateFilterResponse.body[0]).toMatchObject({ tipo: "entrada" });
+
+  const invalidFilterResponse = await request(app)
+    .get("/movimientos?tipo=traspaso&fecha_desde=2020-02-30")
+    .set("Authorization", `Bearer ${token}`);
+  expect(invalidFilterResponse.status).toBe(400);
+
   const insufficientStockResponse = await request(app)
     .post("/movimientos")
     .set("Authorization", `Bearer ${token}`)
