@@ -1,12 +1,12 @@
 # Pruebas con MySQL real
 
-`npm test` omite esta suite si no está definida `TEST_DB_HOST`.
+`npm run test:integration:sql` omite esta suite si no está definida `TEST_DB_HOST`.
 
 Usa una instancia local o dedicada a pruebas. Define en tu terminal
 `TEST_DB_HOST`, `TEST_DB_USER` y `TEST_DB_PASSWORD`, y ejecuta desde `back`:
 
 ```powershell
-npm run test:integration
+npm run test:integration:sql
 ```
 
 No se carga el `.env` de la aplicación ni se usa su `DATABASE`. La suite crea

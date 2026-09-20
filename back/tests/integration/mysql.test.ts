@@ -1,7 +1,7 @@
-const test = require("node:test");
-const assert = require("node:assert/strict");
-const { randomUUID } = require("node:crypto");
-const mysql = require("mysql2/promise");
+import test from "node:test";
+import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import mysql, { type RowDataPacket } from "mysql2/promise";
 
 test("MySQL real: inventario, concurrencia y aislamiento", {
   skip: !process.env.TEST_DB_HOST && "Configura TEST_DB_HOST, TEST_DB_USER y TEST_DB_PASSWORD",
@@ -15,7 +15,7 @@ test("MySQL real: inventario, concurrencia y aislamiento", {
     host: process.env.TEST_DB_HOST, user: process.env.TEST_DB_USER,
     password: process.env.TEST_DB_PASSWORD, connectTimeout: 5000,
   });
-  let closePool;
+  let closePool: (() => Promise<void>) | undefined;
   let created = false;
   try {
     await admin.query(`CREATE DATABASE \`${database}\``);
@@ -42,7 +42,7 @@ test("MySQL real: inventario, concurrencia y aislamiento", {
     const { groupProductWithInventory } = require("../../modules/inventory/inventory.mappers");
     const { registerQuickSale } = require("../../modules/quickSales/quickSales.model");
     const { createMovement } = require("../../modules/movements/movements.model");
-    const sale = (quantity, tenantId = 1) => registerQuickSale({ tenantId, userId: tenantId, productId: 1, quantity });
+    const sale = (quantity: number, tenantId = 1) => registerQuickSale({ tenantId, userId: tenantId, productId: 1, quantity });
     async function reset() {
       await admin.query("DELETE FROM movimientos_inventario");
       await admin.query("DELETE FROM inventario");
@@ -59,7 +59,7 @@ test("MySQL real: inventario, concurrencia y aislamiento", {
       const result = await sale(5);
       assert.equal(result.stock_fisico, 15);
       assert.equal(result.stock_disponible, 0);
-      const [rows] = await admin.query("SELECT cantidad FROM inventario WHERE id=1");
+      const [rows] = await admin.query<RowDataPacket[]>("SELECT cantidad FROM inventario WHERE id=1");
       assert.equal(rows[0].cantidad, 15);
     });
 
@@ -68,8 +68,10 @@ test("MySQL real: inventario, concurrencia y aislamiento", {
       await admin.query("INSERT INTO inventario (id,tenant_id,producto_id,cantidad) VALUES (1,1,1,5)");
       const results = await Promise.allSettled([sale(5), sale(5)]);
       assert.equal(results.filter((r) => r.status === 'fulfilled').length, 1);
-      assert.equal(results.find((r) => r.status === 'rejected').reason.statusCode, 409);
-      const [rows] = await admin.query("SELECT cantidad FROM inventario WHERE id=1");
+      const rejectedSale = results.find((r) => r.status === 'rejected');
+      assert.ok(rejectedSale, "Una de las ventas debe rechazarse por falta de stock");
+      assert.equal(rejectedSale.reason.statusCode, 409);
+      const [rows] = await admin.query<RowDataPacket[]>("SELECT cantidad FROM inventario WHERE id=1");
       assert.equal(rows[0].cantidad, 0);
     });
 
@@ -79,8 +81,8 @@ test("MySQL real: inventario, concurrencia y aislamiento", {
       await admin.query("CREATE TRIGGER fail_movement BEFORE INSERT ON movimientos_inventario FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Test failure'");
       try { await assert.rejects(sale(2), /Test failure/); }
       finally { await admin.query("DROP TRIGGER fail_movement"); }
-      const [rows] = await admin.query("SELECT cantidad FROM inventario WHERE id=1");
-      const [movements] = await admin.query("SELECT * FROM movimientos_inventario");
+      const [rows] = await admin.query<RowDataPacket[]>("SELECT cantidad FROM inventario WHERE id=1");
+      const [movements] = await admin.query<RowDataPacket[]>("SELECT * FROM movimientos_inventario");
       assert.equal(rows[0].cantidad, 5);
       assert.equal(movements.length, 0);
     });
@@ -95,7 +97,7 @@ test("MySQL real: inventario, concurrencia y aislamiento", {
       const detail = groupProductWithInventory(await model.getProductById(1, 1));
       await sale(1);
       await assert.rejects(model.updateProduct(1, 1, detail, detail.inventario, 1), { statusCode: 409 });
-      const [rows] = await admin.query("SELECT cantidad FROM inventario WHERE id=1");
+      const [rows] = await admin.query<RowDataPacket[]>("SELECT cantidad FROM inventario WHERE id=1");
       assert.equal(rows[0].cantidad, 4);
     });
 

@@ -1,16 +1,27 @@
-const test = require("node:test");
-const assert = require("node:assert/strict");
+import test from "node:test";
+import assert from "node:assert/strict";
 const db = require("../db");
 
 // Substitute only the connection boundary; execute the real transaction logic.
-let connection;
+type SqlParams = unknown[];
+type Event = string | { update: SqlParams } | { movement: SqlParams };
+type Lot = { id: number; cantidad: number; fecha_caducidad?: string | null };
+let connection: {
+  beginTransaction: () => Promise<number>;
+  commit: () => Promise<number>;
+  rollback: () => Promise<number>;
+  release: () => number;
+  execute: (sql: string, params: SqlParams) => Promise<unknown[]>;
+};
 const originalGetConnection = db.getConnection;
 db.getConnection = async () => connection;
 const { registerQuickSale } = require("../modules/quickSales/quickSales.model");
 db.getConnection = originalGetConnection;
 
-function setup({ physical = 20, lots = [], failInsert = false } = {}) {
-  const events = [];
+function setup({ physical = 20, lots = [], failInsert = false }: {
+  physical?: number; lots?: Lot[]; failInsert?: boolean;
+} = {}) {
+  const events: Event[] = [];
   connection = {
     beginTransaction: async () => events.push("begin"),
     commit: async () => events.push("commit"),
@@ -40,7 +51,7 @@ function setup({ physical = 20, lots = [], failInsert = false } = {}) {
   return events;
 }
 
-const sell = (quantity) => registerQuickSale({ tenantId: 7, userId: 2, productId: 1, quantity });
+const sell = (quantity: number) => registerQuickSale({ tenantId: 7, userId: 2, productId: 1, quantity });
 
 test("20 fisicas, 15 caducadas y 5 disponibles: rechaza venta de 10 sin escribir", async () => {
   const events = setup({ lots: [{ id: 3, cantidad: 5, fecha_caducidad: null }] });
@@ -56,7 +67,7 @@ test("venta con stock mixto conserva caducados y registra saldos fisicos", async
   assert.equal(result.stock_caducado, 15);
   assert.equal(result.movimientos[0].stock_anterior, 20);
   assert.equal(result.movimientos[0].stock_nuevo, 16);
-  assert.deepEqual(events.find((e) => e.update).update, [1, 7, 3]);
+  assert.deepEqual(events.find((e): e is { update: SqlParams } => typeof e !== "string" && "update" in e)?.update, [1, 7, 3]);
   assert.deepEqual(events.slice(-2), ["commit", "release"]);
 });
 
@@ -73,7 +84,7 @@ test("consume lotes por orden y actualiza la proxima caducidad", async () => {
     { id: 5, cantidad: 2, fecha_caducidad: null },
   ] });
   const result = await sell(4);
-  assert.deepEqual(result.movimientos.map((m) => m.inventario_id), [3, 4]);
+  assert.deepEqual(result.movimientos.map((m: { inventario_id: number }) => m.inventario_id), [3, 4]);
   assert.equal(result.fecha_caducidad, "2027-02-01");
   assert.equal(result.stock_disponible, 4);
   assert.equal(result.stock_caducado, 0);

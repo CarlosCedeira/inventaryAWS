@@ -1,9 +1,11 @@
-const request = require("supertest");
+import { test, expect } from "@jest/globals";
+import request from "supertest";
 const app = require("../app");
-const { getConnection } = require("../db");
-const { seedTenantAndUser } = require("./helpers/database");
+import type { PoolConnection, ResultSetHeader } from "mysql2/promise";
+const { getConnection } = require("../db") as { getConnection: () => Promise<PoolConnection> };
+import { seedTenantAndUser, type SeededUser } from "./helpers/database";
 
-async function loginAs(user) {
+async function loginAs(user: SeededUser): Promise<string> {
   const response = await request(app).post("/auth/login").send({
     email: user.email,
     password: user.password,
@@ -13,20 +15,20 @@ async function loginAs(user) {
   return response.body.token;
 }
 
-async function seedProductWithLot(tenantId, name, quantity) {
+async function seedProductWithLot(tenantId: number, name: string, quantity: number) {
   const connection = await getConnection();
   try {
-    const [category] = await connection.execute(
+    const [category] = await connection.execute<ResultSetHeader>(
       "INSERT INTO categorias (tenant_id, nombre) VALUES (?, ?)",
       [tenantId, "General"],
     );
-    const [product] = await connection.execute(
+    const [product] = await connection.execute<ResultSetHeader>(
       `INSERT INTO productos
         (tenant_id, nombre, categoria_id, precio_compra, precio_venta, stock_minimo)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [tenantId, name, category.insertId, 2, 4, 1],
     );
-    const [inventory] = await connection.execute(
+    const [inventory] = await connection.execute<ResultSetHeader>(
       `INSERT INTO inventario
         (tenant_id, producto_id, cantidad, numero_lote)
        VALUES (?, ?, ?, ?)`,
@@ -87,7 +89,7 @@ test("la API registra entradas, salidas y ajustes, y conserva el historial del t
     .get(`/productos/${productId}`)
     .set("Authorization", `Bearer ${token}`);
   const entryLot = detailResponse.body.inventario.find(
-    (lot) => lot.numero_lote === "ENTRADA-01",
+    (lot: { numero_lote: string | null; inventario_id: number }) => lot.numero_lote === "ENTRADA-01",
   );
   expect(entryLot).toBeDefined();
 
@@ -109,7 +111,7 @@ test("la API registra entradas, salidas y ajustes, y conserva el historial del t
     .set("Authorization", `Bearer ${token}`);
   expect(historyResponse.status).toBe(200);
   expect(historyResponse.body).toHaveLength(3);
-  expect(historyResponse.body.map((movement) => movement.tipo).sort()).toEqual([
+  expect(historyResponse.body.map((movement: { tipo: string }) => movement.tipo).sort()).toEqual([
     "ajuste",
     "entrada",
     "salida",

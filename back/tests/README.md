@@ -1,5 +1,10 @@
 # Primer test de integración: login
 
+Las pruebas y sus helpers están escritos en TypeScript. Ejecuta
+`npm run typecheck:tests` desde `back` para comprobar sus tipos sin ejecutarlas.
+Las unitarias y la suite SQL usan `tsx` con `node:test`; las de HTTP usan
+Jest con `ts-jest`. Los módulos de la aplicación continúan en JavaScript.
+
 1. Crea una base MySQL vacía llamada `inventario_test` y un usuario limitado a
    esa base, con permisos para crear tablas, consultar, insertar y borrar datos.
    No uses la base de desarrollo. El esquema requiere MySQL 8.

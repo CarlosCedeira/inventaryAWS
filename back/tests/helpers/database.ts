@@ -1,6 +1,7 @@
-const { getConnection } = require("../../db");
-const { readFileSync } = require("node:fs");
-const path = require("node:path");
+const { getConnection } = require("../../db") as { getConnection: () => Promise<import("mysql2/promise").PoolConnection> };
+import type { ResultSetHeader } from "mysql2/promise";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 
 async function createTestSchema() {
   if (process.env.DATABASE !== "inventario_test") {
@@ -20,18 +21,23 @@ async function createTestSchema() {
 async function cleanDatabase() {
   const connection = await getConnection();
   try {
-    await connection.execute("DELETE FROM movimientos_inventario");
-    await connection.execute("DELETE FROM inventario");
-    await connection.execute("DELETE FROM productos");
-    await connection.execute("DELETE FROM categorias");
-    await connection.execute("DELETE FROM usuarios");
-    await connection.execute("DELETE FROM tenants");
+    await connection.execute<ResultSetHeader>("DELETE FROM movimientos_inventario");
+    await connection.execute<ResultSetHeader>("DELETE FROM inventario");
+    await connection.execute<ResultSetHeader>("DELETE FROM productos");
+    await connection.execute<ResultSetHeader>("DELETE FROM categorias");
+    await connection.execute<ResultSetHeader>("DELETE FROM usuarios");
+    await connection.execute<ResultSetHeader>("DELETE FROM tenants");
   } finally {
     connection.release();
   }
 }
 
-async function seedTenantAndUser(options = {}) {
+async function seedTenantAndUser(options: {
+  tenantActive?: boolean;
+  userActive?: boolean;
+  email?: string;
+  password?: string;
+} = {}) {
   const {
     tenantActive = true,
     userActive = true,
@@ -41,12 +47,12 @@ async function seedTenantAndUser(options = {}) {
   const bcrypt = require("bcrypt");
   const connection = await getConnection();
   try {
-    const [tenant] = await connection.execute(
+    const [tenant] = await connection.execute<ResultSetHeader>(
       "INSERT INTO tenants (nombre, tarifa, activo) VALUES (?, ?, ?)",
       ["Tenant de pruebas", 1, tenantActive],
     );
     const passwordHash = await bcrypt.hash(password, 10);
-    const [user] = await connection.execute(
+    const [user] = await connection.execute<ResultSetHeader>(
       "INSERT INTO usuarios (tenant_id, nombre, email, password_hash, rol, activo) VALUES (?, ?, ?, ?, ?, ?)",
       [tenant.insertId, "Admin de pruebas", email, passwordHash, "admin", userActive],
     );
@@ -56,4 +62,5 @@ async function seedTenantAndUser(options = {}) {
   }
 }
 
-module.exports = { createTestSchema, cleanDatabase, seedTenantAndUser };
+export type SeededUser = Awaited<ReturnType<typeof seedTenantAndUser>>;
+export { createTestSchema, cleanDatabase, seedTenantAndUser };

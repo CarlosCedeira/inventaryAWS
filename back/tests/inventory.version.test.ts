@@ -1,5 +1,5 @@
-const test = require("node:test");
-const assert = require("node:assert/strict");
+import test from "node:test";
+import assert from "node:assert/strict";
 const { inventoryVersion } = require("../modules/inventory/inventory.version");
 const { parseStockQuantity } = require("../utils/stockQuantity");
 

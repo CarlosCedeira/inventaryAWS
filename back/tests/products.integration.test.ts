@@ -1,9 +1,11 @@
-const request = require("supertest");
+import { test, expect } from "@jest/globals";
+import request from "supertest";
 const app = require("../app");
-const { getConnection } = require("../db");
-const { seedTenantAndUser } = require("./helpers/database");
+import type { PoolConnection, ResultSetHeader } from "mysql2/promise";
+const { getConnection } = require("../db") as { getConnection: () => Promise<PoolConnection> };
+import { seedTenantAndUser, type SeededUser } from "./helpers/database";
 
-async function loginAs(user) {
+async function loginAs(user: SeededUser): Promise<string> {
   const response = await request(app).post("/auth/login").send({
     email: user.email,
     password: user.password,
@@ -13,14 +15,19 @@ async function loginAs(user) {
   return response.body.token;
 }
 
-async function seedProduct({ tenantId, name, categoryName, lots }) {
+async function seedProduct({ tenantId, name, categoryName, lots }: {
+  tenantId: number;
+  name: string;
+  categoryName: string;
+  lots: Array<{ quantity: number; expirationDate: string | null; lotNumber?: string }>;
+}) {
   const connection = await getConnection();
   try {
-    const [category] = await connection.execute(
+    const [category] = await connection.execute<ResultSetHeader>(
       "INSERT INTO categorias (tenant_id, nombre) VALUES (?, ?)",
       [tenantId, categoryName],
     );
-    const [product] = await connection.execute(
+    const [product] = await connection.execute<ResultSetHeader>(
       `INSERT INTO productos
         (tenant_id, nombre, descripcion, categoria_id, precio_compra, precio_venta, stock_minimo)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -151,7 +158,7 @@ test("la API de productos permite crear, consultar, buscar, filtrar, editar y bo
     ...detailResponse.body,
     nombre: "Jabón líquido concentrado",
     precio_venta: 5,
-    inventario: detailResponse.body.inventario.map((lot) => ({ ...lot, cantidad: 8 })),
+    inventario: detailResponse.body.inventario.map((lot: { inventario_id: number; cantidad: number; version: string }) => ({ ...lot, cantidad: 8 })),
   };
   const updateResponse = await request(app)
     .put(`/productos/actualizar/${productoId}`)

@@ -1,5 +1,5 @@
-const test = require("node:test");
-const assert = require("node:assert/strict");
+import test from "node:test";
+import assert from "node:assert/strict";
 const { groupProductWithInventory } = require("../modules/inventory/inventory.mappers");
 
 const row = {

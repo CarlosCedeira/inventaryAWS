@@ -1,15 +1,21 @@
-const test = require("node:test");
-const assert = require("node:assert/strict");
+import test from "node:test";
+import assert from "node:assert/strict";
 const db = require("../db");
 const { inventoryVersion } = require("../modules/inventory/inventory.version");
-let connection;
+let connection: {
+  beginTransaction: () => Promise<number>;
+  rollback: () => Promise<number>;
+  commit: () => Promise<number>;
+  release: () => number;
+  execute: (sql: string) => Promise<unknown[]>;
+};
 const getConnection = db.getConnection;
 db.getConnection = async () => connection;
 const { updateProduct } = require("../modules/inventory/inventory.model");
 db.getConnection = getConnection;
 
 test("edicion desactualizada revierte la transaccion antes de cambiar el lote", async () => {
-  const events = [];
+  const events: string[] = [];
   connection = {
     beginTransaction: async () => events.push("begin"),
     rollback: async () => events.push("rollback"),

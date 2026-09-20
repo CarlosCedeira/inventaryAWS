@@ -1,5 +1,6 @@
+import { beforeAll, beforeEach, afterAll } from "@jest/globals";
 const { closePool } = require("../../db");
-const { createTestSchema, cleanDatabase } = require("./database");
+import { createTestSchema, cleanDatabase } from "./database";
 
 let schemaReady = false;
 

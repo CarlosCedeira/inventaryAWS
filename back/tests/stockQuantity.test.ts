@@ -1,5 +1,5 @@
-const test = require("node:test");
-const assert = require("node:assert/strict");
+import test from "node:test";
+import assert from "node:assert/strict";
 const { parseStockQuantity, validateStockQuantity } = require("../utils/stockQuantity");
 
 for (const [name, value] of [
@@ -11,6 +11,8 @@ for (const [name, value] of [
   test(`rechaza cantidad ${name} con error HTTP 400`, () => {
     assert.equal(typeof validateStockQuantity(value), "string");
     assert.throws(() => parseStockQuantity(value), (error) => {
+      assert.ok(error instanceof Error);
+      assert.ok("statusCode" in error);
       assert.equal(error.statusCode, 400);
       assert.ok(error.message.length > 0);
       return true;
