@@ -1,9 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const inventoryController = require("./inventory.controller");
-const { requireAuth } = require("../auth/auth.middleware");
+const { ROLES, requireAuth, requireRoles } = require("../auth/auth.middleware");
 
-router.use(requireAuth);
+router.use(requireAuth, requireRoles(ROLES.OWNER, ROLES.ADMIN));
 
 // Listado y búsqueda
 router.get("/", inventoryController.getProducts);

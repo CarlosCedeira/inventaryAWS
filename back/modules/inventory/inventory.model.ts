@@ -1,5 +1,8 @@
-const { inventoryVersion } = require("./inventory.version");
-const { getConnection } = require("../../db");
+import type { PoolConnection, RowDataPacket, ResultSetHeader } from "mysql2/promise";
+import type { CategoryFields, InventoryFields, InventoryMovement, InventoryRow, InventoryUpdate, ProductFields, ProductId, ProductSummaryRow, ProductDetailRow } from "./inventory.types";
+import type { HttpError } from "../../types/http";
+const { inventoryVersion } = require("./inventory.version") as { inventoryVersion: (row: InventoryRow) => string };
+const { getConnection } = require("../../db") as { getConnection: () => Promise<PoolConnection> };
 
 const STOCK_PROJECTION = `COALESCE(SUM(i.cantidad), 0) AS stock_total,
         COALESCE(SUM(i.cantidad), 0) AS stock_fisico,
@@ -15,8 +18,8 @@ const STOCK_PROJECTION = `COALESCE(SUM(i.cantidad), 0) AS stock_total,
     END
   ) AS fecha_caducidad`;
 
-async function getCurrentStock(connection, tenantId, productId) {
-  const [rows] = await connection.execute(
+async function getCurrentStock(connection: PoolConnection, tenantId: number, productId: ProductId) {
+  const [rows] = await connection.execute<(RowDataPacket & { stock_total: string })[]>(
     `
     SELECT COALESCE(SUM(cantidad), 0) AS stock_total
     FROM inventario
@@ -28,8 +31,8 @@ async function getCurrentStock(connection, tenantId, productId) {
   return Number(rows[0]?.stock_total || 0);
 }
 
-async function insertInventoryMovement(connection, data) {
-  const [result] = await connection.execute(
+async function insertInventoryMovement(connection: PoolConnection, data: InventoryMovement) {
+  const [result] = await connection.execute<ResultSetHeader>(
     `
     INSERT INTO movimientos_inventario
       (
@@ -68,10 +71,10 @@ async function insertInventoryMovement(connection, data) {
 }
 
 // Listar todos los productos
-async function getAllProducts(tenantId) {
+async function getAllProducts(tenantId: number) {
   const connection = await getConnection();
   try {
-    const [rows] = await connection.execute(`
+    const [rows] = await connection.execute<ProductSummaryRow[]>(`
     SELECT 
   p.id AS producto_id,
   p.nombre AS producto_nombre,
@@ -112,10 +115,10 @@ GROUP BY
 }
 
 // Listar categorías
-async function getAllCategories(tenantId) {
+async function getAllCategories(tenantId: number) {
   const connection = await getConnection();
   try {
-    const [rows] = await connection.execute(
+    const [rows] = await connection.execute<(RowDataPacket & CategoryFields & { id: number; tenant_id: number })[]>(
       "SELECT * FROM categorias WHERE tenant_id = ?",
       [tenantId]
     );
@@ -126,10 +129,10 @@ async function getAllCategories(tenantId) {
 }
 
 // Crear categoria
-async function createCategory(tenantId, categoryData) {
+async function createCategory(tenantId: number, categoryData: CategoryFields) {
   const connection = await getConnection();
   try {
-    const [result] = await connection.execute(
+    const [result] = await connection.execute<ResultSetHeader>(
       `
       INSERT INTO categorias (nombre, descripcion, tenant_id)
       VALUES (?, ?, ?)
@@ -149,10 +152,10 @@ async function createCategory(tenantId, categoryData) {
 }
 
 // Comprobar que una categoria pertenece al tenant actual
-async function categoryExistsForTenant(tenantId, categoryId) {
+async function categoryExistsForTenant(tenantId: number, categoryId: number) {
   const connection = await getConnection();
   try {
-    const [rows] = await connection.execute(
+    const [rows] = await connection.execute<(RowDataPacket & { id: number })[]>(
       `
       SELECT id
       FROM categorias
@@ -169,10 +172,10 @@ async function categoryExistsForTenant(tenantId, categoryId) {
 }
 
 // Buscar producto por nombre
-async function searchProductsByName(tenantId, name) {
+async function searchProductsByName(tenantId: number, name: string) {
   const connection = await getConnection();
   try {
-    const [rows] = await connection.execute(
+    const [rows] = await connection.execute<ProductSummaryRow[]>(
       `
       SELECT
         p.id AS producto_id,
@@ -209,10 +212,10 @@ async function searchProductsByName(tenantId, name) {
 }
 
 // Filtrar productos por categoria
-async function getProductsByCategory(tenantId, categoryId) {
+async function getProductsByCategory(tenantId: number, categoryId: number) {
   const connection = await getConnection();
   try {
-    const [rows] = await connection.execute(
+    const [rows] = await connection.execute<ProductSummaryRow[]>(
       `
       SELECT
         p.id AS producto_id,
@@ -249,11 +252,11 @@ async function getProductsByCategory(tenantId, categoryId) {
 }
 
 // Obtener producto por id
-async function getProductById(tenantId, id) {
+async function getProductById(tenantId: number, id: ProductId) {
   const connection = await getConnection();
 
   try {
-    const [rows] = await connection.execute(
+    const [rows] = await connection.execute<ProductDetailRow[]>(
       `
       SELECT
         i.id AS inventario_id,
@@ -293,12 +296,12 @@ async function getProductById(tenantId, id) {
 
 
 // Actualizar producto e inventario
-async function updateProduct(tenantId, productId, productoData, invnetarioData, userId) {
+async function updateProduct(tenantId: number, productId: ProductId, productoData: ProductFields, invnetarioData: InventoryUpdate[], userId: number) {
   const connection = await getConnection();
   try {
     await connection.beginTransaction();
 
-    const [productResult] = await connection.execute(
+    const [productResult] = await connection.execute<ResultSetHeader>(
       `UPDATE productos
        SET nombre = ?, descripcion = ?, categoria_id = ?, precio_compra = ?, precio_venta = ?, stock_minimo = ?
        WHERE tenant_id = ? AND id = ? AND eliminado = 0`,
@@ -315,7 +318,7 @@ async function updateProduct(tenantId, productId, productoData, invnetarioData, 
     );
 
     if (!productResult.affectedRows) {
-      const error = new Error("Producto no encontrado");
+      const error: HttpError = new Error("Producto no encontrado");
       error.statusCode = 404;
       throw error;
     }
@@ -323,7 +326,7 @@ async function updateProduct(tenantId, productId, productoData, invnetarioData, 
     let runningStock = await getCurrentStock(connection, tenantId, productId);
 
     for (const item of invnetarioData) {
-      const [inventoryRows] = await connection.execute(
+      const [inventoryRows] = await connection.execute<InventoryRow[]>(
         `
         SELECT id, cantidad, fecha_caducidad, numero_lote
         FROM inventario
@@ -335,13 +338,13 @@ async function updateProduct(tenantId, productId, productoData, invnetarioData, 
       );
 
       if (!inventoryRows.length) {
-        const error = new Error("Lote de inventario no encontrado");
+        const error: HttpError = new Error("Lote de inventario no encontrado");
         error.statusCode = 404;
         throw error;
       }
 
       if (item.version !== inventoryVersion(inventoryRows[0])) {
-        const error = new Error("El inventario ha cambiado. Recarga la ficha antes de guardar.");
+        const error: HttpError = new Error("El inventario ha cambiado. Recarga la ficha antes de guardar.");
         error.statusCode = 409;
         throw error;
       }
@@ -402,12 +405,12 @@ async function updateProduct(tenantId, productId, productoData, invnetarioData, 
 }
 
 // Crear nuevo producto e inventario
-async function createProduct(productoData, inventarioData, userId) {
+async function createProduct(productoData: ProductFields & { tenant_id: number }, inventarioData: InventoryFields & { tenant_id: number }, userId: number) {
   const connection = await getConnection();
   try {
     await connection.beginTransaction();
 
-    const [productoResult] = await connection.execute(
+    const [productoResult] = await connection.execute<ResultSetHeader>(
       `INSERT INTO productos 
        (tenant_id, nombre, descripcion, categoria_id, precio_compra, precio_venta, stock_minimo)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -424,7 +427,7 @@ async function createProduct(productoData, inventarioData, userId) {
 
     const productoId = productoResult.insertId;
 
-    const [inventarioResult] = await connection.execute(
+    const [inventarioResult] = await connection.execute<ResultSetHeader>(
       `INSERT INTO inventario
        (tenant_id, producto_id, cantidad, fecha_caducidad, numero_lote)
        VALUES (?, ?, ?, ?, ?)`,
@@ -466,10 +469,10 @@ async function createProduct(productoData, inventarioData, userId) {
 }
 
 // Borrado logico de producto
-async function softDeleteProduct(tenantId, productId) {
+async function softDeleteProduct(tenantId: number, productId: ProductId) {
   const connection = await getConnection();
   try {
-    const [result] = await connection.execute(
+    const [result] = await connection.execute<ResultSetHeader>(
       `
       UPDATE productos
       SET eliminado = 1
@@ -484,7 +487,7 @@ async function softDeleteProduct(tenantId, productId) {
   }
 }
 
-module.exports = {
+export {
   getAllProducts,
   getAllCategories,
   createCategory,

@@ -1,20 +1,32 @@
+import type { CategoryFields, InventoryDate, InventoryFields, InventoryUpdate, ProductFields, ProductId } from "./inventory.types";
+
+type Input = Record<string, unknown>;
+type Validation<T> = (T & { error?: never }) | { error: string };
+type CreatePayload = {
+  product: ProductFields & { tenant_id: number };
+  inventory: InventoryFields & { tenant_id: number };
+};
+
 const {
   normalizeStockQuantity,
   validateStockQuantity,
-} = require("../../utils/stockQuantity");
+} = require("../../utils/stockQuantity") as {
+  normalizeStockQuantity: (value: unknown) => number;
+  validateStockQuantity: (value: unknown, options: { label: string }) => string | null;
+};
 
 const productNameRegex = /^[\p{L}0-9\s_.(),-]+$/u;
 const categoryNameRegex = /^[\p{L}0-9\s_-]+$/u;
 
-function isBlank(value) {
+function isBlank(value: unknown) {
   return value === undefined || value === null || String(value).trim() === "";
 }
 
-function toTrimmedString(value) {
+function toTrimmedString(value: unknown) {
   return value === undefined || value === null ? "" : String(value).trim();
 }
 
-function validateRequiredNumber(value, label) {
+function validateRequiredNumber(value: unknown, label: string) {
   if (isBlank(value)) return `${label} es obligatorio`;
 
   const numberValue = Number(value);
@@ -24,7 +36,7 @@ function validateRequiredNumber(value, label) {
   return null;
 }
 
-function validateRequiredInteger(value, label) {
+function validateRequiredInteger(value: unknown, label: string) {
   const numberError = validateRequiredNumber(value, label);
   if (numberError) return numberError;
 
@@ -35,10 +47,10 @@ function validateRequiredInteger(value, label) {
   return null;
 }
 
-function validateOptionalDate(value, label) {
+function validateOptionalDate(value: unknown, label: string) {
   if (isBlank(value)) return null;
 
-  const date = new Date(value);
+  const date = new Date(value as string | number | Date);
   if (Number.isNaN(date.getTime())) {
     return `${label} no es valida`;
   }
@@ -46,7 +58,7 @@ function validateOptionalDate(value, label) {
   return null;
 }
 
-function validateProductFields(product) {
+function validateProductFields(product: Input) {
   const nombre = toTrimmedString(product.nombre);
   const descripcion = toTrimmedString(product.descripcion);
 
@@ -88,7 +100,7 @@ function validateProductFields(product) {
   return validateRequiredInteger(product.stock_minimo, "El stock minimo");
 }
 
-function validateInventoryItem(item) {
+function validateInventoryItem(item: Input) {
   const quantityError = validateStockQuantity(item.cantidad, {
     label: "La cantidad inicial",
   });
@@ -102,7 +114,7 @@ function validateInventoryItem(item) {
   return validateOptionalDate(item.fecha_caducidad, "La fecha de caducidad");
 }
 
-function validateInventoryUpdateItem(item) {
+function validateInventoryUpdateItem(item: Input) {
   const quantityError = validateRequiredInteger(item.cantidad, "La cantidad");
   if (quantityError) return quantityError;
 
@@ -114,7 +126,7 @@ function validateInventoryUpdateItem(item) {
   return validateOptionalDate(item.fecha_caducidad, "La fecha de caducidad");
 }
 
-function normalizeProductFields(product) {
+function normalizeProductFields(product: Input): ProductFields {
   return {
     nombre: toTrimmedString(product.nombre),
     descripcion: toTrimmedString(product.descripcion),
@@ -125,16 +137,16 @@ function normalizeProductFields(product) {
   };
 }
 
-function normalizeInventoryItem(item) {
+function normalizeInventoryItem<T extends Input>(item: T): T & InventoryFields {
   return {
     ...item,
     cantidad: normalizeStockQuantity(item.cantidad),
-    fecha_caducidad: isBlank(item.fecha_caducidad) ? null : item.fecha_caducidad,
+    fecha_caducidad: isBlank(item.fecha_caducidad) ? null : item.fecha_caducidad as InventoryDate,
     numero_lote: toTrimmedString(item.numero_lote) || null,
   };
 }
 
-function buildCreateProductPayload(body, tenantId) {
+function buildCreateProductPayload(body: Input, tenantId: number): Validation<CreatePayload> {
   const product = {
     tenant_id: tenantId,
     nombre: body.producto_nombre,
@@ -164,13 +176,12 @@ function buildCreateProductPayload(body, tenantId) {
       ...normalizeProductFields(product),
     },
     inventory: {
-      tenant_id: tenantId,
       ...normalizeInventoryItem(inventory),
     },
   };
 }
 
-function buildCreateCategoryPayload(body) {
+function buildCreateCategoryPayload(body: Input): Validation<{ category: CategoryFields }> {
   const nombre = toTrimmedString(body.nombre);
   const descripcion = toTrimmedString(body.descripcion);
 
@@ -199,7 +210,7 @@ function buildCreateCategoryPayload(body) {
   };
 }
 
-function buildUpdateProductPayload(body) {
+function buildUpdateProductPayload(body: Input): Validation<{ product: ProductFields & { inventario: InventoryUpdate[] } }> {
   const productError = validateProductFields(body);
   if (productError) return { error: productError };
 
@@ -207,9 +218,9 @@ function buildUpdateProductPayload(body) {
     return { error: "El inventario del producto es obligatorio" };
   }
 
-  const normalizedInventory = [];
+  const normalizedInventory: InventoryUpdate[] = [];
 
-  for (const item of body.inventario) {
+  for (const item of body.inventario as Input[]) {
     if (!Number.isInteger(Number(item.inventario_id)) || Number(item.inventario_id) <= 0) {
       return { error: "El lote de inventario no es valido" };
     }
@@ -220,7 +231,11 @@ function buildUpdateProductPayload(body) {
     if (typeof item.version !== "string" || !/^[a-f0-9]{64}$/.test(item.version)) {
       return { error: "Recarga la ficha para obtener la version actual del inventario" };
     }
-    normalizedInventory.push(normalizeInventoryItem(item));
+    normalizedInventory.push(normalizeInventoryItem({
+      ...item,
+      inventario_id: item.inventario_id as ProductId,
+      version: item.version,
+    }));
   }
 
   return {
@@ -231,7 +246,7 @@ function buildUpdateProductPayload(body) {
   };
 }
 
-module.exports = {
+export {
   buildCreateCategoryPayload,
   buildCreateProductPayload,
   buildUpdateProductPayload,

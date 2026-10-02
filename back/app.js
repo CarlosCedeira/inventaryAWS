@@ -22,6 +22,8 @@ if (process.env.NODE_ENV === "test") {
 app.use("/productos", require("./modules/inventory/inventory.routes"));
 app.use("/movimientos", require("./modules/movements/movements.routes"));
 app.use("/ventas", require("./modules/quickSales/quickSales.routes"));
+app.use("/ventas", require("./modules/sales/sales.routes"));
+app.use("/clientes", require("./modules/clients/clients.routes"));
 app.use(errorHandler);
 
 module.exports = app;

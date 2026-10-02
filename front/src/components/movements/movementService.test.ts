@@ -18,14 +18,15 @@ beforeEach(() => {
   });
 });
 
-test("envia tipo y rango de fechas al consultar movimientos", async () => {
+test("envia tipo, rango de fechas y búsqueda al consultar movimientos", async () => {
   await movementService.getAll({
     type: "salida",
     startDate: "2026-01-01",
     endDate: "2026-01-31",
+    search: "lote A-12",
   });
 
   expect(fetchWithAuthMock).toHaveBeenCalledWith(
-    expect.stringMatching(/\/movimientos\?tipo=salida&fecha_desde=2026-01-01&fecha_hasta=2026-01-31$/),
+    expect.stringMatching(/\/movimientos\?tipo=salida&fecha_desde=2026-01-01&fecha_hasta=2026-01-31&buscar=lote\+A-12$/),
   );
 });

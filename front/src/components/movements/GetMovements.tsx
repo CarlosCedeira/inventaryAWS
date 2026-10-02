@@ -20,7 +20,8 @@ const GetMovements = () => {
     ...(typeFilter ? { type: typeFilter } : {}),
     ...(startDate ? { startDate } : {}),
     ...(endDate ? { endDate } : {}),
-  }), [typeFilter, startDate, endDate]);
+    ...(search.trim() ? { search: search.trim() } : {}),
+  }), [typeFilter, startDate, endDate, search]);
 
   const fetchMovements = useCallback(async (filters: MovementFilters) => {
     const currentRequest = ++requestId.current;
@@ -41,16 +42,11 @@ const GetMovements = () => {
   }, []);
 
   useEffect(() => {
-    void fetchMovements(apiFilters);
+    const timeoutId = setTimeout(() => void fetchMovements(apiFilters), 250);
+    return () => clearTimeout(timeoutId);
   }, [apiFilters, fetchMovements]);
 
-  const visibleMovements = useMemo(() => {
-    const normalizedSearch = search.trim().toLocaleLowerCase("es-ES");
-    if (!normalizedSearch) return movements;
-    return movements.filter((movement) =>
-      movement.producto_nombre.toLocaleLowerCase("es-ES").includes(normalizedSearch),
-    );
-  }, [movements, search]);
+  const visibleMovements = movements;
 
   useEffect(() => {
     if (!loading) {
@@ -193,15 +189,17 @@ const GetMovements = () => {
       </section>
 
             <section className="movement-filters" aria-label="Filtrar movimientos">
-        <label className="movement-filter-search">
-          <span>Buscar producto</span>
+       <div className="toolbar-field toolbar-search">
+         <label className="w-100">
+          <span className="form-label">Buscar cliente</span>
           <input
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Nombre del producto"
+            placeholder="Nombre del producto, numero de lote y usuario"
           />
         </label>
+       </div>
 
         <label>
           <span>Tipo</span>

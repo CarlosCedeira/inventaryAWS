@@ -16,6 +16,7 @@ function requestContext(req, res, next) {
       durationMs: Number(durationMs.toFixed(1)),
       tenantId: req.tenantId,
       userId: req.user?.id,
+      role: req.user?.rol,
     });
   });
 

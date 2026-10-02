@@ -89,6 +89,7 @@ para relacionar su respuesta con los logs del servidor.
 - Sesion guardada en `localStorage` bajo `inventory_session`.
 - Token JWT enviado como `Authorization: Bearer <token>`.
 - Las rutas privadas del backend rellenan `req.user` y `req.tenantId` desde el token.
+- Los roles normalizados son `owner` (dueño) y `admin` (administración). Ambos tienen acceso completo durante esta versión; el backend rechaza cualquier otro rol.
 - Rate limit aplicado a rutas bajo `/auth`.
 
 ### Productos e inventario
@@ -174,6 +175,13 @@ AUTH_SECRET=change-me
 
 La conexion MySQL se configura en `back/db.js`.
 
+### Migración de roles
+
+Antes de desplegar esta versión sobre una base existente, ejecuta una vez
+[`001_normalize_user_roles.sql`](back/migrations/001_normalize_user_roles.sql).
+Convierte los usuarios con rol `vendedor` en `admin`; crea los dueños con el
+rol `owner`. La aplicación no ejecuta migraciones automáticamente al arrancar.
+
 ### Frontend
 
 Crear o ajustar `front/.env`:
@@ -241,6 +249,7 @@ npm run preview
 Estado actual:
 
 - JWT para rutas privadas.
+- Autorización por roles `owner` y `admin` en productos, movimientos y ventas.
 - `tenant_id` se extrae del token y se usa como limite de datos.
 - Rate limiting en login.
 - Helmet activado en Express.

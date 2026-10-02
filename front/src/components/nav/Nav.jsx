@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { Routes, Route, Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import GetProducts from "../products/getProducts.jsx";
-import GetMovements from "../movements/GetMovements.tsx";
+import Clients from "../clients/Clients";
+import Sales from "../sales/Sales";
 import UsersManager from "../logging.jsx";
 import { clearSession, getSession } from "../../services/authService";
 
@@ -50,7 +51,7 @@ function Nav() {
   };
 
   return (
-    <div className="d-flex">
+    <div className="d-flex w-100 min-vh-100">
       {isAuthenticated && isCollapsed && (
         <button
           className="navbar-toggler border-0 bg-dark"
@@ -118,16 +119,19 @@ function Nav() {
     Productos
   </Link>
 </li>
+
+<li className="nav-item mt-2">
+  <Link to="/ventas" onClick={handleNavLinkClick} className={`nav-link text-white ${["/ventas", "/movimientos"].includes(location.pathname) ? "active" : ""}`}>Ventas / Movimientos</Link>
+</li>
 <li className="nav-item mt-2">
   <Link
-    to="/movimientos"
+    to="/clientes"
     onClick={handleNavLinkClick}
     className={`nav-link text-white ${
-      location.pathname === "/movimientos" ? "active" : ""
+      location.pathname === "/clientes" ? "active" : ""
     }`}
   >
-    {/* ...svg... */}
-    Movimientos
+    Clientes
   </Link>
 </li>
             </ul>
@@ -153,7 +157,7 @@ function Nav() {
         </aside>
       )}
 
-      <div className="flex-grow-1 ps-md-3">
+      <div className="flex-grow-1 ps-md-3" style={{ minWidth: 0 }}>
         <Routes>
           <Route
             path="/"
@@ -167,14 +171,16 @@ function Nav() {
               </ProtectedRoute>
             }
           />
+          <Route path="/movimientos" element={<Navigate to="/ventas" replace />} />
           <Route
-            path="/movimientos"
+            path="/clientes"
             element={
               <ProtectedRoute isAuthenticated={isAuthenticated}>
-                <GetMovements />
+                <Clients />
               </ProtectedRoute>
             }
           />
+          <Route path="/ventas" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Sales /></ProtectedRoute>} />
           <Route
             path="/login"
             element={isAuthenticated ? <Navigate to="/productos" replace /> : <UsersManager />}

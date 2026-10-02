@@ -1,13 +1,23 @@
-const { getConnection } = require("../../db");
+import type { PoolConnection, RowDataPacket, ResultSetHeader } from "mysql2/promise";
+import type { InventoryRow } from "../inventory/inventory.types";
+import type { HttpError } from "../../types/http";
+const { getConnection } = require("../../db") as { getConnection: () => Promise<PoolConnection> };
 
-function createHttpError(statusCode, message) {
-  const error = new Error(message);
+export interface QuickSaleInput {
+  tenantId: number;
+  userId: number;
+  productId: number;
+  quantity: number;
+}
+
+function createHttpError(statusCode: number, message: string): HttpError {
+  const error: HttpError = new Error(message);
   error.statusCode = statusCode;
   return error;
 }
 
-async function getCurrentStock(connection, tenantId, productId) {
-  const [rows] = await connection.execute(
+async function getCurrentStock(connection: PoolConnection, tenantId: number, productId: number) {
+  const [rows] = await connection.execute<(RowDataPacket & { stock_total: string })[]>(
     `
     SELECT COALESCE(SUM(cantidad), 0) AS stock_total
     FROM inventario
@@ -19,13 +29,13 @@ async function getCurrentStock(connection, tenantId, productId) {
   return Number(rows[0]?.stock_total || 0);
 }
 
-async function registerQuickSale({ tenantId, userId, productId, quantity }) {
+async function registerQuickSale({ tenantId, userId, productId, quantity }: QuickSaleInput) {
   const connection = await getConnection();
 
   try {
     await connection.beginTransaction();
 
-    const [products] = await connection.execute(
+    const [products] = await connection.execute<(RowDataPacket & { id: number })[]>(
       `
       SELECT id
       FROM productos
@@ -43,7 +53,7 @@ async function registerQuickSale({ tenantId, userId, productId, quantity }) {
 
 
 
-    const [inventoryRows] = await connection.execute(
+    const [inventoryRows] = await connection.execute<InventoryRow[]>(
       `
       SELECT id, cantidad, numero_lote, fecha_caducidad
       FROM inventario
@@ -85,7 +95,7 @@ async function registerQuickSale({ tenantId, userId, productId, quantity }) {
         [newInventoryQuantity, tenantId, item.id]
       );
 
-      const [movementResult] = await connection.execute(
+      const [movementResult] = await connection.execute<ResultSetHeader>(
         `
         INSERT INTO movimientos_inventario
           (
@@ -156,6 +166,6 @@ async function registerQuickSale({ tenantId, userId, productId, quantity }) {
   }
 }
 
-module.exports = {
+export {
   registerQuickSale,
 };

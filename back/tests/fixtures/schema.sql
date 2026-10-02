@@ -16,7 +16,7 @@ tenant_id int NOT NULL,
 nombre varchar(150) NOT NULL,
 email varchar(150) NOT NULL,
 password_hash varchar(255) NOT NULL,
-rol enum('admin','vendedor') DEFAULT 'vendedor',
+rol enum('owner','admin') NOT NULL DEFAULT 'admin',
 activo tinyint(1) DEFAULT '1',
 fecha_creacion datetime DEFAULT CURRENT_TIMESTAMP,
 created_at timestamp NULL DEFAULT CURRENT_TIMESTAMP,
@@ -102,3 +102,58 @@ CONSTRAINT fk_mov_producto FOREIGN KEY (producto_id) REFERENCES productos (id),
 CONSTRAINT fk_mov_tenant FOREIGN KEY (tenant_id) REFERENCES tenants (id),
 CONSTRAINT fk_mov_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS clientes (
+id int NOT NULL AUTO_INCREMENT,
+tenant_id int NOT NULL,
+nombre varchar(150) NOT NULL,
+contacto_email varchar(150) DEFAULT NULL,
+telefono varchar(30) DEFAULT NULL,
+identificacion_fiscal varchar(30) DEFAULT NULL,
+direccion varchar(255) DEFAULT NULL,
+activo tinyint(1) NOT NULL DEFAULT '1',
+tarifa int NOT NULL DEFAULT '0',
+fecha_creacion datetime DEFAULT CURRENT_TIMESTAMP,
+created_at timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+updated_at timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+PRIMARY KEY (id),
+UNIQUE KEY uq_cliente_identificacion_tenant (tenant_id,identificacion_fiscal),
+KEY idx_cliente_tenant_nombre (tenant_id,nombre),
+CONSTRAINT fk_cliente_tenant FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS ventas (
+id int NOT NULL AUTO_INCREMENT, tenant_id int NOT NULL, cliente_id int DEFAULT NULL, usuario_id int NOT NULL,
+estado enum('borrador','confirmada','anulada') NOT NULL DEFAULT 'borrador', referencia varchar(64) DEFAULT NULL,
+moneda char(3) NOT NULL DEFAULT 'EUR', cliente_nombre varchar(150) DEFAULT NULL, cliente_email varchar(150) DEFAULT NULL,
+cliente_identificacion_fiscal varchar(30) DEFAULT NULL, subtotal decimal(12,2) NOT NULL DEFAULT '0.00',
+descuento_total decimal(12,2) NOT NULL DEFAULT '0.00', impuesto_total decimal(12,2) NOT NULL DEFAULT '0.00',
+total decimal(12,2) NOT NULL DEFAULT '0.00', observaciones text DEFAULT NULL, fecha_confirmacion datetime DEFAULT NULL,
+fecha_anulacion datetime DEFAULT NULL, anulada_por int DEFAULT NULL, motivo_anulacion varchar(255) DEFAULT NULL,
+created_at timestamp NULL DEFAULT CURRENT_TIMESTAMP, updated_at timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+PRIMARY KEY (id), UNIQUE KEY uq_venta_tenant_referencia (tenant_id,referencia),
+CONSTRAINT fk_venta_tenant FOREIGN KEY (tenant_id) REFERENCES tenants (id),
+CONSTRAINT fk_venta_cliente FOREIGN KEY (cliente_id) REFERENCES clientes (id),
+CONSTRAINT fk_venta_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios (id),
+CONSTRAINT fk_venta_anulada_por FOREIGN KEY (anulada_por) REFERENCES usuarios (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS lineas_venta (
+id int NOT NULL AUTO_INCREMENT, tenant_id int NOT NULL, venta_id int NOT NULL, producto_id int NOT NULL,
+descripcion varchar(200) NOT NULL, cantidad int NOT NULL, precio_unitario decimal(12,2) NOT NULL,
+descuento_total decimal(12,2) NOT NULL DEFAULT '0.00', impuesto_total decimal(12,2) NOT NULL DEFAULT '0.00', importe_total decimal(12,2) NOT NULL,
+created_at timestamp NULL DEFAULT CURRENT_TIMESTAMP, updated_at timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+PRIMARY KEY (id), CONSTRAINT fk_linea_venta_tenant FOREIGN KEY (tenant_id) REFERENCES tenants (id),
+CONSTRAINT fk_linea_venta_venta FOREIGN KEY (venta_id) REFERENCES ventas (id),
+CONSTRAINT fk_linea_venta_producto FOREIGN KEY (producto_id) REFERENCES productos (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+ALTER TABLE movimientos_inventario ADD COLUMN linea_venta_id INT NULL AFTER inventario_id;
+ALTER TABLE movimientos_inventario ADD CONSTRAINT fk_mov_linea_venta FOREIGN KEY (linea_venta_id) REFERENCES lineas_venta (id);
+
+-- Mantiene compatible una base inventario_test creada con el esquema anterior.
+ALTER TABLE usuarios
+  MODIFY COLUMN rol ENUM('owner','admin','vendedor') NOT NULL DEFAULT 'admin';
+UPDATE usuarios SET rol = 'admin' WHERE rol = 'vendedor';
+ALTER TABLE usuarios
+  MODIFY COLUMN rol ENUM('owner','admin') NOT NULL DEFAULT 'admin';

@@ -52,6 +52,7 @@ function parseMovementFilters(query: Record<string, unknown>): MovementFilters {
   const typeValue = readQueryValue(query, "tipo");
   const startValue = readQueryValue(query, "fecha_desde");
   const endValue = readQueryValue(query, "fecha_hasta");
+  const searchValue = readQueryValue(query, "buscar");
   const filters: MovementFilters = {};
 
   if (productValue !== undefined) {
@@ -71,6 +72,10 @@ function parseMovementFilters(query: Record<string, unknown>): MovementFilters {
 
   if (startValue !== undefined) filters.startDate = parseDate(startValue, "fecha_desde");
   if (endValue !== undefined) filters.endDate = parseDate(endValue, "fecha_hasta");
+  if (searchValue !== undefined) {
+    if (searchValue.length > 100) throw createHttpError(400, "El filtro buscar no puede superar los 100 caracteres");
+    filters.search = searchValue;
+  }
   if (filters.startDate && filters.endDate && filters.startDate > filters.endDate) {
     throw createHttpError(400, "fecha_desde no puede ser posterior a fecha_hasta");
   }

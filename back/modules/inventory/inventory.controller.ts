@@ -1,12 +1,28 @@
-const inventoryService = require("./inventory.service");
+import type { AuthenticatedRequest, ApiResponse } from "../../types/http";
+import { isHttpError } from "../../types/http";
+import type * as InventoryModel from "./inventory.model";
+import type { ProductFields, InventoryUpdate } from "./inventory.types";
+
+const inventoryService = require("./inventory.service") as {
+  listProducts: typeof InventoryModel.getAllProducts;
+  listCategories: typeof InventoryModel.getAllCategories;
+  createCategoryForTenant: typeof InventoryModel.createCategory;
+  categoryBelongsToTenant: typeof InventoryModel.categoryExistsForTenant;
+  searchProducts: typeof InventoryModel.searchProductsByName;
+  listProductsByCategory: typeof InventoryModel.getProductsByCategory;
+  getProduct: (tenantId: number, id: string) => Promise<unknown>;
+  updateProductData: (tenantId: number, id: string, product: ProductFields & { inventario: InventoryUpdate[] }, userId: number) => Promise<void>;
+  createNewProduct: typeof InventoryModel.createProduct;
+  removeProduct: typeof InventoryModel.softDeleteProduct;
+};
 const {
   buildCreateCategoryPayload,
   buildCreateProductPayload,
   buildUpdateProductPayload,
-} = require("./inventory.validators");
+} = require("./inventory.validators") as typeof import("./inventory.validators");
 const { log, logUnexpectedError } = require("../../utils/logger");
 
-async function getProducts(req, res) {
+async function getProducts(req: AuthenticatedRequest, res: ApiResponse) {
   try {
     const products = await inventoryService.listProducts(req.tenantId);
     res.json(products);
@@ -16,7 +32,7 @@ async function getProducts(req, res) {
   }
 }
 
-async function getCategories(req, res) {
+async function getCategories(req: AuthenticatedRequest, res: ApiResponse) {
   try {
     const categories = await inventoryService.listCategories(req.tenantId);
     res.json(categories);
@@ -26,11 +42,11 @@ async function getCategories(req, res) {
   }
 }
 
-async function createCategory(req, res) {
+async function createCategory(req: AuthenticatedRequest, res: ApiResponse) {
   try {
     const validation = buildCreateCategoryPayload(req.body);
 
-    if (validation.error) {
+    if (validation.error !== undefined) {
       return res.status(400).json({ error: validation.error });
     }
 
@@ -44,7 +60,7 @@ async function createCategory(req, res) {
     });
     res.status(201).json(category);
   } catch (error) {
-    if (error.statusCode) {
+    if (isHttpError(error) && error.statusCode) {
       return res.status(error.statusCode).json({ error: error.message });
     }
 
@@ -53,7 +69,7 @@ async function createCategory(req, res) {
   }
 }
 
-async function searchProducts(req, res) {
+async function searchProducts(req: AuthenticatedRequest, res: ApiResponse) {
   try {
     const products = await inventoryService.searchProducts(req.tenantId, req.params.name);
     res.json(products);
@@ -63,9 +79,9 @@ async function searchProducts(req, res) {
   }
 }
 
-async function getProductsByCategory(req, res) {
+async function getProductsByCategory(req: AuthenticatedRequest, res: ApiResponse) {
+  const categoryId = Number(req.params.categoryId);
   try {
-    const categoryId = Number(req.params.categoryId);
     if (!Number.isInteger(categoryId) || categoryId <= 0) {
       return res.status(400).json({ error: "Categoria invalida" });
     }
@@ -73,7 +89,7 @@ async function getProductsByCategory(req, res) {
     const products = await inventoryService.listProductsByCategory(req.tenantId, categoryId);
     res.json(products);
   } catch (error) {
-    if (error.statusCode) {
+    if (isHttpError(error) && error.statusCode) {
       return res.status(error.statusCode).json({ error: error.message });
     }
 
@@ -82,7 +98,7 @@ async function getProductsByCategory(req, res) {
   }
 }
 
-async function getProductById(req, res) {
+async function getProductById(req: AuthenticatedRequest, res: ApiResponse) {
   try {
     const product = await inventoryService.getProduct(req.tenantId, req.params.id);
     if (!product) {
@@ -97,12 +113,12 @@ async function getProductById(req, res) {
 
 
 
-async function updateProduct(req, res) {
+async function updateProduct(req: AuthenticatedRequest, res: ApiResponse) {
+  const { id } = req.params;
   try {
-    const { id } = req.params;
     const validation = buildUpdateProductPayload(req.body);
 
-    if (validation.error) {
+    if (validation.error !== undefined) {
       return res.status(400).json({ error: validation.error });
     }
 
@@ -128,7 +144,7 @@ async function updateProduct(req, res) {
     });
     res.json({ message: "Producto e inventario actualizados correctamente" });
   } catch (error) {
-    if (error.statusCode) {
+    if (isHttpError(error) && error.statusCode) {
       return res.status(error.statusCode).json({ error: error.message });
     }
 
@@ -137,11 +153,11 @@ async function updateProduct(req, res) {
   }
 }
 
-async function createProduct(req, res) {
+async function createProduct(req: AuthenticatedRequest, res: ApiResponse) {
   try {
     const validation = buildCreateProductPayload(req.body, req.tenantId);
 
-    if (validation.error) {
+    if (validation.error !== undefined) {
       return res.status(400).json({ error: validation.error });
     }
 
@@ -171,9 +187,9 @@ async function createProduct(req, res) {
   }
 }
 
-async function deleteProduct(req, res) {
+async function deleteProduct(req: AuthenticatedRequest, res: ApiResponse) {
+  const productId = Number(req.params.id);
   try {
-    const productId = Number(req.params.id);
     if (!Number.isInteger(productId) || productId <= 0) {
       return res.status(400).json({ error: "Producto invalido" });
     }
@@ -188,7 +204,7 @@ async function deleteProduct(req, res) {
     });
     res.json({ message: "Producto eliminado correctamente" });
   } catch (error) {
-    if (error.statusCode) {
+    if (isHttpError(error) && error.statusCode) {
       return res.status(error.statusCode).json({ error: error.message });
     }
 
@@ -197,7 +213,7 @@ async function deleteProduct(req, res) {
   }
 }
 
-module.exports = {
+export {
   getProducts,
   getCategories,
   createCategory,

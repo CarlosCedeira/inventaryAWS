@@ -14,6 +14,7 @@ export interface MovementFilters {
   type?: MovementType;
   startDate?: string;
   endDate?: string;
+  search?: string;
 }
 type OptionalDate = string | Date | null;
 
@@ -232,6 +233,11 @@ async function getAllMovements(
     if (filters.endDate !== undefined) {
       conditions.push("m.created_at < DATE_ADD(?, INTERVAL 1 DAY)");
       parameters.push(filters.endDate);
+    }
+    if (filters.search !== undefined) {
+      const pattern = `%${filters.search}%`;
+      conditions.push("(p.nombre LIKE ? OR m.numero_lote LIKE ? OR u.nombre LIKE ?)");
+      parameters.push(pattern, pattern, pattern);
     }
 
     const [rows] = await connection.execute<RowDataPacket[]>(

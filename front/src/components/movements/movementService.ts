@@ -30,6 +30,7 @@ export interface MovementFilters {
   type?: MovementType;
   startDate?: string;
   endDate?: string;
+  search?: string;
 }
 
 export interface CreateMovementPayload {
@@ -47,6 +48,7 @@ function buildFiltersQuery(filters: MovementFilters): string {
   if (filters.type) params.set("tipo", filters.type);
   if (filters.startDate) params.set("fecha_desde", filters.startDate);
   if (filters.endDate) params.set("fecha_hasta", filters.endDate);
+  if (filters.search) params.set("buscar", filters.search);
   const query = params.toString();
   return query ? `?${query}` : "";
 }

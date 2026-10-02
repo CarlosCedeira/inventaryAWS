@@ -1,0 +1,178 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { clientService } from "./clientService";
+import ClientCardLayout from "./cardLayout/ClientCardLayout";
+import "./clients.css";
+
+const emptyClient = {
+  nombre: "",
+  email: "",
+  telefono: "",
+  identificacion_fiscal: "",
+  direccion: "",
+  activo: true,
+};
+
+function normalizeClient(client) {
+  return {
+    nombre: client.nombre || "",
+    email: client.email || "",
+    telefono: client.telefono || "",
+    identificacion_fiscal: client.identificacion_fiscal || "",
+    direccion: client.direccion || "",
+    activo: Boolean(client.activo),
+  };
+}
+
+export default function Clients() {
+  const [clients, setClients] = useState([]);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [formError, setFormError] = useState("");
+  const [form, setForm] = useState(emptyClient);
+  const [editingClient, setEditingClient] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [selectedClient, setSelectedClient] = useState(null);
+
+  const loadClients = useCallback(async (term = "") => {
+    setLoading(true);
+    try {
+      setClients(await clientService.getAll(term));
+      setError("");
+    } catch (requestError) {
+      setError(requestError.message || "No se pudieron cargar los clientes");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => void loadClients(search), 250);
+    return () => clearTimeout(timeoutId);
+  }, [search, loadClients]);
+
+  const metrics = useMemo(() => ({
+    total: clients.length,
+    active: clients.filter((client) => client.activo).length,
+    withEmail: clients.filter((client) => client.email).length,
+  }), [clients]);
+
+  const openCreate = () => {
+    setEditingClient(null);
+    setForm(emptyClient);
+    setFormError("");
+    setShowForm(true);
+  };
+
+  const openEdit = (client) => {
+    setSelectedClient(null);
+    setEditingClient(client);
+    setForm(normalizeClient(client));
+    setFormError("");
+    setShowForm(true);
+  };
+
+  const closeForm = () => {
+    if (!saving) setShowForm(false);
+  };
+
+  const saveClient = async (event) => {
+    event.preventDefault();
+    setSaving(true);
+    setFormError("");
+    try {
+      if (editingClient) {
+        await clientService.update(editingClient.id, form);
+      } else {
+        await clientService.create(form);
+      }
+      setShowForm(false);
+      await loadClients(search);
+    } catch (requestError) {
+      setFormError(requestError.message || "No se pudo guardar el cliente");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deactivate = async (client) => {
+    if (!window.confirm(`¿Desactivar a ${client.nombre}? Podrás volver a activarlo después.`)) return;
+    try {
+      await clientService.update(client.id, { ...normalizeClient(client), activo: false });
+      await loadClients(search);
+    } catch (requestError) {
+      setError(requestError.message || "No se pudo desactivar el cliente");
+    }
+  };
+
+  useEffect(() => {
+    document.body.style.overflow = selectedClient ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [selectedClient]);
+
+  return (
+    <main className="clients-page">
+      <header className="clients-header">
+        <div>
+          <p className="text-secondary mb-1">Módulo comercial</p>
+          <h1 className="clients-title">Clientes</h1>
+        </div>
+        <button type="button" className="btn btn-primary" onClick={openCreate}>Nuevo cliente</button>
+      </header>
+
+      <section className="clients-metrics" aria-label="Resumen de clientes">
+        <article className="client-metric-card"><span>Clientes</span><strong>{loading ? "—" : metrics.total}</strong><small>Resultados actuales</small></article>
+        <article className="client-metric-card"><span>Activos</span><strong>{loading ? "—" : metrics.active}</strong><small>Disponibles para ventas</small></article>
+        <article className="client-metric-card"><span>Con email</span><strong>{loading ? "—" : metrics.withEmail}</strong><small>Contacto registrado</small></article>
+      </section>
+
+      {error && <div className="alert alert-danger" role="alert">{error} <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => void loadClients(search)}>Reintentar</button></div>}
+
+      <section className="clients-card">
+        <div className="clients-toolbar">
+          <label className="w-100">
+            <span className="form-label">Buscar cliente</span>
+            <input className="form-control" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nombre, email o identificación fiscal" />
+          </label>
+        </div>
+        <div className="table-responsive">
+          <table className="table table-hover mb-0 clients-table">
+            <thead><tr><th>Cliente</th><th>Contacto</th><th>Identificación</th><th>Estado</th><th aria-label="Acciones" /></tr></thead>
+            <tbody>
+              {loading ? <tr><td colSpan="5" className="clients-empty">Cargando clientes…</td></tr> : clients.length === 0 ? <tr><td colSpan="5" className="clients-empty">No hay clientes que coincidan con la búsqueda.</td></tr> : clients.map((client) => (
+                <tr key={client.id} className="client-table-row" onClick={() => setSelectedClient(client)}>
+                  <td data-label="Cliente"><strong>{client.nombre}</strong>{client.direccion && <small>{client.direccion}</small>}</td>
+                  <td data-label="Contacto"><div>{client.email || "Sin email"}</div><small>{client.telefono || "Sin teléfono"}</small></td>
+                  <td data-label="Identificación">{client.identificacion_fiscal || "—"}</td>
+                  <td data-label="Estado"><span className={`badge ${client.activo ? "text-bg-success" : "text-bg-secondary"}`}>{client.activo ? "Activo" : "Inactivo"}</span></td>
+                  <td data-label="Acciones" className="clients-actions"><button type="button" className="btn btn-sm btn-outline-primary" onClick={(event) => { event.stopPropagation(); openEdit(client); }}>Editar</button>{client.activo && <button type="button" className="btn btn-sm btn-outline-secondary" onClick={(event) => { event.stopPropagation(); void deactivate(client); }}>Desactivar</button>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <ClientCardLayout client={selectedClient} onClose={() => setSelectedClient(null)} onEdit={openEdit} />
+
+      {showForm && <div className="client-modal-backdrop" role="presentation" onMouseDown={closeForm}>
+        <section className="client-modal-card" role="dialog" aria-modal="true" aria-labelledby="client-form-title" onMouseDown={(event) => event.stopPropagation()}>
+          <div className="d-flex justify-content-between align-items-center gap-3 mb-3"><h2 id="client-form-title">{editingClient ? "Editar cliente" : "Nuevo cliente"}</h2><button type="button" className="btn-close" aria-label="Cerrar" onClick={closeForm} /></div>
+          <form onSubmit={saveClient}>
+            <div className="row g-3">
+              <label className="col-12"><span className="form-label">Nombre</span><input className="form-control" required minLength="2" maxLength="150" value={form.nombre} onChange={(event) => setForm({ ...form, nombre: event.target.value })} /></label>
+              <label className="col-md-6"><span className="form-label">Email</span><input className="form-control" type="email" maxLength="150" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label>
+              <label className="col-md-6"><span className="form-label">Teléfono</span><input className="form-control" maxLength="30" value={form.telefono} onChange={(event) => setForm({ ...form, telefono: event.target.value })} /></label>
+              <label className="col-md-6"><span className="form-label">Identificación fiscal</span><input className="form-control" maxLength="30" value={form.identificacion_fiscal} onChange={(event) => setForm({ ...form, identificacion_fiscal: event.target.value })} /></label>
+              <label className="col-md-6"><span className="form-label">Dirección</span><input className="form-control" maxLength="255" value={form.direccion} onChange={(event) => setForm({ ...form, direccion: event.target.value })} /></label>
+              {editingClient && <label className="col-12 form-check ms-2"><input className="form-check-input" type="checkbox" checked={form.activo} onChange={(event) => setForm({ ...form, activo: event.target.checked })} /><span className="form-check-label">Cliente activo</span></label>}
+            </div>
+            {formError && <div className="alert alert-danger py-2 mt-3 mb-0">{formError}</div>}
+            <div className="d-flex justify-content-end gap-2 mt-4"><button type="button" className="btn btn-outline-secondary" onClick={closeForm} disabled={saving}>Cancelar</button><button className="btn btn-primary" disabled={saving}>{saving ? "Guardando…" : "Guardar cliente"}</button></div>
+          </form>
+        </section>
+      </div>}
+    </main>
+  );
+}

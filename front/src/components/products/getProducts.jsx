@@ -365,14 +365,17 @@ const GetProducts = () => {
       >
         <div className="product-table-toolbar">
           <div className="toolbar-field toolbar-search">
-            <label className="form-label small text-secondary">Buscar producto</label>
+            <label className="w-100">
+                        <span className="form-label">Buscar producto</span>
+
             <input
               type="search"
               className="form-control"
               placeholder="Buscar por nombre"
               value={search}
               onChange={(e) => handleSearch(e.target.value)}
-            />
+              />
+              </label>
           </div>
 
           <div className="toolbar-field">

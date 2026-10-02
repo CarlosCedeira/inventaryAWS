@@ -19,6 +19,7 @@ async function login(req, res) {
       requestId: req.requestId,
       tenantId: session.user.tenant_id,
       userId: session.user.id,
+      role: session.user.rol,
     });
     res.json(session);
   } catch (error) {

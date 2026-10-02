@@ -1,0 +1,4 @@
+const express = require("express"); const router = express.Router();
+const controller = require("./sales.controller"); const { ROLES, requireAuth, requireRoles } = require("../auth/auth.middleware");
+router.use(requireAuth, requireRoles(ROLES.OWNER, ROLES.ADMIN)); router.get("/", controller.getSales); router.get("/:id", controller.getSaleDetail); router.post("/", controller.createSale);
+module.exports = router;
