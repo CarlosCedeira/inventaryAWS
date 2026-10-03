@@ -1,7 +1,7 @@
 const clientsModel = require("./clients.model");
 
-async function listClients(tenantId, search) {
-  return clientsModel.listCommercialClients(tenantId, search);
+async function listClients(tenantId, search, daysWithoutPurchase) {
+  return clientsModel.listCommercialClients(tenantId, search, daysWithoutPurchase);
 }
 
 async function createClient(tenantId, client) {

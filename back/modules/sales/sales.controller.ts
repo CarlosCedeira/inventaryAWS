@@ -1,10 +1,20 @@
 import type { ApiResponse, AuthenticatedRequest } from "../../types/http";
-import { buildSalePayload } from "./sales.validators";
+import { buildSaleListFilters, buildSalePayload } from "./sales.validators";
 const service = require("./sales.service") as typeof import("./sales.service");
 const { log, logUnexpectedError } = require("../../utils/logger");
 async function getSales(req: AuthenticatedRequest, res: ApiResponse) {
-  try { res.json(await service.listSales(req.tenantId)); }
+  const validation = buildSaleListFilters((req as AuthenticatedRequest & { query: Record<string, unknown> }).query || {});
+  if (validation.error !== undefined) return res.status(400).json({ error: validation.error });
+  try { res.json(await service.listSales(req.tenantId, validation.filters)); }
   catch (error) { logUnexpectedError(req, "sales_list_failed", error); res.status(500).json({ error: "Error interno del servidor" }); }
+}
+async function getSaleFilterOptions(req: AuthenticatedRequest, res: ApiResponse) {
+  try { res.json(await service.getFilterOptions(req.tenantId)); }
+  catch (error) { logUnexpectedError(req, "sale_filter_options_failed", error); res.status(500).json({ error: "Error interno del servidor" }); }
+}
+async function getSaleSummary(req: AuthenticatedRequest, res: ApiResponse) {
+  try { res.json(await service.getSummary(req.tenantId)); }
+  catch (error) { logUnexpectedError(req, "sale_summary_failed", error); res.status(500).json({ error: "Error interno del servidor" }); }
 }
 async function getSaleDetail(req: AuthenticatedRequest, res: ApiResponse) {
   const saleId = Number(req.params.id);
@@ -28,4 +38,4 @@ async function createSale(req: AuthenticatedRequest, res: ApiResponse) {
     logUnexpectedError(req, "sale_create_failed", error); res.status(500).json({ error: "Error interno del servidor" });
   }
 }
-export { createSale, getSaleDetail, getSales };
+export { createSale, getSaleDetail, getSaleFilterOptions, getSaleSummary, getSales };

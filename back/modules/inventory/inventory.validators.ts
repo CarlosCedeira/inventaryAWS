@@ -58,7 +58,7 @@ function validateOptionalDate(value: unknown, label: string) {
   return null;
 }
 
-function validateProductFields(product: Input) {
+function validateProductFields(product: Input, { requireTax = false }: { requireTax?: boolean } = {}) {
   const nombre = toTrimmedString(product.nombre);
   const descripcion = toTrimmedString(product.descripcion);
 
@@ -79,6 +79,15 @@ function validateProductFields(product: Input) {
   const categoryId = Number(product.categoria_id);
   if (!Number.isInteger(categoryId) || categoryId <= 0) {
     return "La categoria seleccionada no es valida";
+  }
+
+  if (isBlank(product.impuesto_id) && requireTax) {
+    return "Debes seleccionar un IVA";
+  }
+
+  if (!isBlank(product.impuesto_id)) {
+    const taxId = Number(product.impuesto_id);
+    if (!Number.isInteger(taxId) || taxId <= 0) return "El impuesto seleccionado no es valido";
   }
 
   const purchasePriceError = validateRequiredNumber(
@@ -131,6 +140,7 @@ function normalizeProductFields(product: Input): ProductFields {
     nombre: toTrimmedString(product.nombre),
     descripcion: toTrimmedString(product.descripcion),
     categoria_id: Number(product.categoria_id),
+    impuesto_id: isBlank(product.impuesto_id) ? null : Number(product.impuesto_id),
     precio_compra: Number(product.precio_compra),
     precio_venta: Number(product.precio_venta),
     stock_minimo: Number(product.stock_minimo),
@@ -152,6 +162,7 @@ function buildCreateProductPayload(body: Input, tenantId: number): Validation<Cr
     nombre: body.producto_nombre,
     descripcion: body.producto_descripcion,
     categoria_id: body.categoria_id || body.producto_categoria,
+    impuesto_id: body.impuesto_id,
     precio_compra: body.precio_compra,
     precio_venta: body.precio_venta,
     stock_minimo: body.stock_minimo,
@@ -164,7 +175,7 @@ function buildCreateProductPayload(body: Input, tenantId: number): Validation<Cr
     numero_lote: body.numero_lote,
   };
 
-  const productError = validateProductFields(product);
+  const productError = validateProductFields(product, { requireTax: true });
   if (productError) return { error: productError };
 
   const inventoryError = validateInventoryItem(inventory);

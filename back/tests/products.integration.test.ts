@@ -90,6 +90,13 @@ test("la vista de productos muestra stock y categoría solo del tenant autentica
     stock_disponible: "10",
     stock_caducado: "5",
   });
+  const withoutSalesResponse = await request(app)
+    .get("/productos/sin-ventas")
+    .set("Authorization", `Bearer ${token}`);
+  expect(withoutSalesResponse.status).toBe(200);
+  expect(withoutSalesResponse.body).toEqual(expect.arrayContaining([
+    expect.objectContaining({ producto_id: response.body[0].producto_id }),
+  ]));
 });
 
 test("la API de productos permite crear, consultar, buscar, filtrar, editar y borrar dentro del tenant", async () => {

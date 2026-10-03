@@ -8,8 +8,11 @@ async function readError(response, fallback) {
 }
 
 export const clientService = {
-  async getAll(search = "") {
-    const query = search.trim() ? `?buscar=${encodeURIComponent(search.trim())}` : "";
+  async getAll(search = "", daysWithoutPurchase = null) {
+    const params = new URLSearchParams();
+    if (search.trim()) params.set("buscar", search.trim());
+    if (daysWithoutPurchase) params.set("sin_compras_dias", String(daysWithoutPurchase));
+    const query = params.size ? `?${params.toString()}` : "";
     const response = await fetchWithAuth(`${API_URL}/clientes${query}`);
     if (!response.ok) throw new Error(await readError(response, "No se pudieron cargar los clientes"));
     return response.json();

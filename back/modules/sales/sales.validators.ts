@@ -1,6 +1,18 @@
 type Input = Record<string, unknown>;
 export interface SaleLineInput { productId: number; quantity: number; }
 export interface SaleInput { clientId: number | null; reference: string | null; currency: string; notes: string | null; lines: SaleLineInput[]; }
+export interface SaleListFilters {
+  search: string;
+  period: "" | "today" | "week" | "month" | "quarter" | "custom";
+  dateFrom: string | null;
+  dateTo: string | null;
+  clientId: number | null;
+  productId: number | null;
+  categoryId: number | null;
+  taxRate: number | null;
+  userId: number | null;
+  minimumTotal: number | null;
+}
 
 function optionalText(value: unknown, limit: number) {
   const text = value === undefined || value === null ? "" : String(value).trim();
@@ -22,4 +34,62 @@ function buildSalePayload(body: Input): { sale: SaleInput; error?: never } | { e
   if (!/^[A-Z]{3}$/.test(currency)) return { error: "La moneda debe tener tres letras" };
   return { sale: { clientId, reference: optionalText(body.referencia, 64), currency, notes: optionalText(body.observaciones, 4000), lines } };
 }
-export { buildSalePayload };
+
+function queryText(value: unknown, maxLength = 100) {
+  return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
+}
+
+function optionalId(value: unknown, label: string): { value: number | null; error?: string } {
+  if (value === undefined || value === null || value === "") return { value: null };
+  const id = Number(value);
+  if (!Number.isSafeInteger(id) || id <= 0) return { value: null, error: `${label} no es válido` };
+  return { value: id };
+}
+
+function optionalDate(value: unknown, label: string): { value: string | null; error?: string } {
+  if (value === undefined || value === null || value === "") return { value: null as string | null };
+  const date = String(value);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(new Date(`${date}T00:00:00`).getTime())) {
+    return { value: null, error: `${label} no es válida` };
+  }
+  return { value: date };
+}
+
+function buildSaleListFilters(query: Input): { filters: SaleListFilters; error?: never } | { error: string } {
+  const period = queryText(query.periodo, 20);
+  if (!["", "today", "week", "month", "quarter", "custom"].includes(period)) {
+    return { error: "El periodo no es válido" };
+  }
+
+  const client = optionalId(query.cliente_id, "El cliente");
+  const product = optionalId(query.producto_id, "El producto");
+  const category = optionalId(query.categoria_id, "La categoría");
+  const user = optionalId(query.usuario_id, "El usuario");
+  if (client.error || product.error || category.error || user.error) {
+    return { error: client.error || product.error || category.error || user.error || "Filtro no válido" };
+  }
+
+  const dateFrom = optionalDate(query.fecha_desde, "La fecha inicial");
+  const dateTo = optionalDate(query.fecha_hasta, "La fecha final");
+  if (dateFrom.error || dateTo.error) return { error: dateFrom.error || dateTo.error || "Fecha no válida" };
+  if (period === "custom" && (!dateFrom.value || !dateTo.value)) {
+    return { error: "Indica una fecha inicial y final para el periodo personalizado" };
+  }
+  if (dateFrom.value && dateTo.value && dateFrom.value > dateTo.value) {
+    return { error: "La fecha inicial no puede ser posterior a la final" };
+  }
+
+  const taxRate = query.iva === undefined || query.iva === null || query.iva === "" ? null : Number(query.iva);
+  if (taxRate !== null && (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 100)) return { error: "El IVA no es válido" };
+  const minimumTotal = query.importe_minimo === undefined || query.importe_minimo === null || query.importe_minimo === "" ? null : Number(query.importe_minimo);
+  if (minimumTotal !== null && (!Number.isFinite(minimumTotal) || minimumTotal < 0)) return { error: "El importe mínimo no es válido" };
+
+  return {
+    filters: {
+      search: queryText(query.buscar), period: period as SaleListFilters["period"], dateFrom: dateFrom.value, dateTo: dateTo.value,
+      clientId: client.value, productId: product.value, categoryId: category.value, taxRate, userId: user.value, minimumTotal,
+    },
+  };
+}
+
+export { buildSalePayload, buildSaleListFilters };

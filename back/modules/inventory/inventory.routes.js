@@ -8,6 +8,8 @@ router.use(requireAuth, requireRoles(ROLES.OWNER, ROLES.ADMIN));
 // Listado y búsqueda
 router.get("/", inventoryController.getProducts);
 router.get("/categorias", inventoryController.getCategories);
+router.get("/impuestos", inventoryController.getTaxes);
+router.get("/sin-ventas", inventoryController.getProductsWithoutRecentSales);
 router.post("/categorias", inventoryController.createCategory);
 router.get("/categoria/:categoryId", inventoryController.getProductsByCategory);
 router.get("/buscar/:name", inventoryController.searchProducts);

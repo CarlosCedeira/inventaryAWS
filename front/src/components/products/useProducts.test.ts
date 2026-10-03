@@ -5,7 +5,7 @@ import { productService } from "./productService";
 
 vi.mock("./productService", () => ({ productService: {
   getAll: vi.fn(), getCategories: vi.fn(), search: vi.fn(), getByCategory: vi.fn(),
-  softDelete: vi.fn(), quickSale: vi.fn(),
+  softDelete: vi.fn(), getWithoutRecentSales: vi.fn(),
 } }));
 const row = (id: number, category = 2) => ({ producto_id: id, categoria_id: category });
 beforeEach(() => {

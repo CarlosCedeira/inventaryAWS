@@ -60,6 +60,16 @@ interface MovementResult {
   stock_nuevo: number;
 }
 
+export interface StockConsumptionInput {
+  tenantId: number;
+  userId: number;
+  productId: number;
+  quantity: number;
+  reason: string;
+  description: string;
+  saleLineId?: number | null;
+}
+
 interface HttpError extends Error {
   statusCode: number;
 }
@@ -171,7 +181,7 @@ async function getInventoryLotForUpdate(
 
 async function insertMovement(
   connection: PoolConnection,
-  data: NormalizedMovement & { inventoryId: number; previousStock: number; newStock: number },
+  data: NormalizedMovement & { inventoryId: number; previousStock: number; newStock: number; description?: string | null; saleLineId?: number | null },
 ): Promise<number> {
   const [result] = await connection.execute<ResultSetHeader>(
     `
@@ -180,6 +190,7 @@ async function insertMovement(
         tenant_id,
         producto_id,
         inventario_id,
+        linea_venta_id,
         tipo,
         cantidad,
         stock_anterior,
@@ -187,14 +198,16 @@ async function insertMovement(
         numero_lote,
         fecha_caducidad,
         motivo,
+        descripcion,
         usuario_id
       )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       data.tenantId,
       data.productId,
       data.inventoryId,
+      data.saleLineId || null,
       data.type,
       data.quantity,
       data.previousStock,
@@ -202,11 +215,60 @@ async function insertMovement(
       data.lotNumber,
       data.expirationDate,
       data.reason,
+      data.description || null,
       data.userId,
     ]
   );
 
   return result.insertId;
+}
+
+async function consumeStockByFEFO(connection: PoolConnection, data: StockConsumptionInput) {
+  const [products] = await connection.execute<RowDataPacket[]>(
+    "SELECT id FROM productos WHERE tenant_id = ? AND id = ? AND eliminado = 0 FOR UPDATE",
+    [data.tenantId, data.productId],
+  );
+  if (!products.length) throw createHttpError(404, "Producto no encontrado");
+  const [lots] = await connection.execute<InventoryLot[]>(
+    `SELECT id, cantidad, numero_lote, fecha_caducidad FROM inventario
+     WHERE tenant_id = ? AND producto_id = ? AND cantidad > 0
+       AND (fecha_caducidad IS NULL OR fecha_caducidad >= CURDATE())
+     ORDER BY CASE WHEN fecha_caducidad IS NULL THEN 1 ELSE 0 END, fecha_caducidad, id FOR UPDATE`,
+    [data.tenantId, data.productId],
+  );
+  const sellableStock = lots.reduce((total, lot) => total + Number(lot.cantidad), 0);
+  if (sellableStock < data.quantity) throw createHttpError(409, "Stock disponible insuficiente: los lotes caducados no se pueden vender");
+  const stockBefore = await getCurrentStock(connection, data.tenantId, data.productId);
+  let runningStock = stockBefore;
+  let remaining = data.quantity;
+  const movementIds: number[] = [];
+  const movements: Array<{ id: number; inventario_id: number; cantidad: number; stock_anterior: number; stock_nuevo: number }> = [];
+  for (const lot of lots) {
+    if (!remaining) break;
+    const used = Math.min(Number(lot.cantidad), remaining);
+    const nextStock = runningStock - used;
+    await connection.execute("UPDATE inventario SET cantidad = ? WHERE tenant_id = ? AND id = ?", [Number(lot.cantidad) - used, data.tenantId, lot.id]);
+    const movementId = await insertMovement(connection, {
+      tenantId: data.tenantId, userId: data.userId, productId: data.productId, inventoryId: lot.id,
+      type: "salida", quantity: used, lotNumber: lot.numero_lote, expirationDate: lot.fecha_caducidad,
+      reason: data.reason, description: data.description, saleLineId: data.saleLineId,
+      previousStock: runningStock, newStock: nextStock,
+    });
+    movementIds.push(movementId);
+    movements.push({ id: movementId, inventario_id: lot.id, cantidad: used, stock_anterior: runningStock, stock_nuevo: nextStock });
+    lot.cantidad = Number(lot.cantidad) - used;
+    remaining -= used;
+    runningStock = nextStock;
+  }
+  return {
+    movementIds,
+    movements,
+    stock_anterior: stockBefore,
+    stock_nuevo: runningStock,
+    stock_disponible: sellableStock - data.quantity,
+    stock_caducado: stockBefore - sellableStock,
+    fecha_caducidad: lots.find((lot) => Number(lot.cantidad) > 0 && lot.fecha_caducidad)?.fecha_caducidad ?? null,
+  };
 }
 
 async function getAllMovements(
@@ -600,4 +662,4 @@ async function createMovement({
   }
 }
 
-export { getAllMovements, createMovement };
+export { getAllMovements, createMovement, consumeStockByFEFO };

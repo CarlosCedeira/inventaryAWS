@@ -6,8 +6,11 @@ import type { ProductFields, InventoryUpdate } from "./inventory.types";
 const inventoryService = require("./inventory.service") as {
   listProducts: typeof InventoryModel.getAllProducts;
   listCategories: typeof InventoryModel.getAllCategories;
+  listTaxes: typeof InventoryModel.getAllTaxes;
+  listProductsWithoutRecentSales: typeof InventoryModel.getProductsWithoutRecentSales;
   createCategoryForTenant: typeof InventoryModel.createCategory;
   categoryBelongsToTenant: typeof InventoryModel.categoryExistsForTenant;
+  taxIsActive: typeof InventoryModel.taxExists;
   searchProducts: typeof InventoryModel.searchProductsByName;
   listProductsByCategory: typeof InventoryModel.getProductsByCategory;
   getProduct: (tenantId: number, id: string) => Promise<unknown>;
@@ -40,6 +43,16 @@ async function getCategories(req: AuthenticatedRequest, res: ApiResponse) {
     logUnexpectedError(req, "category_list_failed", error);
     res.status(500).json({ error: "Error interno del servidor" });
   }
+}
+
+async function getTaxes(_req: AuthenticatedRequest, res: ApiResponse) {
+  try { res.json(await inventoryService.listTaxes()); }
+  catch (error) { logUnexpectedError(_req, "tax_list_failed", error); res.status(500).json({ error: "Error interno del servidor" }); }
+}
+
+async function getProductsWithoutRecentSales(req: AuthenticatedRequest, res: ApiResponse) {
+  try { res.json(await inventoryService.listProductsWithoutRecentSales(req.tenantId)); }
+  catch (error) { logUnexpectedError(req, "inventory_without_sales_failed", error); res.status(500).json({ error: "Error interno del servidor" }); }
 }
 
 async function createCategory(req: AuthenticatedRequest, res: ApiResponse) {
@@ -131,6 +144,10 @@ async function updateProduct(req: AuthenticatedRequest, res: ApiResponse) {
       return res.status(400).json({ error: "La categoria seleccionada no es valida" });
     }
 
+    if (validation.product.impuesto_id !== null && !await inventoryService.taxIsActive(validation.product.impuesto_id)) {
+      return res.status(400).json({ error: "El impuesto seleccionado no es valido" });
+    }
+
     await inventoryService.updateProductData(
       req.tenantId,
       id,
@@ -168,6 +185,10 @@ async function createProduct(req: AuthenticatedRequest, res: ApiResponse) {
 
     if (!categoryExists) {
       return res.status(400).json({ error: "La categoria seleccionada no es valida" });
+    }
+
+    if (validation.product.impuesto_id === null || !await inventoryService.taxIsActive(validation.product.impuesto_id)) {
+      return res.status(400).json({ error: "El impuesto seleccionado no es valido" });
     }
 
     const result = await inventoryService.createNewProduct(
@@ -216,6 +237,8 @@ async function deleteProduct(req: AuthenticatedRequest, res: ApiResponse) {
 export {
   getProducts,
   getCategories,
+  getTaxes,
+  getProductsWithoutRecentSales,
   createCategory,
   searchProducts,
   getProductsByCategory,

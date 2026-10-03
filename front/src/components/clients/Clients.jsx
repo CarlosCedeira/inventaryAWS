@@ -26,6 +26,8 @@ function normalizeClient(client) {
 export default function Clients() {
   const [clients, setClients] = useState([]);
   const [search, setSearch] = useState("");
+  const [withoutPurchases, setWithoutPurchases] = useState(false);
+  const [inactivePurchaseCount, setInactivePurchaseCount] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [formError, setFormError] = useState("");
@@ -35,10 +37,10 @@ export default function Clients() {
   const [showForm, setShowForm] = useState(false);
   const [selectedClient, setSelectedClient] = useState(null);
 
-  const loadClients = useCallback(async (term = "") => {
+  const loadClients = useCallback(async (term = "", onlyWithoutPurchases = false) => {
     setLoading(true);
     try {
-      setClients(await clientService.getAll(term));
+      setClients(await clientService.getAll(term, onlyWithoutPurchases ? 30 : null));
       setError("");
     } catch (requestError) {
       setError(requestError.message || "No se pudieron cargar los clientes");
@@ -48,9 +50,13 @@ export default function Clients() {
   }, []);
 
   useEffect(() => {
-    const timeoutId = setTimeout(() => void loadClients(search), 250);
+    const timeoutId = setTimeout(() => void loadClients(search, withoutPurchases), 250);
     return () => clearTimeout(timeoutId);
-  }, [search, loadClients]);
+  }, [search, withoutPurchases, loadClients]);
+
+  useEffect(() => {
+    void clientService.getAll("", 30).then((rows) => setInactivePurchaseCount(rows.length)).catch(() => setInactivePurchaseCount(null));
+  }, []);
 
   const metrics = useMemo(() => ({
     total: clients.length,
@@ -88,7 +94,7 @@ export default function Clients() {
         await clientService.create(form);
       }
       setShowForm(false);
-      await loadClients(search);
+      await loadClients(search, withoutPurchases);
     } catch (requestError) {
       setFormError(requestError.message || "No se pudo guardar el cliente");
     } finally {
@@ -100,7 +106,7 @@ export default function Clients() {
     if (!window.confirm(`¿Desactivar a ${client.nombre}? Podrás volver a activarlo después.`)) return;
     try {
       await clientService.update(client.id, { ...normalizeClient(client), activo: false });
-      await loadClients(search);
+      await loadClients(search, withoutPurchases);
     } catch (requestError) {
       setError(requestError.message || "No se pudo desactivar el cliente");
     }
@@ -125,9 +131,10 @@ export default function Clients() {
         <article className="client-metric-card"><span>Clientes</span><strong>{loading ? "—" : metrics.total}</strong><small>Resultados actuales</small></article>
         <article className="client-metric-card"><span>Activos</span><strong>{loading ? "—" : metrics.active}</strong><small>Disponibles para ventas</small></article>
         <article className="client-metric-card"><span>Con email</span><strong>{loading ? "—" : metrics.withEmail}</strong><small>Contacto registrado</small></article>
+        <button type="button" className={`client-metric-card client-metric-filter${withoutPurchases ? " is-active" : ""}`} onClick={() => setWithoutPurchases((current) => !current)}><span>Sin compras recientes</span><strong>{inactivePurchaseCount ?? "—"}</strong><small>{withoutPurchases ? "Filtro activo · Desactivar" : "Sin ventas en 30 días · Filtrar"}</small></button>
       </section>
 
-      {error && <div className="alert alert-danger" role="alert">{error} <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => void loadClients(search)}>Reintentar</button></div>}
+      {error && <div className="alert alert-danger" role="alert">{error} <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => void loadClients(search, withoutPurchases)}>Reintentar</button></div>}
 
       <section className="clients-card">
         <div className="clients-toolbar">

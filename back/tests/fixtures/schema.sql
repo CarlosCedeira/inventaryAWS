@@ -38,12 +38,24 @@ KEY fk_categorias_tenant (tenant_id),
 CONSTRAINT fk_categorias_tenant FOREIGN KEY (tenant_id) REFERENCES tenants (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE IF NOT EXISTS impuestos (
+id int NOT NULL AUTO_INCREMENT,
+nombre varchar(100) NOT NULL,
+porcentaje decimal(5,2) NOT NULL,
+pais_codigo char(2) NOT NULL DEFAULT 'ES',
+activo tinyint NOT NULL DEFAULT '1',
+created_at timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+updated_at timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE IF NOT EXISTS productos (
 id int NOT NULL AUTO_INCREMENT,
 tenant_id int NOT NULL,
 nombre varchar(200) NOT NULL,
 descripcion text,
 categoria_id int DEFAULT NULL,
+impuesto_id int DEFAULT NULL,
 precio_compra decimal(10,2) NOT NULL DEFAULT '0.00',
 precio_venta decimal(10,2) NOT NULL DEFAULT '0.00',
 stock_minimo int NOT NULL,
@@ -53,8 +65,10 @@ updated_at timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 PRIMARY KEY (id),
 KEY tenant_id (tenant_id),
 KEY productos_ibfk_2 (categoria_id),
+KEY idx_productos_impuesto (impuesto_id),
 CONSTRAINT productos_ibfk_1 FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE CASCADE,
-CONSTRAINT productos_ibfk_2 FOREIGN KEY (categoria_id) REFERENCES categorias (id) ON DELETE SET NULL
+CONSTRAINT productos_ibfk_2 FOREIGN KEY (categoria_id) REFERENCES categorias (id) ON DELETE SET NULL,
+CONSTRAINT fk_productos_impuesto FOREIGN KEY (impuesto_id) REFERENCES impuestos (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS inventario (
@@ -141,6 +155,7 @@ CONSTRAINT fk_venta_anulada_por FOREIGN KEY (anulada_por) REFERENCES usuarios (i
 CREATE TABLE IF NOT EXISTS lineas_venta (
 id int NOT NULL AUTO_INCREMENT, tenant_id int NOT NULL, venta_id int NOT NULL, producto_id int NOT NULL,
 descripcion varchar(200) NOT NULL, cantidad int NOT NULL, precio_unitario decimal(12,2) NOT NULL,
+impuesto_nombre varchar(100) DEFAULT NULL, impuesto_porcentaje decimal(5,2) DEFAULT NULL,
 descuento_total decimal(12,2) NOT NULL DEFAULT '0.00', impuesto_total decimal(12,2) NOT NULL DEFAULT '0.00', importe_total decimal(12,2) NOT NULL,
 created_at timestamp NULL DEFAULT CURRENT_TIMESTAMP, updated_at timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 PRIMARY KEY (id), CONSTRAINT fk_linea_venta_tenant FOREIGN KEY (tenant_id) REFERENCES tenants (id),
@@ -150,6 +165,10 @@ CONSTRAINT fk_linea_venta_producto FOREIGN KEY (producto_id) REFERENCES producto
 
 ALTER TABLE movimientos_inventario ADD COLUMN linea_venta_id INT NULL AFTER inventario_id;
 ALTER TABLE movimientos_inventario ADD CONSTRAINT fk_mov_linea_venta FOREIGN KEY (linea_venta_id) REFERENCES lineas_venta (id);
+ALTER TABLE productos ADD COLUMN impuesto_id INT NULL AFTER categoria_id;
+ALTER TABLE productos ADD CONSTRAINT fk_productos_impuesto FOREIGN KEY (impuesto_id) REFERENCES impuestos (id);
+ALTER TABLE lineas_venta ADD COLUMN impuesto_nombre VARCHAR(100) NULL AFTER precio_unitario;
+ALTER TABLE lineas_venta ADD COLUMN impuesto_porcentaje DECIMAL(5,2) NULL AFTER impuesto_nombre;
 
 -- Mantiene compatible una base inventario_test creada con el esquema anterior.
 ALTER TABLE usuarios

@@ -7,6 +7,7 @@ export interface ProductFields {
   nombre: string;
   descripcion: string;
   categoria_id: number;
+  impuesto_id: number | null;
   precio_compra: number;
   precio_venta: number;
   stock_minimo: number;
@@ -28,6 +29,12 @@ export interface CategoryFields {
   descripcion: string | null;
 }
 
+export interface TaxFields {
+  id: number;
+  nombre: string;
+  porcentaje: string;
+}
+
 export interface InventoryRow extends RowDataPacket {
   id: number;
   cantidad: number;
@@ -41,6 +48,9 @@ export interface ProductRow extends RowDataPacket {
   producto_descripcion: string | null;
   categoria_id: number | null;
   producto_categoria: string | null;
+  impuesto_id: number | null;
+  impuesto_nombre: string | null;
+  impuesto_porcentaje: string | null;
   precio_compra: string;
   precio_venta: string;
   stock_minimo: number;

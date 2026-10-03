@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "tsx --test tests/clients.validators.test.ts tests/inventory.conflict.test.ts tests/inventory.controller.test.ts tests/inventory.mappers.test.ts tests/inventory.validators.test.ts tests/inventory.version.test.ts tests/quickSales.test.ts tests/stockQuantity.test.ts",
+    "test": "tsx --test tests/clients.validators.test.ts tests/inventory.conflict.test.ts tests/inventory.controller.test.ts tests/inventory.mappers.test.ts tests/inventory.validators.test.ts tests/inventory.version.test.ts tests/stockQuantity.test.ts",
     "typecheck:tests": "tsc --project tsconfig.tests.json",
     "test:integration:safety": "jest --config jest.integration.config.js --runInBand tests/inventorySafety.integration.test.ts tests/sessionAuthorization.integration.test.ts",
     "test:integration:sql": "tsx --test tests/integration/mysql.test.ts",

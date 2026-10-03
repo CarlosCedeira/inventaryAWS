@@ -31,3 +31,9 @@ export async function getCategorias() {
   if (!res.ok) throw new Error("Error categorías");
   return res.json();
 }
+
+export async function getImpuestos() {
+  const res = await fetchWithAuth(`${API_URL}/productos/impuestos`);
+  if (!res.ok) throw new Error("Error al obtener impuestos");
+  return res.json();
+}

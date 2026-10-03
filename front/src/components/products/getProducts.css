@@ -289,19 +289,6 @@
   color: #0d6efd;
 }
 
-.quick-sale-form {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.4rem;
-  min-width: 150px;
-}
-
-.quick-sale-input {
-  width: 72px;
-  text-align: center;
-}
-
 .empty-state {
   padding: 2rem !important;
   text-align: center;
@@ -465,15 +452,6 @@
   .product-identity {
     width: 100%;
     min-width: 0;
-  }
-
-  .quick-sale-form {
-    min-width: 0;
-    max-width: 180px;
-  }
-
-  .quick-sale-input {
-    width: 64px;
   }
 
   .empty-state {

@@ -3,7 +3,7 @@ import { isHttpError } from "../../types/http";
 import { buildCommercialClientPayload } from "./clients.validators";
 
 const clientsService = require("./clients.service") as {
-  listClients: (tenantId: number, search: string) => Promise<unknown[]>;
+  listClients: (tenantId: number, search: string, daysWithoutPurchase: number | null) => Promise<unknown[]>;
   createClient: (tenantId: number, client: unknown) => Promise<number>;
   updateClient: (tenantId: number, clientId: number, client: unknown) => Promise<number>;
 };
@@ -13,7 +13,12 @@ async function getClients(req: AuthenticatedRequest, res: ApiResponse) {
   try {
     const query = (req as AuthenticatedRequest & { query?: Record<string, unknown> }).query;
     const search = typeof query?.buscar === "string" ? query.buscar.trim().slice(0, 100) : "";
-    const clients = await clientsService.listClients(req.tenantId, search);
+    const requestedDays = query?.sin_compras_dias;
+    const daysWithoutPurchase = requestedDays === undefined ? null : Number(requestedDays);
+    if (daysWithoutPurchase !== null && (!Number.isInteger(daysWithoutPurchase) || daysWithoutPurchase < 1 || daysWithoutPurchase > 365)) {
+      return res.status(400).json({ error: "El periodo sin compras no es valido" });
+    }
+    const clients = await clientsService.listClients(req.tenantId, search, daysWithoutPurchase);
     res.json(clients);
   } catch (error) {
     logUnexpectedError(req, "clients_list_failed", error);

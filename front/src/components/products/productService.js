@@ -37,6 +37,12 @@ export const productService = {
     return res.json();
   },
 
+  getWithoutRecentSales: async () => {
+    const res = await fetchWithAuth(`${API_URL}/productos/sin-ventas`);
+    if (!res.ok) throw new Error("Error al obtener productos sin ventas");
+    return res.json();
+  },
+
   createCategory: async (categoryData) => {
     const res = await fetchWithAuth(`${API_URL}/productos/categorias`, {
       method: "POST",
@@ -65,18 +71,4 @@ export const productService = {
     return res.json();
   },
 
-  quickSale: async (productId, cantidad) => {
-    const res = await fetchWithAuth(`${API_URL}/ventas/${productId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cantidad }),
-    });
-
-    if (!res.ok) {
-      const error = await res.json().catch(() => ({}));
-      throw new Error(error.error || "Error al registrar la venta");
-    }
-
-    return res.json();
-  },
 };

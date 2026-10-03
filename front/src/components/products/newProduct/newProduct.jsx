@@ -11,6 +11,7 @@ const initialForm = {
   producto_nombre: "",
   producto_descripcion: "",
   categoria_id: "",
+  impuesto_id: "",
   precio_compra: "",
   precio_venta: "",
   stock_minimo: "",
@@ -29,6 +30,7 @@ const numberFields = new Set([
 
 const NewProduct = ({ onCreated }) => {
   const [categorias, setCategorias] = useState([]);
+  const [impuestos, setImpuestos] = useState([]);
   const [loadingCategorias, setLoadingCategorias] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -36,14 +38,23 @@ const NewProduct = ({ onCreated }) => {
   const [form, setForm] = useState(initialForm);
 
   useEffect(() => {
-    const fetchCategorias = async () => {
+    const fetchOptions = async () => {
       try {
-        const res = await fetchWithAuth(`${API_URL}/productos/categorias`);
+        const [categoriasResponse, impuestosResponse] = await Promise.all([
+          fetchWithAuth(`${API_URL}/productos/categorias`),
+          fetchWithAuth(`${API_URL}/productos/impuestos`),
+        ]);
 
-        if (!res.ok) throw new Error("Error al obtener categorias");
+        if (!categoriasResponse.ok || !impuestosResponse.ok) {
+          throw new Error("Error al obtener las opciones del producto");
+        }
 
-        const data = await res.json();
-        setCategorias(data);
+        const [categoriasData, impuestosData] = await Promise.all([
+          categoriasResponse.json(),
+          impuestosResponse.json(),
+        ]);
+        setCategorias(categoriasData);
+        setImpuestos(impuestosData);
       } catch (err) {
         console.error(err);
       } finally {
@@ -51,7 +62,7 @@ const NewProduct = ({ onCreated }) => {
       }
     };
 
-    fetchCategorias();
+    fetchOptions();
   }, []);
 
   const handleAddClick = () => {
@@ -199,9 +210,32 @@ const NewProduct = ({ onCreated }) => {
                           </div>
                         </div>
 
+                        <div className="mb-3 row align-items-center">
+                          <label className="col-sm-6 col-form-label text-nowrap">IVA aplicable</label>
+                          <div className="col-sm-6">
+                            <select
+                              name="impuesto_id"
+                              value={form.impuesto_id}
+                              onChange={handleChange}
+                              className="form-control"
+                              disabled={loadingCategorias}
+                              required
+                            >
+                              <option value="">
+                                {loadingCategorias ? "Cargando..." : "Selecciona un IVA"}
+                              </option>
+                              {impuestos.map((impuesto) => (
+                                <option key={impuesto.id} value={impuesto.id}>
+                                  {impuesto.nombre} · {impuesto.porcentaje}%
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
                         {[
                           ["Precio de compra", "precio_compra", "number"],
-                          ["Precio de venta", "precio_venta", "number"],
+                          ["Precio de venta (sin IVA)", "precio_venta", "number"],
                           ["Stock minimo", "stock_minimo", "number"],
                         ].map(([label, name, type]) => (
                           <div className="mb-3 row align-items-center" key={name}>

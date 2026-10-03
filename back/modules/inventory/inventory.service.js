@@ -9,6 +9,18 @@ async function listCategories(tenantId) {
   return await inventoryModel.getAllCategories(tenantId);
 }
 
+async function listTaxes() {
+  return await inventoryModel.getAllTaxes();
+}
+
+async function listProductsWithoutRecentSales(tenantId) {
+  return await inventoryModel.getProductsWithoutRecentSales(tenantId);
+}
+
+async function taxIsActive(taxId) {
+  return await inventoryModel.taxExists(taxId);
+}
+
 async function createCategoryForTenant(tenantId, categoryData) {
   return await inventoryModel.createCategory(tenantId, categoryData);
 }
@@ -55,6 +67,9 @@ async function removeProduct(tenantId, productId) {
 module.exports = {
   listProducts,
   listCategories,
+  listTaxes,
+  listProductsWithoutRecentSales,
+  taxIsActive,
   createCategoryForTenant,
   categoryBelongsToTenant,
   searchProducts,

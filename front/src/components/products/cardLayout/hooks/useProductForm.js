@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { getProductById, getCategorias, updateProduct } from "../services/productService";
+import { getProductById, getCategorias, getImpuestos, updateProduct } from "../services/productService";
 
 export function useProduct(id) {
   const [formData, setFormData] = useState({ inventario: [] });
   const [categorias, setCategorias] = useState([]);
+  const [impuestos, setImpuestos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [revision, setRevision] = useState(0);
@@ -13,10 +14,11 @@ export function useProduct(id) {
     setLoadError("");
     async function load() {
       try {
-        const [product, cats] = await Promise.all([getProductById(id), getCategorias()]);
+        const [product, cats, taxes] = await Promise.all([getProductById(id), getCategorias(), getImpuestos()]);
         if (!active) return;
-        setFormData({ ...product, categoria_id: product?.categoria_id ?? "" });
+        setFormData({ ...product, categoria_id: product?.categoria_id ?? "", impuesto_id: product?.impuesto_id ?? "" });
         setCategorias(cats);
+        setImpuestos(taxes);
       } catch (error) {
         if (active) setLoadError(error.message || "No se pudo cargar la ficha");
       } finally {
@@ -26,7 +28,7 @@ export function useProduct(id) {
     void load();
     return () => { active = false; };
   }, [id, revision]);
-  return { formData, setFormData, categorias, loading, loadError,
+  return { formData, setFormData, categorias, impuestos, loading, loadError,
     reload: () => setRevision((value) => value + 1),
     update: (data) => updateProduct(id, data) };
 }

@@ -20,7 +20,7 @@ export interface CommercialClientRow extends RowDataPacket, CommercialClientInpu
   updated_at: Date;
 }
 
-async function listCommercialClients(tenantId: number, search = "") {
+async function listCommercialClients(tenantId: number, search = "", daysWithoutPurchase: number | null = null) {
   const connection = await getConnection();
   try {
     const pattern = `%${search}%`;
@@ -31,10 +31,15 @@ async function listCommercialClients(tenantId: number, search = "") {
       FROM clientes
       WHERE tenant_id = ?
         AND (? = '' OR nombre LIKE ? OR contacto_email LIKE ? OR identificacion_fiscal LIKE ?)
+        AND (? IS NULL OR NOT EXISTS (
+          SELECT 1 FROM ventas v
+          WHERE v.tenant_id = clientes.tenant_id AND v.cliente_id = clientes.id
+            AND v.estado = 'confirmada' AND COALESCE(v.fecha_confirmacion, v.created_at) >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+        ))
       ORDER BY activo DESC, nombre ASC, id ASC
       LIMIT 100
       `,
-      [tenantId, search, pattern, pattern, pattern],
+      [tenantId, search, pattern, pattern, pattern, daysWithoutPurchase, daysWithoutPurchase],
     );
     return rows;
   } finally {

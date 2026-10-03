@@ -12,6 +12,9 @@ export interface Product {
   producto_descripcion: string | null;
   categoria_id: number | null;
   producto_categoria: string | null;
+  impuesto_id: number | null;
+  impuesto_nombre: string | null;
+  impuesto_porcentaje: NumericValue | null;
   precio_compra: NumericValue;
   precio_venta: NumericValue;
   stock_minimo: NumericValue;
@@ -27,14 +30,6 @@ export interface Category {
   nombre: string;
   descripcion: string | null;
   tenant_id: number;
-}
-
-interface QuickSaleResult {
-  stock_nuevo: NumericValue;
-  stock_fisico: NumericValue;
-  stock_disponible: NumericValue;
-  stock_caducado: NumericValue;
-  fecha_caducidad: string | null;
 }
 
 export const useProducts = () => {
@@ -104,24 +99,6 @@ export const useProducts = () => {
     }
   };
 
-  const handleQuickSale = async (productId: Product["producto_id"], quantity: number): Promise<QuickSaleResult> => {
-    try {
-      const result: QuickSaleResult = await productService.quickSale(productId, quantity);
-      setItems((prev) =>
-        prev.map((item) =>
-          item.producto_id === productId
-            ? { ...item, stock_total: result.stock_nuevo, stock_fisico: result.stock_fisico, stock_disponible: result.stock_disponible, stock_caducado: result.stock_caducado, fecha_caducidad: result.fecha_caducidad }
-            : item
-        )
-      );
-      await fetchProducts();
-      return result;
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
-  };
-
   useEffect(() => {
     void fetchProducts();
     const refresh = () => { if (!document.hidden) void fetchProducts(); };
@@ -179,7 +156,6 @@ export const useProducts = () => {
     handleCategoryFilter,
     handleSearch,
     handleSoftDelete,
-    handleQuickSale,
     refetch: fetchProducts,
     refetchCategories: fetchCategories,
   };

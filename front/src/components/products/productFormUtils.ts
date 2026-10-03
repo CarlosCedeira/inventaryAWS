@@ -9,6 +9,7 @@ export interface ProductForm {
   producto_nombre: string;
   producto_descripcion: string;
   categoria_id: NumericFormValue;
+  impuesto_id: NumericFormValue;
   precio_compra: NumericFormValue;
   precio_venta: NumericFormValue;
   stock_minimo: NumericFormValue;
@@ -25,6 +26,7 @@ export interface ProductPayload {
   producto_nombre: string;
   producto_descripcion: string;
   categoria_id: number;
+  impuesto_id: number | null;
   precio_compra: number;
   precio_venta: number;
   stock_minimo: number;
@@ -61,6 +63,10 @@ export const validateProductForm = (
 
   if (!form.categoria_id) {
     return "Debes seleccionar una categoría";
+  }
+
+  if (!form.impuesto_id) {
+    return "Debes seleccionar un IVA";
   }
 
   if (form.precio_compra === "") {
@@ -134,6 +140,7 @@ export const buildProductPayload = (
   producto_nombre: form.producto_nombre.trim(),
   producto_descripcion: form.producto_descripcion.trim(),
   categoria_id: Number(form.categoria_id),
+  impuesto_id: form.impuesto_id ? Number(form.impuesto_id) : null,
   precio_compra: Number(form.precio_compra),
   precio_venta: Number(form.precio_venta),
   stock_minimo: Number(form.stock_minimo),

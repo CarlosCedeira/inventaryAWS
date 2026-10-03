@@ -33,7 +33,7 @@ const CardLayout = ({ onClose, id }) => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const { formData, setFormData, categorias, loading, loadError, reload, update } = useProduct(id);
+  const { formData, setFormData, categorias, impuestos, loading, loadError, reload, update } = useProduct(id);
 
   const normalizeFormForValidation = () => {
     const firstInventario = formData.inventario?.[0] || {};
@@ -42,6 +42,7 @@ const CardLayout = ({ onClose, id }) => {
       producto_nombre: formData.nombre || "",
       producto_descripcion: formData.descripcion || "",
       categoria_id: formData.categoria_id || "",
+      impuesto_id: formData.impuesto_id || "",
       precio_compra: formData.precio_compra ?? "",
       precio_venta: formData.precio_venta ?? "",
       stock_minimo: formData.stock_minimo ?? "",
@@ -188,9 +189,9 @@ const CardLayout = ({ onClose, id }) => {
               </article>
 
               <article className="product-detail-metric">
-                <span>Precio venta</span>
+                <span>Precio sin IVA</span>
                 <strong>{formData.precio_venta || 0}</strong>
-                <small>Venta al publico</small>
+                <small>Base imponible</small>
               </article>
             </section>
 
@@ -330,9 +331,26 @@ const CardLayout = ({ onClose, id }) => {
                   </select>
                 </div>
 
+                <div className="product-form-field">
+                  <label className="form-label">IVA aplicable</label>
+                  <select
+                    name="impuesto_id"
+                    value={formData.impuesto_id || ""}
+                    onChange={handleChange}
+                    className="form-select"
+                    disabled={disabled || saving}
+                  >
+                    {impuestos.map((impuesto) => (
+                      <option key={impuesto.id} value={impuesto.id}>
+                        {impuesto.nombre} · {impuesto.porcentaje}%
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 {[
                   ["Precio de compra", "precio_compra", "number"],
-                  ["Precio de venta", "precio_venta", "number"],
+                  ["Precio de venta (sin IVA)", "precio_venta", "number"],
                   ["Stock minimo", "stock_minimo", "number"],
                 ].map(([label, name, type]) => (
                   <div className="product-form-field" key={name}>

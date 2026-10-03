@@ -4,6 +4,7 @@ const { buildCreateProductPayload, buildUpdateProductPayload } = require("../mod
 
 const product = {
   nombre: "Producto demo", descripcion: "", categoria_id: "2",
+  impuesto_id: "1",
   precio_compra: "0", precio_venta: "5", stock_minimo: "0",
 };
 const createBody = {
@@ -23,6 +24,11 @@ test("creacion normaliza cantidades y utiliza el tenant autenticado", () => {
 
 test("crear producto exige stock inicial positivo", () => {
   assert.ok(buildCreateProductPayload({ ...createBody, cantidad: 0 }, 7).error);
+});
+
+test("crear producto exige seleccionar un IVA", () => {
+  const result = buildCreateProductPayload({ ...createBody, impuesto_id: "" }, 7);
+  assert.equal(result.error, "Debes seleccionar un IVA");
 });
 
 test("editar permite agotar un lote y conservar valores cero", () => {

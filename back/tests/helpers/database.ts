@@ -32,6 +32,7 @@ async function cleanDatabase() {
     await connection.execute<ResultSetHeader>("DELETE FROM clientes");
     await connection.execute<ResultSetHeader>("DELETE FROM inventario");
     await connection.execute<ResultSetHeader>("DELETE FROM productos");
+    await connection.execute<ResultSetHeader>("DELETE FROM impuestos");
     await connection.execute<ResultSetHeader>("DELETE FROM categorias");
     await connection.execute<ResultSetHeader>("DELETE FROM usuarios");
     await connection.execute<ResultSetHeader>("DELETE FROM tenants");

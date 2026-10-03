@@ -1,5 +1,5 @@
 import type { PoolConnection, RowDataPacket, ResultSetHeader } from "mysql2/promise";
-import type { CategoryFields, InventoryFields, InventoryMovement, InventoryRow, InventoryUpdate, ProductFields, ProductId, ProductSummaryRow, ProductDetailRow } from "./inventory.types";
+import type { CategoryFields, InventoryFields, InventoryMovement, InventoryRow, InventoryUpdate, ProductFields, ProductId, ProductSummaryRow, ProductDetailRow, TaxFields } from "./inventory.types";
 import type { HttpError } from "../../types/http";
 const { inventoryVersion } = require("./inventory.version") as { inventoryVersion: (row: InventoryRow) => string };
 const { getConnection } = require("../../db") as { getConnection: () => Promise<PoolConnection> };
@@ -82,6 +82,9 @@ async function getAllProducts(tenantId: number) {
 
   c.id AS categoria_id,
   c.nombre AS producto_categoria,
+  t.id AS impuesto_id,
+  t.nombre AS impuesto_nombre,
+  t.porcentaje AS impuesto_porcentaje,
 
   p.precio_compra,
   p.precio_venta,
@@ -94,6 +97,8 @@ LEFT JOIN inventario i
   ON i.producto_id = p.id AND i.tenant_id = p.tenant_id
 LEFT JOIN categorias c 
   ON p.categoria_id = c.id AND c.tenant_id = p.tenant_id
+LEFT JOIN impuestos t
+  ON t.id = p.impuesto_id AND t.activo = TRUE
 
 WHERE p.tenant_id = ?
 AND p.eliminado = 0
@@ -104,6 +109,9 @@ GROUP BY
   p.descripcion,
   c.id,
   c.nombre,
+  t.id,
+  t.nombre,
+  t.porcentaje,
   p.precio_compra,
   p.precio_venta,
   p.stock_minimo
@@ -126,6 +134,46 @@ async function getAllCategories(tenantId: number) {
   } finally {
     connection.release();
   }
+}
+
+async function getAllTaxes() {
+  const connection = await getConnection();
+  try {
+    const [rows] = await connection.execute<(RowDataPacket & TaxFields)[]>(
+      "SELECT id, nombre, porcentaje FROM impuestos WHERE activo = 1 ORDER BY porcentaje DESC, nombre",
+    );
+    return rows;
+  } finally { connection.release(); }
+}
+
+async function getProductsWithoutRecentSales(tenantId: number) {
+  const connection = await getConnection();
+  try {
+    const [rows] = await connection.execute<(RowDataPacket & { producto_id: number })[]>(
+      `SELECT p.id AS producto_id
+       FROM productos p
+       INNER JOIN inventario i ON i.producto_id = p.id AND i.tenant_id = p.tenant_id
+       WHERE p.tenant_id = ? AND p.eliminado = FALSE
+         AND NOT EXISTS (
+           SELECT 1 FROM lineas_venta l
+           INNER JOIN ventas v ON v.id = l.venta_id AND v.tenant_id = l.tenant_id
+           WHERE l.tenant_id = p.tenant_id AND l.producto_id = p.id AND v.estado = 'confirmada'
+             AND COALESCE(v.fecha_confirmacion, v.created_at) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+         )
+       GROUP BY p.id
+       HAVING SUM(i.cantidad) > 0`,
+      [tenantId],
+    );
+    return rows;
+  } finally { connection.release(); }
+}
+
+async function taxExists(taxId: number) {
+  const connection = await getConnection();
+  try {
+    const [rows] = await connection.execute<RowDataPacket[]>("SELECT id FROM impuestos WHERE id = ? AND activo = 1 LIMIT 1", [taxId]);
+    return rows.length > 0;
+  } finally { connection.release(); }
 }
 
 // Crear categoria
@@ -183,6 +231,9 @@ async function searchProductsByName(tenantId: number, name: string) {
         p.descripcion AS producto_descripcion,
         c.id AS categoria_id,
         c.nombre AS producto_categoria,
+        t.id AS impuesto_id,
+        t.nombre AS impuesto_nombre,
+        t.porcentaje AS impuesto_porcentaje,
         p.precio_compra,
         p.precio_venta,
         p.stock_minimo,
@@ -192,6 +243,7 @@ async function searchProductsByName(tenantId: number, name: string) {
         ON i.producto_id = p.id AND i.tenant_id = p.tenant_id
       LEFT JOIN categorias c
         ON p.categoria_id = c.id AND c.tenant_id = p.tenant_id
+      LEFT JOIN impuestos t ON t.id = p.impuesto_id
       WHERE p.tenant_id = ? AND p.eliminado = 0 AND p.nombre LIKE CONCAT('%', ?, '%')
       GROUP BY
         p.id,
@@ -199,6 +251,9 @@ async function searchProductsByName(tenantId: number, name: string) {
         p.descripcion,
         c.id,
         c.nombre,
+        t.id,
+        t.nombre,
+        t.porcentaje,
         p.precio_compra,
         p.precio_venta,
         p.stock_minimo
@@ -223,6 +278,9 @@ async function getProductsByCategory(tenantId: number, categoryId: number) {
         p.descripcion AS producto_descripcion,
         c.id AS categoria_id,
         c.nombre AS producto_categoria,
+        t.id AS impuesto_id,
+        t.nombre AS impuesto_nombre,
+        t.porcentaje AS impuesto_porcentaje,
         p.precio_compra,
         p.precio_venta,
         p.stock_minimo,
@@ -232,6 +290,8 @@ async function getProductsByCategory(tenantId: number, categoryId: number) {
         ON i.producto_id = p.id AND i.tenant_id = p.tenant_id
       LEFT JOIN categorias c
         ON p.categoria_id = c.id AND c.tenant_id = p.tenant_id
+      LEFT JOIN impuestos t
+        ON t.id = p.impuesto_id AND t.activo = TRUE
       WHERE p.tenant_id = ? AND p.categoria_id = ? AND p.eliminado = 0
       GROUP BY
         p.id,
@@ -239,6 +299,9 @@ async function getProductsByCategory(tenantId: number, categoryId: number) {
         p.descripcion,
         c.id,
         c.nombre,
+        t.id,
+        t.nombre,
+        t.porcentaje,
         p.precio_compra,
         p.precio_venta,
         p.stock_minimo
@@ -266,6 +329,9 @@ async function getProductById(tenantId: number, id: ProductId) {
         p.descripcion AS producto_descripcion,
         c.id AS categoria_id,
         c.nombre AS producto_categoria,
+        t.id AS impuesto_id,
+        t.nombre AS impuesto_nombre,
+        t.porcentaje AS impuesto_porcentaje,
         i.cantidad,
         p.stock_minimo,
         p.precio_compra,
@@ -281,6 +347,7 @@ async function getProductById(tenantId: number, id: ProductId) {
       LEFT JOIN categorias c
         ON p.categoria_id = c.id
         AND c.tenant_id = p.tenant_id
+      LEFT JOIN impuestos t ON t.id = p.impuesto_id
       WHERE p.tenant_id = ?
         AND p.id = ?
         AND p.eliminado = 0;
@@ -303,12 +370,13 @@ async function updateProduct(tenantId: number, productId: ProductId, productoDat
 
     const [productResult] = await connection.execute<ResultSetHeader>(
       `UPDATE productos
-       SET nombre = ?, descripcion = ?, categoria_id = ?, precio_compra = ?, precio_venta = ?, stock_minimo = ?
+       SET nombre = ?, descripcion = ?, categoria_id = ?, impuesto_id = ?, precio_compra = ?, precio_venta = ?, stock_minimo = ?
        WHERE tenant_id = ? AND id = ? AND eliminado = 0`,
       [
         productoData.nombre,
         productoData.descripcion,
         productoData.categoria_id,
+        productoData.impuesto_id,
         productoData.precio_compra,
         productoData.precio_venta,
         productoData.stock_minimo,
@@ -412,13 +480,14 @@ async function createProduct(productoData: ProductFields & { tenant_id: number }
 
     const [productoResult] = await connection.execute<ResultSetHeader>(
       `INSERT INTO productos 
-       (tenant_id, nombre, descripcion, categoria_id, precio_compra, precio_venta, stock_minimo)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       (tenant_id, nombre, descripcion, categoria_id, impuesto_id, precio_compra, precio_venta, stock_minimo)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         productoData.tenant_id,
         productoData.nombre,
         productoData.descripcion,
         productoData.categoria_id,
+        productoData.impuesto_id,
         productoData.precio_compra,
         productoData.precio_venta,
         productoData.stock_minimo,
@@ -490,8 +559,11 @@ async function softDeleteProduct(tenantId: number, productId: ProductId) {
 export {
   getAllProducts,
   getAllCategories,
+  getAllTaxes,
+  getProductsWithoutRecentSales,
   createCategory,
   categoryExistsForTenant,
+  taxExists,
   searchProductsByName,
   getProductsByCategory,
   getProductById,

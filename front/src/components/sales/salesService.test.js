@@ -15,6 +15,21 @@ test("consulta el historial de ventas", async () => {
   expect(fetchWithAuthMock).toHaveBeenCalledWith(expect.stringMatching(/\/ventas$/), undefined);
 });
 
+test("codifica los filtros de ventas en la consulta", async () => {
+  await salesService.list({ buscar: "Ana López", periodo: "month", iva: 21 });
+  expect(fetchWithAuthMock).toHaveBeenCalledWith(expect.stringMatching(/buscar=Ana(?:%20|\+)L%C3%B3pez.*periodo=month.*iva=21/), undefined);
+});
+
+test("consulta las opciones del filtro de usuario", async () => {
+  await salesService.filterOptions();
+  expect(fetchWithAuthMock).toHaveBeenCalledWith(expect.stringMatching(/\/ventas\/filtros$/), undefined);
+});
+
+test("consulta el resumen comercial", async () => {
+  await salesService.summary();
+  expect(fetchWithAuthMock).toHaveBeenCalledWith(expect.stringMatching(/\/ventas\/resumen$/), undefined);
+});
+
 test("consulta el detalle de una venta", async () => {
   await salesService.getById(12);
   expect(fetchWithAuthMock).toHaveBeenCalledWith(expect.stringMatching(/\/ventas\/12$/), undefined);

@@ -1,13 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useProducts } from "./useProducts";
+import { productService } from "./productService";
 
 import CardLayout from "./cardLayout/CardLayout";
 import NewProduct from "./newProduct/newProduct";
 import NewCategory from "./newCategory/NewCategory";
-import {
-  normalizeStockQuantity,
-  validateStockQuantity,
-} from "../../utils/stockQuantity";
 
 import "./getProducts.css";
 
@@ -61,6 +58,7 @@ const metricFilters = {
       return days !== null && days >= 0 && days <= EXPIRING_SOON_DAYS;
     },
   },
+  noSales: { label: "Sin ventas recientes", matches: () => false },
 };
 
 const GetProducts = () => {
@@ -78,13 +76,14 @@ const GetProducts = () => {
     setSortOrder,
     handleCategoryFilter,
     handleSearch,
-    handleQuickSale,
     refetch,
     refetchCategories,
   } = useProducts();
 
   const [activeMetric, setActiveMetric] = useState(null);
-  const visibleItems = activeMetric ? items.filter(metricFilters[activeMetric].matches) : items;
+  const [productsWithoutSales, setProductsWithoutSales] = useState(new Set());
+  const [loadingProductsWithoutSales, setLoadingProductsWithoutSales] = useState(true);
+  const visibleItems = activeMetric === "noSales" ? items.filter((item) => productsWithoutSales.has(item.producto_id)) : activeMetric ? items.filter(metricFilters[activeMetric].matches) : items;
   const toggleMetric = (key) => setActiveMetric((current) => current === key ? null : key);
 
   const [showCard, setShowCard] = useState(false);
@@ -92,8 +91,6 @@ const GetProducts = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showExpirationDays, setShowExpirationDays] = useState(false);
   const [showStockComparison, setShowStockComparison] = useState(false);
-  const [saleQuantities, setSaleQuantities] = useState({});
-  const [sellingProductId, setSellingProductId] = useState(null);
 
   useEffect(() => {
     if (!loading) {
@@ -108,6 +105,14 @@ const GetProducts = () => {
     document.body.style.overflow = showCard ? "hidden" : "";
     return () => (document.body.style.overflow = "");
   }, [showCard]);
+
+  useEffect(() => {
+    let active = true;
+    productService.getWithoutRecentSales().then((rows) => {
+      if (active) setProductsWithoutSales(new Set(rows.map((row) => Number(row.producto_id))));
+    }).catch(() => { if (active) setProductsWithoutSales(new Set()); }).finally(() => { if (active) setLoadingProductsWithoutSales(false); });
+    return () => { active = false; };
+  }, [items.length]);
 
   const metrics = useMemo(() => {
     const products = items || [];
@@ -128,9 +133,10 @@ const GetProducts = () => {
       expiringSoonProducts,
       lowStockProducts,
       productsWithoutStock,
+      productsWithoutSales: products.filter((item) => productsWithoutSales.has(item.producto_id)).length,
       inventoryValue,
     };
-  }, [items]);
+  }, [items, productsWithoutSales]);
 
   const handleTdClick = (product) => {
     setSelectedProduct(product);
@@ -142,41 +148,6 @@ const GetProducts = () => {
     refetch();
   };
 
-  const handleSaleQuantityChange = (productId, value) => {
-    setSaleQuantities((current) => ({
-      ...current,
-      [productId]: value,
-    }));
-  };
-
-  const handleQuickSaleSubmit = async (event, productId) => {
-    event.preventDefault();
-    event.stopPropagation();
-
-    const quantityError = validateStockQuantity(saleQuantities[productId], {
-      label: "La cantidad vendida",
-    });
-
-    if (quantityError) {
-      alert(quantityError);
-      return;
-    }
-
-    const quantity = normalizeStockQuantity(saleQuantities[productId]);
-
-    try {
-      setSellingProductId(productId);
-      await handleQuickSale(productId, quantity);
-      setSaleQuantities((current) => ({
-        ...current,
-        [productId]: "",
-      }));
-    } catch (error) {
-      alert(error.message || "No se pudo registrar la venta");
-    } finally {
-      setSellingProductId(null);
-    }
-  };
 
   const formatCurrency = (value) =>
     new Intl.NumberFormat("es-ES", {
@@ -358,6 +329,14 @@ const GetProducts = () => {
           <small>Productos pendientes de retirada</small>
           <span className="metric-filter-hint">{activeMetric === "expired" ? "✓ Filtro activo · Desactivar" : "Filtrar productos"}</span>
         </button>
+        <button type="button" className={`metric-card metric-filter${activeMetric === "noSales" ? " is-active" : ""}`}
+          aria-pressed={activeMetric === "noSales"} aria-controls="products-table" disabled={loading || loadingProductsWithoutSales}
+          onClick={() => toggleMetric("noSales")}>
+          <span>Sin ventas recientes</span>
+          {loading || loadingProductsWithoutSales ? <strong className="skeleton-text skeleton-text-short" /> : <strong className="text-warning">{metrics.productsWithoutSales}</strong>}
+          <small>Con stock y sin ventas en 30 días</small>
+          <span className="metric-filter-hint">{activeMetric === "noSales" ? "✓ Filtro activo · Desactivar" : "Filtrar productos"}</span>
+        </button>
       </section>
 
       <section
@@ -445,7 +424,7 @@ const GetProducts = () => {
                     {showStockComparison ? "Estado stock" : "Disponible"}
                   </button>
                 </th>
-                <th className="d-none d-lg-table-cell text-center">Precio venta</th>
+                <th className="d-none d-lg-table-cell text-center">Precio sin IVA</th>
                 <th className="d-none d-md-table-cell text-center">
                   <button
                     type="button"
@@ -457,7 +436,6 @@ const GetProducts = () => {
                   </button>
                 </th>
                 <th>Estado</th>
-                <th className="text-end">Venta rapida</th>
               </tr>
             </thead>
 
@@ -482,7 +460,7 @@ const GetProducts = () => {
                     </td>
                     <td
                       className="d-none d-lg-table-cell text-center"
-                      data-label="Precio venta"
+                      data-label="Precio sin IVA"
                     >
                       <span className="skeleton-line skeleton-line-number" />
                     </td>
@@ -494,9 +472,6 @@ const GetProducts = () => {
                     </td>
                     <td data-label="Estado">
                       <span className="skeleton-pill" />
-                    </td>
-                    <td className="text-end" data-label="Venta rapida">
-                      <span className="skeleton-line skeleton-line-action" />
                     </td>
                   </tr>
                 ))}
@@ -534,9 +509,13 @@ const expirationStatus = getExpirationStatus(item);
 
                     <td
                       className="d-none d-lg-table-cell text-center"
-                      data-label="Precio venta"
+                      data-label="Precio sin IVA"
                     >
                       {formatCurrency(item.precio_venta)}
+                      <div className="small text-secondary">
+                        IVA: {item.impuesto_porcentaje ?? "sin asignar"}
+                        {item.impuesto_porcentaje !== null && item.impuesto_porcentaje !== undefined ? "%" : ""}
+                      </div>
                     </td>
 
                     <td
@@ -561,46 +540,13 @@ const expirationStatus = getExpirationStatus(item);
   </div>
 </td>
 
-                    <td className="text-end" data-label="Venta rapida">
-                      <form
-                        className="quick-sale-form"
-                        onClick={(event) => event.stopPropagation()}
-                        onSubmit={(event) =>
-                          handleQuickSaleSubmit(event, item.producto_id)
-                        }
-                      >
-                        <input
-                          type="number"
-                          className="form-control form-control-sm quick-sale-input"
-                          min="1"
-                          max={item.stock_disponible}
-                          disabled={Number(item.stock_disponible) <= 0}
-                          placeholder="0"
-                          value={saleQuantities[item.producto_id] || ""}
-                          onChange={(event) =>
-                            handleSaleQuantityChange(
-                              item.producto_id,
-                              event.target.value
-                            )
-                          }
-                          aria-label={`Cantidad vendida de ${item.producto_nombre}`}
-                        />
-                        <button
-                          type="submit"
-                          className="btn btn-sm btn-outline-primary"
-                          disabled={sellingProductId === item.producto_id || Number(item.stock_disponible) <= 0}
-                        >
-                          Vender
-                        </button>
-                      </form>
-                    </td>
                   </tr>
                 );
               })}
 
               {!loading && !error && !visibleItems.length && (
                 <tr>
-                  <td colSpan="7" className="empty-state">
+                    <td colSpan="6" className="empty-state">
                     {activeMetric ? "No hay productos que coincidan con este filtro." : "No hay productos para mostrar."}
                   </td>
                 </tr>

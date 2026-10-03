@@ -5,7 +5,7 @@ function groupProductWithInventory(rows) {
 
   rows.forEach(row => {
     if (!map.has(row.producto_id)) {
-      map.set(row.producto_id, {
+      const product = {
         producto_id: row.producto_id,
         nombre: row.producto_nombre,
         descripcion: row.producto_descripcion,
@@ -15,7 +15,13 @@ function groupProductWithInventory(rows) {
         precio_venta: row.precio_venta,
         stock_minimo: row.stock_minimo,
         inventario: []
-      });
+      };
+      if (Object.hasOwn(row, "impuesto_id")) {
+        product.impuesto_id = row.impuesto_id;
+        product.impuesto_nombre = row.impuesto_nombre;
+        product.impuesto_porcentaje = row.impuesto_porcentaje;
+      }
+      map.set(row.producto_id, product);
     }
 
     if (row.inventario_id != null) map.get(row.producto_id).inventario.push({

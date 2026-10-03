@@ -10,15 +10,16 @@ test("confirmar venta crea cabecera, linea y una salida por lote", async () => {
   const login = await request(app).post("/auth/login").send({ email: user.email, password: user.password });
   const token = login.body.token;
   const connection = await getConnection();
-  let clientId: number; let productId: number;
+  let clientId: number; let productId: number; let categoryId: number;
   try {
     const [client] = await connection.execute<ResultSetHeader>("INSERT INTO clientes (tenant_id,nombre,tarifa) VALUES (?,?,0)", [user.tenantId, "Ana"]); clientId = client.insertId;
-    const [category] = await connection.execute<ResultSetHeader>("INSERT INTO categorias (tenant_id,nombre) VALUES (?,?)", [user.tenantId, "General"]);
-    const [product] = await connection.execute<ResultSetHeader>("INSERT INTO productos (tenant_id,nombre,categoria_id,precio_compra,precio_venta,stock_minimo) VALUES (?,?,?,?,?,?)", [user.tenantId, "Leche", category.insertId, 1, 5, 1]); productId = product.insertId;
+    const [category] = await connection.execute<ResultSetHeader>("INSERT INTO categorias (tenant_id,nombre) VALUES (?,?)", [user.tenantId, "General"]); categoryId = category.insertId;
+    const [tax] = await connection.execute<ResultSetHeader>("INSERT INTO impuestos (nombre,porcentaje,pais_codigo) VALUES (?,?,?)", ["IVA general", 21, "ES"]);
+    const [product] = await connection.execute<ResultSetHeader>("INSERT INTO productos (tenant_id,nombre,categoria_id,impuesto_id,precio_compra,precio_venta,stock_minimo) VALUES (?,?,?,?,?,?,?)", [user.tenantId, "Leche", category.insertId, tax.insertId, 1, 5, 1]); productId = product.insertId;
     await connection.execute("INSERT INTO inventario (tenant_id,producto_id,cantidad,numero_lote,fecha_caducidad) VALUES (?,?,?,?,?),(?,?,?,?,?)", [user.tenantId, productId, 3, "A", "2030-01-01", user.tenantId, productId, 4, "B", "2030-02-01"]);
   } finally { connection.release(); }
   const response = await request(app).post("/ventas").set("Authorization", `Bearer ${token}`).send({ cliente_id: clientId!, referencia: "V-1", lineas: [{ producto_id: productId!, cantidad: 5 }] });
-  expect(response.status).toBe(201); expect(response.body).toMatchObject({ estado: "confirmada", total: 25 }); expect(response.body.lineas[0].movements).toHaveLength(2);
+  expect(response.status).toBe(201); expect(response.body).toMatchObject({ estado: "confirmada", subtotal: 25, impuesto_total: 5.25, total: 30.25 }); expect(response.body.lineas[0].movements).toHaveLength(2);
   const verify = await getConnection();
   try {
     const [movements] = await verify.execute<RowDataPacket[]>("SELECT tipo,cantidad,linea_venta_id FROM movimientos_inventario WHERE tenant_id = ? ORDER BY id", [user.tenantId]);
@@ -26,10 +27,25 @@ test("confirmar venta crea cabecera, linea y una salida por lote", async () => {
   } finally { verify.release(); }
   const listResponse = await request(app).get("/ventas").set("Authorization", `Bearer ${token}`);
   expect(listResponse.status).toBe(200);
-  expect(listResponse.body[0]).toMatchObject({ referencia: "V-1", cliente_nombre: "Ana", estado: "confirmada", total: "25.00" });
+  expect(listResponse.body[0]).toMatchObject({ referencia: "V-1", cliente_nombre: "Ana", estado: "confirmada", total: "30.25" });
+  const filteredResponse = await request(app).get(`/ventas?buscar=A&periodo=today&cliente_id=${clientId}&producto_id=${productId}&categoria_id=${categoryId!}&iva=21&usuario_id=${user.userId}&importe_minimo=30`).set("Authorization", `Bearer ${token}`);
+  expect(filteredResponse.status).toBe(200);
+  expect(filteredResponse.body).toHaveLength(1);
+  expect(filteredResponse.body[0]).toMatchObject({ referencia: "V-1", usuario_nombre: "Admin de pruebas" });
+  const optionsResponse = await request(app).get("/ventas/filtros").set("Authorization", `Bearer ${token}`);
+  expect(optionsResponse.status).toBe(200);
+  expect(optionsResponse.body.users).toEqual(expect.arrayContaining([expect.objectContaining({ id: user.userId, nombre: "Admin de pruebas" })]));
+  const summaryResponse = await request(app).get("/ventas/resumen").set("Authorization", `Bearer ${token}`);
+  expect(summaryResponse.status).toBe(200);
+  expect(summaryResponse.body).toMatchObject({
+    today: { cantidad: 1, total: "30.25" }, month: { cantidad: 1, total: "30.25" },
+    averageTicket: { total: "30.250000" }, topProduct: { producto_id: productId, nombre: "Leche", unidades: "5", total: "30.25" },
+    highSales: { cantidad: 0, total: "0.00" },
+  });
   const detailResponse = await request(app).get(`/ventas/${response.body.id}`).set("Authorization", `Bearer ${token}`);
   expect(detailResponse.status).toBe(200);
   expect(detailResponse.body.lineas).toHaveLength(1);
+  expect(detailResponse.body.lineas[0]).toMatchObject({ impuesto_nombre: "IVA general", impuesto_porcentaje: "21.00", impuesto_total: "5.25", importe_total: "30.25" });
   expect(detailResponse.body.movimientos).toEqual(expect.arrayContaining([
     expect.objectContaining({ numero_lote: "A", cantidad: 3 }),
     expect.objectContaining({ numero_lote: "B", cantidad: 2 }),
