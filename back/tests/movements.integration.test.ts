@@ -47,6 +47,32 @@ test("el historial de movimientos exige una sesión válida", async () => {
   expect(response.body).toEqual({ error: "Token requerido" });
 });
 
+test("la API exige un motivo al crear un movimiento", async () => {
+  const user = await seedTenantAndUser({ email: "movimientos-sin-motivo@demo.com" });
+  const token = await loginAs(user);
+
+  const response = await request(app)
+    .post("/movimientos")
+    .set("Authorization", `Bearer ${token}`)
+    .send({ tipo: "entrada", producto_id: 1, cantidad: 1 });
+
+  expect(response.status).toBe(400);
+  expect(response.body).toEqual({ error: "Selecciona un motivo para el movimiento" });
+});
+
+test("la API exige una descripción al crear un movimiento", async () => {
+  const user = await seedTenantAndUser({ email: "movimientos-sin-descripcion@demo.com" });
+  const token = await loginAs(user);
+
+  const response = await request(app)
+    .post("/movimientos")
+    .set("Authorization", `Bearer ${token}`)
+    .send({ tipo: "entrada", producto_id: 1, cantidad: 1, motivo: "Entrada manual" });
+
+  expect(response.status).toBe(400);
+  expect(response.body).toEqual({ error: "Escribe una descripción para el movimiento" });
+});
+
 test("la API registra entradas, salidas y ajustes, y conserva el historial del tenant", async () => {
   const currentUser = await seedTenantAndUser({ email: "movimientos@demo.com" });
   const otherUser = await seedTenantAndUser({ email: "movimientos-otro@demo.com" });
@@ -68,6 +94,7 @@ test("la API registra entradas, salidas y ajustes, y conserva el historial del t
       numero_lote: "ENTRADA-01",
       fecha_caducidad: "2030-12-31",
       motivo: "Compra proveedor",
+      descripcion: "Recepción de pedido del proveedor.",
     });
   expect(entryResponse.status).toBe(201);
   expect(entryResponse.body).toMatchObject({ stock_anterior: 5, stock_nuevo: 15 });
@@ -80,7 +107,8 @@ test("la API registra entradas, salidas y ajustes, y conserva el historial del t
       producto_id: productId,
       inventario_id: inventoryId,
       cantidad: 2,
-      motivo: "Venta",
+      motivo: "Salida manual",
+      descripcion: "Salida autorizada para una prueba.",
     });
   expect(exitResponse.status).toBe(201);
   expect(exitResponse.body).toMatchObject({ stock_anterior: 15, stock_nuevo: 13 });
@@ -102,6 +130,7 @@ test("la API registra entradas, salidas y ajustes, y conserva el historial del t
       inventario_id: entryLot.inventario_id,
       cantidad: 0,
       motivo: "Conteo inventario",
+      descripcion: "El recuento físico deja el lote sin existencias.",
     });
   expect(adjustmentResponse.status).toBe(201);
   expect(adjustmentResponse.body).toMatchObject({ stock_anterior: 13, stock_nuevo: 3 });
@@ -157,6 +186,8 @@ test("la API registra entradas, salidas y ajustes, y conserva el historial del t
       producto_id: productId,
       inventario_id: inventoryId,
       cantidad: 4,
+      motivo: "Salida manual",
+      descripcion: "Comprobación de stock insuficiente.",
     });
   expect(insufficientStockResponse.status).toBe(409);
 
@@ -167,6 +198,8 @@ test("la API registra entradas, salidas y ajustes, y conserva el historial del t
       tipo: "entrada",
       producto_id: productId,
       cantidad: 1,
+      motivo: "Entrada manual",
+      descripcion: "Intento de acceso a producto ajeno.",
     });
   expect(foreignMovementResponse.status).toBe(404);
 });

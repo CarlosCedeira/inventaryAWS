@@ -115,6 +115,7 @@ async function createMovement(req: AuthenticatedRequest, res: ApiResponse) {
       lotNumber: req.body.numero_lote,
       expirationDate: req.body.fecha_caducidad,
       reason: req.body.motivo,
+      description: req.body.descripcion,
     });
 
     log("info", "movement_created", {

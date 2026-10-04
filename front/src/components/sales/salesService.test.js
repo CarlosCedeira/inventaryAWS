@@ -40,3 +40,28 @@ test("envía una nueva venta al endpoint de ventas", async () => {
   await salesService.create(sale);
   expect(fetchWithAuthMock).toHaveBeenCalledWith(expect.stringMatching(/\/ventas$/), expect.objectContaining({ method: "POST", body: JSON.stringify(sale) }));
 });
+
+test("envía el motivo al anular una venta", async () => {
+  await salesService.cancel(12, "Pedido duplicado");
+  expect(fetchWithAuthMock).toHaveBeenCalledWith(
+    expect.stringMatching(/\/ventas\/12\/anular$/),
+    expect.objectContaining({ method: "POST", body: JSON.stringify({ motivo: "Pedido duplicado" }) }),
+  );
+});
+
+test("envía las líneas al devolver una venta", async () => {
+  const saleReturn = { motivo: "Producto defectuoso", lineas: [{ movimiento_id: 30, cantidad: 2 }] };
+  await salesService.return(12, saleReturn);
+  expect(fetchWithAuthMock).toHaveBeenCalledWith(
+    expect.stringMatching(/\/ventas\/12\/devolver$/),
+    expect.objectContaining({ method: "POST", body: JSON.stringify(saleReturn) }),
+  );
+});
+
+test("marca una venta pendiente como completada", async () => {
+  await salesService.complete(12);
+  expect(fetchWithAuthMock).toHaveBeenCalledWith(
+    expect.stringMatching(/\/ventas\/12\/completar$/),
+    expect.objectContaining({ method: "POST" }),
+  );
+});

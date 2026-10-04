@@ -40,7 +40,8 @@ export interface CreateMovementPayload {
   cantidad: number;
   numero_lote?: string | null;
   fecha_caducidad?: string | null;
-  motivo?: string | null;
+  motivo: string;
+  descripcion: string;
 }
 
 function buildFiltersQuery(filters: MovementFilters): string {

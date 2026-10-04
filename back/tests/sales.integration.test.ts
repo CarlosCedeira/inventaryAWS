@@ -5,6 +5,19 @@ import { seedTenantAndUser } from "./helpers/database";
 const app = require("../app");
 const { getConnection } = require("../db") as { getConnection: () => Promise<PoolConnection> };
 
+test("una venta exige seleccionar un cliente", async () => {
+  const user = await seedTenantAndUser({ email: "ventas-cliente-obligatorio@demo.test" });
+  const login = await request(app).post("/auth/login").send({ email: user.email, password: user.password });
+
+  const response = await request(app)
+    .post("/ventas")
+    .set("Authorization", `Bearer ${login.body.token}`)
+    .send({ cliente_id: null, lineas: [{ producto_id: 1, cantidad: 1 }] });
+
+  expect(response.status).toBe(400);
+  expect(response.body).toEqual({ error: "Debes seleccionar un cliente" });
+});
+
 test("confirmar venta crea cabecera, linea y una salida por lote", async () => {
   const user = await seedTenantAndUser({ email: "ventas@demo.test" });
   const login = await request(app).post("/auth/login").send({ email: user.email, password: user.password });
@@ -19,7 +32,10 @@ test("confirmar venta crea cabecera, linea y una salida por lote", async () => {
     await connection.execute("INSERT INTO inventario (tenant_id,producto_id,cantidad,numero_lote,fecha_caducidad) VALUES (?,?,?,?,?),(?,?,?,?,?)", [user.tenantId, productId, 3, "A", "2030-01-01", user.tenantId, productId, 4, "B", "2030-02-01"]);
   } finally { connection.release(); }
   const response = await request(app).post("/ventas").set("Authorization", `Bearer ${token}`).send({ cliente_id: clientId!, referencia: "V-1", lineas: [{ producto_id: productId!, cantidad: 5 }] });
-  expect(response.status).toBe(201); expect(response.body).toMatchObject({ estado: "confirmada", subtotal: 25, impuesto_total: 5.25, total: 30.25 }); expect(response.body.lineas[0].movements).toHaveLength(2);
+  expect(response.status).toBe(201); expect(response.body).toMatchObject({ estado: "pendiente_pago", subtotal: 25, impuesto_total: 5.25, total: 30.25 }); expect(response.body.lineas[0].movements).toHaveLength(2);
+  const completeResponse = await request(app).post(`/ventas/${response.body.id}/completar`).set("Authorization", `Bearer ${token}`);
+  expect(completeResponse.status).toBe(200);
+  expect(completeResponse.body).toEqual({ id: response.body.id, estado: "completa" });
   const verify = await getConnection();
   try {
     const [movements] = await verify.execute<RowDataPacket[]>("SELECT tipo,cantidad,linea_venta_id FROM movimientos_inventario WHERE tenant_id = ? ORDER BY id", [user.tenantId]);
@@ -27,7 +43,7 @@ test("confirmar venta crea cabecera, linea y una salida por lote", async () => {
   } finally { verify.release(); }
   const listResponse = await request(app).get("/ventas").set("Authorization", `Bearer ${token}`);
   expect(listResponse.status).toBe(200);
-  expect(listResponse.body[0]).toMatchObject({ referencia: "V-1", cliente_nombre: "Ana", estado: "confirmada", total: "30.25" });
+  expect(listResponse.body[0]).toMatchObject({ referencia: "V-1", cliente_nombre: "Ana", estado: "completa", total: "30.25", total_neto: "30.25" });
   const filteredResponse = await request(app).get(`/ventas?buscar=A&periodo=today&cliente_id=${clientId}&producto_id=${productId}&categoria_id=${categoryId!}&iva=21&usuario_id=${user.userId}&importe_minimo=30`).set("Authorization", `Bearer ${token}`);
   expect(filteredResponse.status).toBe(200);
   expect(filteredResponse.body).toHaveLength(1);
@@ -50,6 +66,34 @@ test("confirmar venta crea cabecera, linea y una salida por lote", async () => {
     expect.objectContaining({ numero_lote: "A", cantidad: 3 }),
     expect.objectContaining({ numero_lote: "B", cantidad: 2 }),
   ]));
+
+  const missingReasonResponse = await request(app).post(`/ventas/${response.body.id}/anular`).set("Authorization", `Bearer ${token}`).send({});
+  expect(missingReasonResponse.status).toBe(400);
+
+  const cancelResponse = await request(app).post(`/ventas/${response.body.id}/anular`).set("Authorization", `Bearer ${token}`).send({ motivo: "Pedido duplicado" });
+  expect(cancelResponse.status).toBe(200);
+  expect(cancelResponse.body).toMatchObject({ id: response.body.id, estado: "anulada" });
+  expect(cancelResponse.body.movimientos_entrada).toHaveLength(2);
+
+  const cancellationVerify = await getConnection();
+  try {
+    const [stock] = await cancellationVerify.execute<RowDataPacket[]>("SELECT SUM(cantidad) AS total FROM inventario WHERE tenant_id = ? AND producto_id = ?", [user.tenantId, productId!]);
+    expect(Number(stock[0].total)).toBe(7);
+    const [restorations] = await cancellationVerify.execute<RowDataPacket[]>("SELECT tipo,cantidad,numero_lote,motivo,linea_venta_id FROM movimientos_inventario WHERE tenant_id = ? AND tipo = 'entrada' ORDER BY id", [user.tenantId]);
+    expect(restorations).toEqual([
+      { tipo: "entrada", cantidad: 3, numero_lote: "A", motivo: "Venta cancelada", linea_venta_id: response.body.lineas[0].id },
+      { tipo: "entrada", cantidad: 2, numero_lote: "B", motivo: "Venta cancelada", linea_venta_id: response.body.lineas[0].id },
+    ]);
+  } finally { cancellationVerify.release(); }
+
+  const cancelledDetailResponse = await request(app).get(`/ventas/${response.body.id}`).set("Authorization", `Bearer ${token}`);
+  expect(cancelledDetailResponse.body).toMatchObject({ estado: "anulada", motivo_anulacion: "Pedido duplicado", anulada_por: user.userId, anulada_por_nombre: "Admin de pruebas" });
+  expect(cancelledDetailResponse.body.total_neto).toBe(0);
+  expect(cancelledDetailResponse.body.lineas[0]).toMatchObject({ estado: "cancelada", cantidad_devuelta: 0 });
+  expect(Number(cancelledDetailResponse.body.lineas[0].cantidad_facturable)).toBe(0);
+
+  const repeatedCancellation = await request(app).post(`/ventas/${response.body.id}/anular`).set("Authorization", `Bearer ${token}`).send({ motivo: "Segundo intento" });
+  expect(repeatedCancellation.status).toBe(409);
 });
 
 test("una venta no puede usar cliente o producto de otro tenant", async () => {
@@ -67,4 +111,59 @@ test("una venta no puede usar cliente o producto de otro tenant", async () => {
   expect(response.status).toBe(404);
   const verify = await getConnection();
   try { const [rows] = await verify.execute<RowDataPacket[]>("SELECT id FROM ventas WHERE tenant_id = ?", [owner.tenantId]); expect(rows).toHaveLength(0); } finally { verify.release(); }
+});
+
+test("una venta admite devoluciones parciales y completas por lote", async () => {
+  const user = await seedTenantAndUser({ email: "devoluciones@demo.test" });
+  const login = await request(app).post("/auth/login").send({ email: user.email, password: user.password });
+  const token = login.body.token;
+  const connection = await getConnection();
+  let clientId: number; let productId: number;
+  try {
+    const [client] = await connection.execute<ResultSetHeader>("INSERT INTO clientes (tenant_id,nombre,tarifa) VALUES (?,?,0)", [user.tenantId, "Cliente devolución"]); clientId = client.insertId;
+    const [category] = await connection.execute<ResultSetHeader>("INSERT INTO categorias (tenant_id,nombre) VALUES (?,?)", [user.tenantId, "Devoluciones"]);
+    const [tax] = await connection.execute<ResultSetHeader>("INSERT INTO impuestos (nombre,porcentaje,pais_codigo) VALUES (?,?,?)", ["IVA devolución", 21, "ES"]);
+    const [product] = await connection.execute<ResultSetHeader>("INSERT INTO productos (tenant_id,nombre,categoria_id,impuesto_id,precio_compra,precio_venta,stock_minimo) VALUES (?,?,?,?,?,?,?)", [user.tenantId, "Producto devuelto", category.insertId, tax.insertId, 2, 10, 1]); productId = product.insertId;
+    await connection.execute("INSERT INTO inventario (tenant_id,producto_id,cantidad,numero_lote,fecha_caducidad) VALUES (?,?,?,?,?)", [user.tenantId, productId, 5, "DEV-1", "2030-01-01"]);
+  } finally { connection.release(); }
+
+  const sale = await request(app).post("/ventas").set("Authorization", `Bearer ${token}`).send({ cliente_id: clientId!, referencia: "V-DEV", lineas: [{ producto_id: productId!, cantidad: 5 }] });
+  expect(sale.body.estado).toBe("pendiente_pago");
+  const completed = await request(app).post(`/ventas/${sale.body.id}/completar`).set("Authorization", `Bearer ${token}`);
+  expect(completed.status).toBe(200);
+  const movementId = sale.body.lineas[0].movements[0];
+  const partialReturn = await request(app).post(`/ventas/${sale.body.id}/devolver`).set("Authorization", `Bearer ${token}`).send({ motivo: "Devolución parcial", lineas: [{ movimiento_id: movementId, cantidad: 2 }] });
+  expect(partialReturn.status).toBe(201);
+  expect(partialReturn.body).toMatchObject({ estado_venta: "parcialmente_devuelta", subtotal: 20, impuesto_total: 4.2, total: 24.2 });
+
+  const partialDetail = await request(app).get(`/ventas/${sale.body.id}`).set("Authorization", `Bearer ${token}`);
+  expect(partialDetail.body).toMatchObject({ estado: "parcialmente_devuelta" });
+  expect(partialDetail.body.lineas[0]).toMatchObject({ estado: "parcialmente_devuelta", cantidad_devuelta: 2 });
+  expect(partialDetail.body.total_devuelto).toBe(24.2);
+  expect(partialDetail.body.total_neto).toBeCloseTo(36.3);
+  expect(Number(partialDetail.body.lineas[0].importe_neto)).toBeCloseTo(36.3);
+  expect(Number(partialDetail.body.lineas[0].cantidad_facturable)).toBe(3);
+  expect(Number(partialDetail.body.lineas[0].subtotal_neto)).toBeCloseTo(30);
+  expect(Number(partialDetail.body.lineas[0].impuesto_neto)).toBeCloseTo(6.3);
+  expect(Number(partialDetail.body.movimientos[0].cantidad_devuelta)).toBe(2);
+
+  const completeReturn = await request(app).post(`/ventas/${sale.body.id}/devolver`).set("Authorization", `Bearer ${token}`).send({ motivo: "Resto de la devolución", lineas: [{ movimiento_id: movementId, cantidad: 3 }] });
+  expect(completeReturn.status).toBe(201);
+  expect(completeReturn.body).toMatchObject({ estado_venta: "devuelta" });
+
+  const finalDetail = await request(app).get(`/ventas/${sale.body.id}`).set("Authorization", `Bearer ${token}`);
+  expect(finalDetail.body).toMatchObject({ estado: "devuelta" });
+  expect(finalDetail.body.lineas[0]).toMatchObject({ estado: "devuelta", cantidad_devuelta: 5 });
+  expect(Number(finalDetail.body.lineas[0].cantidad_facturable)).toBe(0);
+  expect(finalDetail.body.total_neto).toBe(0);
+  expect(finalDetail.body.devoluciones).toHaveLength(2);
+
+  const verify = await getConnection();
+  try {
+    const [stock] = await verify.execute<RowDataPacket[]>("SELECT SUM(cantidad) AS total FROM inventario WHERE tenant_id = ? AND producto_id = ?", [user.tenantId, productId!]);
+    expect(Number(stock[0].total)).toBe(5);
+    const [entries] = await verify.execute<RowDataPacket[]>("SELECT cantidad,motivo,linea_devolucion_id FROM movimientos_inventario WHERE tenant_id = ? AND tipo = 'entrada' ORDER BY id", [user.tenantId]);
+    expect(entries).toHaveLength(2);
+    expect(entries.every((entry) => entry.motivo === "Devolución cliente" && entry.linea_devolucion_id !== null)).toBe(true);
+  } finally { verify.release(); }
 });

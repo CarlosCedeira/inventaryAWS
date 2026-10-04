@@ -28,6 +28,7 @@ interface MovementInput {
   lotNumber?: unknown;
   expirationDate?: unknown;
   reason?: unknown;
+  description?: unknown;
 }
 
 interface NormalizedMovement {
@@ -40,6 +41,7 @@ interface NormalizedMovement {
   lotNumber: string | null;
   expirationDate: OptionalDate;
   reason: string | null;
+  description: string | null;
 }
 
 interface InventoryLot extends RowDataPacket {
@@ -68,6 +70,19 @@ export interface StockConsumptionInput {
   reason: string;
   description: string;
   saleLineId?: number | null;
+}
+
+export interface SaleStockRestorationInput {
+  tenantId: number;
+  userId: number;
+  productId: number;
+  quantity: number;
+  lotNumber: string | null;
+  expirationDate: OptionalDate;
+  saleLineId: number;
+  returnLineId?: number | null;
+  reason?: string;
+  description: string;
 }
 
 interface HttpError extends Error {
@@ -181,7 +196,7 @@ async function getInventoryLotForUpdate(
 
 async function insertMovement(
   connection: PoolConnection,
-  data: NormalizedMovement & { inventoryId: number; previousStock: number; newStock: number; description?: string | null; saleLineId?: number | null },
+  data: NormalizedMovement & { inventoryId: number; previousStock: number; newStock: number; description?: string | null; saleLineId?: number | null; returnLineId?: number | null },
 ): Promise<number> {
   const [result] = await connection.execute<ResultSetHeader>(
     `
@@ -191,6 +206,7 @@ async function insertMovement(
         producto_id,
         inventario_id,
         linea_venta_id,
+        linea_devolucion_id,
         tipo,
         cantidad,
         stock_anterior,
@@ -201,13 +217,14 @@ async function insertMovement(
         descripcion,
         usuario_id
       )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       data.tenantId,
       data.productId,
       data.inventoryId,
       data.saleLineId || null,
+      data.returnLineId || null,
       data.type,
       data.quantity,
       data.previousStock,
@@ -356,7 +373,7 @@ async function getAllMovements(
   }
 }
 
-async function addStockMovement(connection: PoolConnection, data: NormalizedMovement): Promise<MovementResult> {
+async function addStockMovement(connection: PoolConnection, data: NormalizedMovement & { saleLineId?: number | null; returnLineId?: number | null }): Promise<MovementResult> {
   const stockBefore = await getCurrentStock(
     connection,
     data.tenantId,
@@ -424,6 +441,26 @@ async function addStockMovement(connection: PoolConnection, data: NormalizedMove
     stock_anterior: previousStock,
     stock_nuevo: newStock,
   };
+}
+
+async function restoreSaleStock(connection: PoolConnection, data: SaleStockRestorationInput): Promise<MovementResult> {
+  const description = normalizeOptionalString(data.description);
+  if (!description) throw createHttpError(400, "Escribe una descripción para el movimiento");
+
+  return addStockMovement(connection, {
+    tenantId: data.tenantId,
+    userId: data.userId,
+    productId: data.productId,
+    inventoryId: null,
+    type: "entrada",
+    quantity: parseStockQuantity(data.quantity),
+    lotNumber: normalizeOptionalString(data.lotNumber),
+    expirationDate: normalizeOptionalDate(data.expirationDate),
+    reason: normalizeOptionalString(data.reason) || "Venta cancelada",
+    description,
+    saleLineId: data.saleLineId,
+    returnLineId: data.returnLineId || null,
+  });
 }
 
 async function subtractStockMovement(connection: PoolConnection, data: NormalizedMovement): Promise<MovementResult> {
@@ -602,6 +639,7 @@ async function createMovement({
   lotNumber,
   expirationDate,
   reason,
+  description,
 }: MovementInput): Promise<MovementResult> {
   if (!MOVEMENT_TYPES.has(type as MovementType)) {
     throw createHttpError(400, "Tipo de movimiento no valido");
@@ -617,10 +655,23 @@ async function createMovement({
     lotNumber: normalizeOptionalString(lotNumber),
     expirationDate: normalizeOptionalDate(expirationDate),
     reason: normalizeOptionalString(reason),
+    description: normalizeOptionalString(description),
   };
 
   if ((normalizedData.type === "salida" || normalizedData.type === "ajuste") && normalizedData.inventoryId === null) {
     throw createHttpError(400, "Selecciona el lote de inventario");
+  }
+  if (!normalizedData.reason) {
+    throw createHttpError(400, "Selecciona un motivo para el movimiento");
+  }
+  if (normalizedData.reason.length > 255) {
+    throw createHttpError(400, "El motivo no puede superar los 255 caracteres");
+  }
+  if (!normalizedData.description) {
+    throw createHttpError(400, "Escribe una descripción para el movimiento");
+  }
+  if (normalizedData.description.length > 4000) {
+    throw createHttpError(400, "La descripción no puede superar los 4000 caracteres");
   }
 
   const connection = await getConnection();
@@ -662,4 +713,4 @@ async function createMovement({
   }
 }
 
-export { getAllMovements, createMovement, consumeStockByFEFO };
+export { getAllMovements, createMovement, consumeStockByFEFO, restoreSaleStock };

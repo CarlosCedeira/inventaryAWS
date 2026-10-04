@@ -14,10 +14,10 @@ const MOVEMENT_REASONS = {
     "Compra proveedor",
     "Reposicion",
     "Devolucion cliente",
+    "Venta cancelada",
     "Entrada manual",
   ],
   salida: [
-    "Venta",
     "Rotura",
     "Caducado",
     "Perdida",
@@ -42,6 +42,7 @@ const initialForm = {
   fecha_caducidad: "",
   motivo: "",
   motivo_personalizado: "",
+  descripcion: "",
 };
 
 const NewMovement = ({ onCreated }) => {
@@ -201,8 +202,20 @@ const NewMovement = ({ onCreated }) => {
       return "Escribe el motivo personalizado";
     }
 
+    if (!finalReason) {
+      return "Selecciona un motivo";
+    }
+
     if (finalReason.length > 255) {
       return "El motivo no puede superar los 255 caracteres";
+    }
+
+    if (!form.descripcion.trim()) {
+      return "Escribe una descripción";
+    }
+
+    if (form.descripcion.trim().length > 4000) {
+      return "La descripción no puede superar los 4000 caracteres";
     }
 
     return null;
@@ -233,7 +246,8 @@ const NewMovement = ({ onCreated }) => {
         cantidad: normalizeStockQuantity(form.cantidad),
         numero_lote: isEntry ? form.numero_lote.trim() || null : null,
         fecha_caducidad: isEntry ? form.fecha_caducidad || null : null,
-        motivo: finalReason || null,
+        motivo: finalReason,
+        descripcion: form.descripcion.trim(),
       });
 
       await onCreated?.();
@@ -356,6 +370,7 @@ const NewMovement = ({ onCreated }) => {
                               value={form.motivo}
                               onChange={handleChange}
                               className="form-control"
+                              required
                             >
                               <option value="">Selecciona un motivo</option>
                               {MOVEMENT_REASONS[form.tipo].map((reason) => (
@@ -363,19 +378,23 @@ const NewMovement = ({ onCreated }) => {
                                   {reason}
                                 </option>
                               ))}
-                              <option value={OTHER_REASON}>Otro</option>
                             </select>
 
-                            {form.motivo === OTHER_REASON && (
-                              <input
-                                type="text"
-                                name="motivo_personalizado"
-                                value={form.motivo_personalizado}
-                                onChange={handleChange}
-                                className="form-control mt-2"
-                                placeholder="Escribe el motivo"
-                              />
-                            )}
+                          </div>
+                        </div>
+
+                        <div className="mb-3 row align-items-center">
+                          <label className="col-sm-5 col-form-label text-nowrap">Descripción</label>
+                          <div className="col-sm-7">
+                            <textarea
+                              name="descripcion"
+                              value={form.descripcion}
+                              onChange={handleChange}
+                              className="form-control"
+                              rows="3"
+                              maxLength="4000"
+                              required
+                            />
                           </div>
                         </div>
                       </div>

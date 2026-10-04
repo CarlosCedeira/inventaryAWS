@@ -26,7 +26,10 @@ async function createTestSchema() {
 async function cleanDatabase() {
   const connection = await getConnection();
   try {
+    await connection.execute<ResultSetHeader>("UPDATE movimientos_inventario SET linea_devolucion_id = NULL WHERE linea_devolucion_id IS NOT NULL");
+    await connection.execute<ResultSetHeader>("DELETE FROM lineas_devolucion");
     await connection.execute<ResultSetHeader>("DELETE FROM movimientos_inventario");
+    await connection.execute<ResultSetHeader>("DELETE FROM devoluciones");
     await connection.execute<ResultSetHeader>("DELETE FROM lineas_venta");
     await connection.execute<ResultSetHeader>("DELETE FROM ventas");
     await connection.execute<ResultSetHeader>("DELETE FROM clientes");

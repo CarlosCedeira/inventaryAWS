@@ -157,7 +157,7 @@ async function getProductsWithoutRecentSales(tenantId: number) {
          AND NOT EXISTS (
            SELECT 1 FROM lineas_venta l
            INNER JOIN ventas v ON v.id = l.venta_id AND v.tenant_id = l.tenant_id
-           WHERE l.tenant_id = p.tenant_id AND l.producto_id = p.id AND v.estado = 'confirmada'
+           WHERE l.tenant_id = p.tenant_id AND l.producto_id = p.id AND l.cantidad > l.cantidad_devuelta AND v.estado IN ('pendiente_pago','completa','parcialmente_devuelta')
              AND COALESCE(v.fecha_confirmacion, v.created_at) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
          )
        GROUP BY p.id

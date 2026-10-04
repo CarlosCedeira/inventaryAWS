@@ -1,5 +1,5 @@
 import type { ApiResponse, AuthenticatedRequest } from "../../types/http";
-import { buildSaleListFilters, buildSalePayload } from "./sales.validators";
+import { buildSaleCancellationPayload, buildSaleListFilters, buildSalePayload, buildSaleReturnPayload } from "./sales.validators";
 const service = require("./sales.service") as typeof import("./sales.service");
 const { log, logUnexpectedError } = require("../../utils/logger");
 async function getSales(req: AuthenticatedRequest, res: ApiResponse) {
@@ -38,4 +38,44 @@ async function createSale(req: AuthenticatedRequest, res: ApiResponse) {
     logUnexpectedError(req, "sale_create_failed", error); res.status(500).json({ error: "Error interno del servidor" });
   }
 }
-export { createSale, getSaleDetail, getSaleFilterOptions, getSaleSummary, getSales };
+async function cancelSale(req: AuthenticatedRequest, res: ApiResponse) {
+  const saleId = Number(req.params.id);
+  if (!Number.isSafeInteger(saleId) || saleId <= 0) return res.status(400).json({ error: "El identificador de venta no es valido" });
+  const validation = buildSaleCancellationPayload(req.body);
+  if (validation.error !== undefined) return res.status(400).json({ error: validation.error });
+  try {
+    const sale = await service.cancelSale(req.tenantId, req.user.id, saleId, validation.reason);
+    log("info", "sale_cancelled", { requestId: req.requestId, tenantId: req.tenantId, userId: req.user.id, saleId });
+    res.json(sale);
+  } catch (error) {
+    if (error instanceof Error && "statusCode" in error) return res.status((error as Error & { statusCode: number }).statusCode).json({ error: error.message });
+    logUnexpectedError(req, "sale_cancel_failed", error); res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+async function returnSale(req: AuthenticatedRequest, res: ApiResponse) {
+  const saleId = Number(req.params.id);
+  if (!Number.isSafeInteger(saleId) || saleId <= 0) return res.status(400).json({ error: "El identificador de venta no es valido" });
+  const validation = buildSaleReturnPayload(req.body);
+  if (validation.error !== undefined) return res.status(400).json({ error: validation.error });
+  try {
+    const result = await service.returnSale(req.tenantId, req.user.id, saleId, validation.saleReturn);
+    log("info", "sale_returned", { requestId: req.requestId, tenantId: req.tenantId, userId: req.user.id, saleId, returnId: result.id });
+    res.status(201).json(result);
+  } catch (error) {
+    if (error instanceof Error && "statusCode" in error) return res.status((error as Error & { statusCode: number }).statusCode).json({ error: error.message });
+    logUnexpectedError(req, "sale_return_failed", error); res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+async function completeSale(req: AuthenticatedRequest, res: ApiResponse) {
+  const saleId = Number(req.params.id);
+  if (!Number.isSafeInteger(saleId) || saleId <= 0) return res.status(400).json({ error: "El identificador de venta no es valido" });
+  try {
+    const sale = await service.completeSale(req.tenantId, saleId);
+    log("info", "sale_completed", { requestId: req.requestId, tenantId: req.tenantId, userId: req.user.id, saleId });
+    res.json(sale);
+  } catch (error) {
+    if (error instanceof Error && "statusCode" in error) return res.status((error as Error & { statusCode: number }).statusCode).json({ error: error.message });
+    logUnexpectedError(req, "sale_complete_failed", error); res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+export { cancelSale, completeSale, createSale, getSaleDetail, getSaleFilterOptions, getSaleSummary, getSales, returnSale };

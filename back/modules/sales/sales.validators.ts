@@ -1,6 +1,7 @@
 type Input = Record<string, unknown>;
 export interface SaleLineInput { productId: number; quantity: number; }
-export interface SaleInput { clientId: number | null; reference: string | null; currency: string; notes: string | null; lines: SaleLineInput[]; }
+export interface SaleInput { clientId: number; reference: string | null; currency: string; notes: string | null; lines: SaleLineInput[]; }
+export interface SaleReturnInput { reason: string; lines: Array<{ movementId: number; quantity: number }>; }
 export interface SaleListFilters {
   search: string;
   period: "" | "today" | "week" | "month" | "quarter" | "custom";
@@ -20,8 +21,9 @@ function optionalText(value: unknown, limit: number) {
 }
 
 function buildSalePayload(body: Input): { sale: SaleInput; error?: never } | { error: string } {
-  const clientId = body.cliente_id === undefined || body.cliente_id === null || body.cliente_id === "" ? null : Number(body.cliente_id);
-  if (clientId !== null && (!Number.isSafeInteger(clientId) || clientId <= 0)) return { error: "El cliente no es valido" };
+  if (body.cliente_id === undefined || body.cliente_id === null || body.cliente_id === "") return { error: "Debes seleccionar un cliente" };
+  const clientId = Number(body.cliente_id);
+  if (!Number.isSafeInteger(clientId) || clientId <= 0) return { error: "El cliente no es valido" };
   if (!Array.isArray(body.lineas) || body.lineas.length === 0) return { error: "La venta debe tener al menos una linea" };
   const lines: SaleLineInput[] = [];
   for (const line of body.lineas as Input[]) {
@@ -33,6 +35,33 @@ function buildSalePayload(body: Input): { sale: SaleInput; error?: never } | { e
   const currency = (optionalText(body.moneda, 3) || "EUR").toUpperCase();
   if (!/^[A-Z]{3}$/.test(currency)) return { error: "La moneda debe tener tres letras" };
   return { sale: { clientId, reference: optionalText(body.referencia, 64), currency, notes: optionalText(body.observaciones, 4000), lines } };
+}
+
+function buildSaleCancellationPayload(body: Input): { reason: string; error?: never } | { error: string } {
+  const reason = optionalText(body.motivo, 256);
+  if (!reason) return { error: "Indica el motivo de la anulación" };
+  if (reason.length > 255) return { error: "El motivo de la anulación no puede superar los 255 caracteres" };
+  return { reason };
+}
+
+function buildSaleReturnPayload(body: Input): { saleReturn: SaleReturnInput; error?: never } | { error: string } {
+  const reason = optionalText(body.motivo, 256);
+  if (!reason) return { error: "Indica el motivo de la devolución" };
+  if (reason.length > 255) return { error: "El motivo de la devolución no puede superar los 255 caracteres" };
+  if (!Array.isArray(body.lineas) || body.lineas.length === 0) return { error: "Selecciona al menos un lote para devolver" };
+  const lines: SaleReturnInput["lines"] = [];
+  const movementIds = new Set<number>();
+  for (const line of body.lineas as Input[]) {
+    const movementId = Number(line.movimiento_id);
+    const quantity = Number(line.cantidad);
+    if (!Number.isSafeInteger(movementId) || movementId <= 0 || !Number.isSafeInteger(quantity) || quantity <= 0) {
+      return { error: "Cada devolución debe indicar un movimiento y una cantidad positiva" };
+    }
+    if (movementIds.has(movementId)) return { error: "No se puede repetir el mismo lote en la devolución" };
+    movementIds.add(movementId);
+    lines.push({ movementId, quantity });
+  }
+  return { saleReturn: { reason, lines } };
 }
 
 function queryText(value: unknown, maxLength = 100) {
@@ -92,4 +121,4 @@ function buildSaleListFilters(query: Input): { filters: SaleListFilters; error?:
   };
 }
 
-export { buildSalePayload, buildSaleListFilters };
+export { buildSalePayload, buildSaleCancellationPayload, buildSaleListFilters, buildSaleReturnPayload };

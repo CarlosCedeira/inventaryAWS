@@ -14,4 +14,7 @@ export const salesService = {
   summary: () => request(`${API_URL}/ventas/resumen`),
   getById: (saleId) => request(`${API_URL}/ventas/${saleId}`),
   create: (sale) => request(`${API_URL}/ventas`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(sale) }),
+  cancel: (saleId, reason) => request(`${API_URL}/ventas/${saleId}/anular`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ motivo: reason }) }),
+  return: (saleId, saleReturn) => request(`${API_URL}/ventas/${saleId}/devolver`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(saleReturn) }),
+  complete: (saleId) => request(`${API_URL}/ventas/${saleId}/completar`, { method: "POST" }),
 };
