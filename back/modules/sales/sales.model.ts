@@ -88,17 +88,52 @@ async function getSaleFilterOptions(tenantId: number) {
   } finally { connection.release(); }
 }
 
+async function exportSales(tenantId: number, dateFrom: string, dateTo: string) {
+  const connection = await getConnection();
+  try {
+    const [rows] = await connection.execute<RowDataPacket[]>(
+      `SELECT DATE_FORMAT(COALESCE(v.fecha_confirmacion, v.created_at), '%Y-%m-%d') AS fecha,
+              COALESCE(v.referencia, CONCAT('#', v.id)) AS referencia, v.estado, v.moneda,
+              v.cliente_nombre, v.cliente_identificacion_fiscal, v.cliente_email, v.observaciones,
+              l.descripcion AS producto, l.cantidad, l.cantidad_devuelta, l.precio_unitario,
+              l.impuesto_porcentaje, l.impuesto_total, l.importe_total,
+              CASE WHEN l.estado = 'cancelada' THEN 0 ELSE GREATEST(l.cantidad - l.cantidad_devuelta, 0) END AS cantidad_facturable,
+              CASE WHEN l.estado = 'cancelada' THEN 0 ELSE GREATEST((l.precio_unitario * l.cantidad) - COALESCE(rd.subtotal_devuelto, 0), 0) END AS base_neta,
+              CASE WHEN l.estado = 'cancelada' THEN 0 ELSE GREATEST(l.impuesto_total - COALESCE(rd.impuesto_devuelto, 0), 0) END AS iva_neto,
+              CASE WHEN l.estado = 'cancelada' THEN 0 ELSE GREATEST(l.importe_total - COALESCE(rd.importe_devuelto, 0), 0) END AS total_neto
+       FROM ventas v
+       INNER JOIN lineas_venta l ON l.venta_id = v.id AND l.tenant_id = v.tenant_id
+       LEFT JOIN (
+         SELECT ld.tenant_id, ld.linea_venta_id,
+                SUM(ld.importe_total - ld.impuesto_total) AS subtotal_devuelto,
+                SUM(ld.impuesto_total) AS impuesto_devuelto,
+                SUM(ld.importe_total) AS importe_devuelto
+         FROM lineas_devolucion ld
+         INNER JOIN devoluciones d ON d.id = ld.devolucion_id AND d.tenant_id = ld.tenant_id
+         WHERE d.estado = 'confirmada'
+         GROUP BY ld.tenant_id, ld.linea_venta_id
+       ) rd ON rd.linea_venta_id = l.id AND rd.tenant_id = l.tenant_id
+       WHERE v.tenant_id = ? AND v.estado = 'completa'
+         AND COALESCE(v.fecha_confirmacion, v.created_at) >= ?
+         AND COALESCE(v.fecha_confirmacion, v.created_at) < DATE_ADD(?, INTERVAL 1 DAY)
+       ORDER BY COALESCE(v.fecha_confirmacion, v.created_at), v.id, l.id`,
+      [tenantId, dateFrom, dateTo],
+    );
+    return rows;
+  } finally { connection.release(); }
+}
+
 async function getSaleSummary(tenantId: number) {
   const connection = await getConnection();
   const confirmedDate = "COALESCE(v.fecha_confirmacion, v.created_at)";
   try {
     const [today, month, ticket, inactiveClients, recurringClients, topProducts, unsoldProducts, highSales] = await Promise.all([
       connection.execute<RowDataPacket[]>(`SELECT COUNT(*) AS cantidad, COALESCE(SUM(v.total), 0) AS total FROM ventas v WHERE v.tenant_id = ? AND v.estado IN ('completa','parcialmente_devuelta') AND DATE(${confirmedDate}) = CURDATE()`, [tenantId]),
-      connection.execute<RowDataPacket[]>(`SELECT COUNT(*) AS cantidad, COALESCE(SUM(v.total), 0) AS total FROM ventas v WHERE v.tenant_id = ? AND v.estado IN ('completa','parcialmente_devuelta') AND DATE(${confirmedDate}) >= DATE_FORMAT(CURDATE(), '%Y-%m-01')`, [tenantId]),
-      connection.execute<RowDataPacket[]>(`SELECT COALESCE(AVG(v.total), 0) AS total FROM ventas v WHERE v.tenant_id = ? AND v.estado IN ('completa','parcialmente_devuelta') AND DATE(${confirmedDate}) >= DATE_FORMAT(CURDATE(), '%Y-%m-01')`, [tenantId]),
-      connection.execute<RowDataPacket[]>(`SELECT COUNT(*) AS cantidad FROM clientes c WHERE c.tenant_id = ? AND c.activo = TRUE AND NOT EXISTS (SELECT 1 FROM ventas v WHERE v.tenant_id = c.tenant_id AND v.cliente_id = c.id AND v.estado IN ('completa','parcialmente_devuelta','devuelta') AND ${confirmedDate} >= DATE_SUB(CURDATE(), INTERVAL 30 DAY))`, [tenantId]),
+      connection.execute<RowDataPacket[]>(`SELECT COUNT(*) AS cantidad, COALESCE(SUM(GREATEST(v.total - COALESCE(rd.total_devuelto, 0), 0)), 0) AS total FROM ventas v LEFT JOIN (SELECT d.tenant_id, d.venta_id, SUM(d.total) AS total_devuelto FROM devoluciones d WHERE d.estado = 'confirmada' GROUP BY d.tenant_id, d.venta_id) rd ON rd.venta_id = v.id AND rd.tenant_id = v.tenant_id WHERE v.tenant_id = ? AND v.estado IN ('completa','parcialmente_devuelta') AND DATE(${confirmedDate}) >= DATE_FORMAT(CURDATE(), '%Y-%m-01')`, [tenantId]),
+      connection.execute<RowDataPacket[]>(`SELECT COALESCE(AVG(GREATEST(v.total - COALESCE(rd.total_devuelto, 0), 0)), 0) AS total FROM ventas v LEFT JOIN (SELECT d.tenant_id, d.venta_id, SUM(d.total) AS total_devuelto FROM devoluciones d WHERE d.estado = 'confirmada' GROUP BY d.tenant_id, d.venta_id) rd ON rd.venta_id = v.id AND rd.tenant_id = v.tenant_id WHERE v.tenant_id = ? AND v.estado IN ('completa','parcialmente_devuelta') AND DATE(${confirmedDate}) >= DATE_FORMAT(CURDATE(), '%Y-%m-01')`, [tenantId]),
+      connection.execute<RowDataPacket[]>(`SELECT COUNT(*) AS cantidad FROM clientes c WHERE c.tenant_id = ? AND c.activo = TRUE AND NOT EXISTS (SELECT 1 FROM ventas v WHERE v.tenant_id = c.tenant_id AND v.cliente_id = c.id AND v.estado IN ('completa','parcialmente_devuelta') AND ${confirmedDate} >= DATE_SUB(CURDATE(), INTERVAL 30 DAY))`, [tenantId]),
       connection.execute<RowDataPacket[]>(`SELECT COUNT(*) AS cantidad FROM (SELECT v.cliente_id FROM ventas v WHERE v.tenant_id = ? AND v.estado IN ('completa','parcialmente_devuelta','devuelta') AND v.cliente_id IS NOT NULL AND ${confirmedDate} >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) GROUP BY v.cliente_id HAVING COUNT(*) > 1) recurrentes`, [tenantId]),
-      connection.execute<RowDataPacket[]>(`SELECT l.producto_id, MAX(l.descripcion) AS nombre, COALESCE(SUM(l.cantidad - l.cantidad_devuelta), 0) AS unidades, COALESCE(SUM(l.importe_total), 0) AS total FROM lineas_venta l INNER JOIN ventas v ON v.id = l.venta_id AND v.tenant_id = l.tenant_id WHERE l.tenant_id = ? AND v.estado IN ('completa','parcialmente_devuelta') AND ${confirmedDate} >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) GROUP BY l.producto_id HAVING unidades > 0 ORDER BY unidades DESC, total DESC LIMIT 1`, [tenantId]),
+      connection.execute<RowDataPacket[]>(`SELECT l.producto_id, MAX(l.descripcion) AS nombre, COALESCE(SUM(l.cantidad - l.cantidad_devuelta), 0) AS unidades, COALESCE(SUM(l.importe_total - COALESCE(rd.importe_devuelto, 0)), 0) AS total FROM lineas_venta l INNER JOIN ventas v ON v.id = l.venta_id AND v.tenant_id = l.tenant_id LEFT JOIN (SELECT ld.tenant_id, ld.linea_venta_id, SUM(ld.importe_total) AS importe_devuelto FROM lineas_devolucion ld INNER JOIN devoluciones d ON d.id = ld.devolucion_id AND d.tenant_id = ld.tenant_id WHERE d.estado = 'confirmada' GROUP BY ld.tenant_id, ld.linea_venta_id) rd ON rd.linea_venta_id = l.id AND rd.tenant_id = l.tenant_id WHERE l.tenant_id = ? AND v.estado IN ('completa','parcialmente_devuelta') AND ${confirmedDate} >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) GROUP BY l.producto_id HAVING unidades > 0 ORDER BY unidades DESC, total DESC LIMIT 1`, [tenantId]),
       connection.execute<RowDataPacket[]>(`SELECT COUNT(*) AS cantidad FROM (SELECT p.id FROM productos p INNER JOIN inventario i ON i.producto_id = p.id AND i.tenant_id = p.tenant_id WHERE p.tenant_id = ? AND p.eliminado = FALSE AND NOT EXISTS (SELECT 1 FROM lineas_venta l INNER JOIN ventas v ON v.id = l.venta_id AND v.tenant_id = l.tenant_id WHERE l.tenant_id = p.tenant_id AND l.producto_id = p.id AND l.cantidad > l.cantidad_devuelta AND v.estado IN ('completa','parcialmente_devuelta') AND ${confirmedDate} >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)) GROUP BY p.id HAVING SUM(i.cantidad) > 0) sin_ventas`, [tenantId]),
       connection.execute<RowDataPacket[]>(`SELECT COUNT(*) AS cantidad, COALESCE(SUM(v.total), 0) AS total FROM ventas v WHERE v.tenant_id = ? AND v.estado IN ('completa','parcialmente_devuelta') AND v.total >= 500 AND DATE(${confirmedDate}) >= DATE_FORMAT(CURDATE(), '%Y-%m-01')`, [tenantId]),
     ]);
@@ -250,7 +285,7 @@ async function cancelSale(tenantId: number, userId: number, saleId: number, reas
     if (!["pendiente_pago", "completa"].includes(String(sales[0].estado))) throw httpError(409, "Solo se pueden anular ventas pendientes o completas sin devoluciones");
 
     const [movements] = await connection.execute<RowDataPacket[]>(
-      `SELECT m.producto_id, m.linea_venta_id, m.cantidad, m.numero_lote, m.fecha_caducidad
+      `SELECT m.producto_id, m.inventario_id, m.linea_venta_id, m.cantidad, m.numero_lote, m.fecha_caducidad
        FROM movimientos_inventario m
        INNER JOIN lineas_venta l ON l.id = m.linea_venta_id AND l.tenant_id = m.tenant_id
        WHERE l.venta_id = ? AND m.tenant_id = ? AND m.tipo = 'salida'
@@ -266,6 +301,7 @@ async function cancelSale(tenantId: number, userId: number, saleId: number, reas
         tenantId,
         userId,
         productId: Number(movement.producto_id),
+        inventoryId: Number(movement.inventario_id),
         quantity: Number(movement.cantidad),
         lotNumber: movement.numero_lote || null,
         expirationDate: movement.fecha_caducidad || null,
@@ -308,7 +344,7 @@ async function returnSale(tenantId: number, userId: number, saleId: number, sale
     const movementIds = saleReturn.lines.map((line) => line.movementId);
     const placeholders = movementIds.map(() => "?").join(",");
     const [movements] = await connection.execute<RowDataPacket[]>(
-      `SELECT m.id, m.producto_id, m.linea_venta_id, m.cantidad, m.numero_lote, m.fecha_caducidad,
+      `SELECT m.id, m.producto_id, m.inventario_id, m.linea_venta_id, m.cantidad, m.numero_lote, m.fecha_caducidad,
               l.precio_unitario, l.impuesto_porcentaje
        FROM movimientos_inventario m
        INNER JOIN lineas_venta l ON l.id = m.linea_venta_id AND l.tenant_id = m.tenant_id
@@ -356,6 +392,7 @@ async function returnSale(tenantId: number, userId: number, saleId: number, sale
         tenantId,
         userId,
         productId: Number(movement.producto_id),
+        inventoryId: Number(movement.inventario_id),
         quantity: requested.quantity,
         lotNumber: movement.numero_lote || null,
         expirationDate: movement.fecha_caducidad || null,
@@ -418,4 +455,4 @@ async function completeSale(tenantId: number, saleId: number) {
   }
 }
 
-export { cancelSale, completeSale, confirmSale, getSaleDetail, getSaleFilterOptions, getSaleSummary, listSales, returnSale };
+export { cancelSale, completeSale, confirmSale, exportSales, getSaleDetail, getSaleFilterOptions, getSaleSummary, listSales, returnSale };

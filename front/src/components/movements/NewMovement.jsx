@@ -45,7 +45,7 @@ const initialForm = {
   descripcion: "",
 };
 
-const NewMovement = ({ onCreated }) => {
+const NewMovement = ({ onCreated, onClose, preselectedProduct = null, hideTrigger = false }) => {
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -90,6 +90,7 @@ const NewMovement = ({ onCreated }) => {
     setProducts([]);
     setAvailableLots([]);
     setForm(initialForm);
+    onClose?.();
   };
 
   const normalizeDateValue = (date) => {
@@ -161,6 +162,12 @@ const NewMovement = ({ onCreated }) => {
       setLoadingLots(false);
     }
   };
+
+  useEffect(() => {
+    if (!preselectedProduct) return;
+    setShowModal(true);
+    void handleSelectProduct(preselectedProduct);
+  }, [preselectedProduct]);
 
   const handleSelectLot = (event) => {
     const inventoryId = event.target.value;
@@ -262,9 +269,9 @@ const NewMovement = ({ onCreated }) => {
 
   return (
     <>
-      <button className="btn btn-success my-3 me-5" onClick={handleOpen}>
+      {!hideTrigger && <button className="btn btn-success my-3 me-5" onClick={handleOpen}>
         Nuevo movimiento
-      </button>
+      </button>}
 
       {showModal && (
         <div
@@ -299,6 +306,7 @@ const NewMovement = ({ onCreated }) => {
                           placeholder="Buscar por nombre"
                           autoComplete="off"
                           required
+                          disabled={Boolean(preselectedProduct)}
                         />
                         {products.length > 0 && (
                           <div className="list-group position-absolute start-0 end-0 mx-3 mt-1 shadow movement-product-results">

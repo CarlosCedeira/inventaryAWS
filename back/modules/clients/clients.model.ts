@@ -34,7 +34,7 @@ async function listCommercialClients(tenantId: number, search = "", daysWithoutP
         AND (? IS NULL OR NOT EXISTS (
           SELECT 1 FROM ventas v
           WHERE v.tenant_id = clientes.tenant_id AND v.cliente_id = clientes.id
-            AND v.estado IN ('completa','parcialmente_devuelta','devuelta') AND COALESCE(v.fecha_confirmacion, v.created_at) >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+            AND v.estado = 'completa' AND COALESCE(v.fecha_confirmacion, v.created_at) >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
         ))
       ORDER BY activo DESC, nombre ASC, id ASC
       LIMIT 100

@@ -167,3 +167,42 @@ test("una venta admite devoluciones parciales y completas por lote", async () =>
     expect(entries.every((entry) => entry.motivo === "Devolución cliente" && entry.linea_devolucion_id !== null)).toBe(true);
   } finally { verify.release(); }
 });
+
+test("anulaciones y devoluciones no reconstruyen un lote original inexistente", async () => {
+  const user = await seedTenantAndUser({ email: "lote-inexistente@demo.test" });
+  const login = await request(app).post("/auth/login").send({ email: user.email, password: user.password });
+  const token = login.body.token;
+  const connection = await getConnection();
+  let clientId: number; let productId: number; let inventoryId: number;
+  try {
+    const [client] = await connection.execute<ResultSetHeader>("INSERT INTO clientes (tenant_id,nombre,tarifa) VALUES (?,?,0)", [user.tenantId, "Cliente lote eliminado"]); clientId = client.insertId;
+    const [category] = await connection.execute<ResultSetHeader>("INSERT INTO categorias (tenant_id,nombre) VALUES (?,?)", [user.tenantId, "Integridad"]);
+    const [tax] = await connection.execute<ResultSetHeader>("INSERT INTO impuestos (nombre,porcentaje,pais_codigo) VALUES (?,?,?)", ["IVA integridad", 21, "ES"]);
+    const [product] = await connection.execute<ResultSetHeader>("INSERT INTO productos (tenant_id,nombre,categoria_id,impuesto_id,precio_compra,precio_venta,stock_minimo) VALUES (?,?,?,?,?,?,?)", [user.tenantId, "Producto lote eliminado", category.insertId, tax.insertId, 1, 3, 1]); productId = product.insertId;
+    const [inventory] = await connection.execute<ResultSetHeader>("INSERT INTO inventario (tenant_id,producto_id,cantidad,numero_lote) VALUES (?,?,?,?)", [user.tenantId, productId, 1, "NO-RECREAR"]); inventoryId = inventory.insertId;
+  } finally { connection.release(); }
+
+  const sale = await request(app).post("/ventas").set("Authorization", `Bearer ${token}`).send({ cliente_id: clientId!, lineas: [{ producto_id: productId!, cantidad: 1 }] });
+  const movementId = sale.body.lineas[0].movements[0];
+  const corrupt = await getConnection();
+  try {
+    await corrupt.execute("UPDATE movimientos_inventario SET inventario_id = NULL WHERE id = ? AND tenant_id = ?", [movementId, user.tenantId]);
+    await corrupt.execute("DELETE FROM inventario WHERE id = ? AND tenant_id = ?", [inventoryId!, user.tenantId]);
+  } finally { corrupt.release(); }
+
+  const cancellation = await request(app).post(`/ventas/${sale.body.id}/anular`).set("Authorization", `Bearer ${token}`).send({ motivo: "Debe fallar" });
+  expect(cancellation.status).toBe(409);
+  expect(cancellation.body).toEqual({ error: "No se puede revertir la venta: el lote original ya no existe" });
+  const saleReturn = await request(app).post(`/ventas/${sale.body.id}/devolver`).set("Authorization", `Bearer ${token}`).send({ motivo: "También debe fallar", lineas: [{ movimiento_id: movementId, cantidad: 1 }] });
+  expect(saleReturn.status).toBe(409);
+
+  const verify = await getConnection();
+  try {
+    const [inventory] = await verify.execute<RowDataPacket[]>("SELECT id FROM inventario WHERE tenant_id = ? AND producto_id = ?", [user.tenantId, productId!]);
+    const [returns] = await verify.execute<RowDataPacket[]>("SELECT id FROM devoluciones WHERE tenant_id = ? AND venta_id = ?", [user.tenantId, sale.body.id]);
+    const [sales] = await verify.execute<RowDataPacket[]>("SELECT estado FROM ventas WHERE id = ? AND tenant_id = ?", [sale.body.id, user.tenantId]);
+    expect(inventory).toHaveLength(0);
+    expect(returns).toHaveLength(0);
+    expect(sales[0].estado).toBe("pendiente_pago");
+  } finally { verify.release(); }
+});

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { clientService } from "./clientService";
 import ClientCardLayout from "./cardLayout/ClientCardLayout";
+import ClientSaleModal from "../sales/ClientSaleModal";
 import "./clients.css";
 
 const emptyClient = {
@@ -36,6 +37,7 @@ export default function Clients() {
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [selectedClient, setSelectedClient] = useState(null);
+  const [saleClient, setSaleClient] = useState(null);
 
   const loadClients = useCallback(async (term = "", onlyWithoutPurchases = false) => {
     setLoading(true);
@@ -61,7 +63,6 @@ export default function Clients() {
   const metrics = useMemo(() => ({
     total: clients.length,
     active: clients.filter((client) => client.activo).length,
-    withEmail: clients.filter((client) => client.email).length,
   }), [clients]);
 
   const openCreate = () => {
@@ -130,7 +131,6 @@ export default function Clients() {
       <section className="clients-metrics" aria-label="Resumen de clientes">
         <article className="client-metric-card"><span>Clientes</span><strong>{loading ? "—" : metrics.total}</strong><small>Resultados actuales</small></article>
         <article className="client-metric-card"><span>Activos</span><strong>{loading ? "—" : metrics.active}</strong><small>Disponibles para ventas</small></article>
-        <article className="client-metric-card"><span>Con email</span><strong>{loading ? "—" : metrics.withEmail}</strong><small>Contacto registrado</small></article>
         <button type="button" className={`client-metric-card client-metric-filter${withoutPurchases ? " is-active" : ""}`} onClick={() => setWithoutPurchases((current) => !current)}><span>Sin compras recientes</span><strong>{inactivePurchaseCount ?? "—"}</strong><small>{withoutPurchases ? "Filtro activo · Desactivar" : "Sin ventas en 30 días · Filtrar"}</small></button>
       </section>
 
@@ -145,15 +145,15 @@ export default function Clients() {
         </div>
         <div className="table-responsive">
           <table className="table table-hover mb-0 clients-table">
-            <thead><tr><th>Cliente</th><th>Contacto</th><th>Identificación</th><th>Estado</th><th aria-label="Acciones" /></tr></thead>
+            <thead><tr><th>Cliente</th><th>Contacto</th><th>Identificación</th><th>Estado</th><th>Vender</th></tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan="5" className="clients-empty">Cargando clientes…</td></tr> : clients.length === 0 ? <tr><td colSpan="5" className="clients-empty">No hay clientes que coincidan con la búsqueda.</td></tr> : clients.map((client) => (
+              {loading ? <tr><td colSpan="6" className="clients-empty">Cargando clientes…</td></tr> : clients.length === 0 ? <tr><td colSpan="6" className="clients-empty">No hay clientes que coincidan con la búsqueda.</td></tr> : clients.map((client) => (
                 <tr key={client.id} className="client-table-row" onClick={() => setSelectedClient(client)}>
                   <td data-label="Cliente"><strong>{client.nombre}</strong>{client.direccion && <small>{client.direccion}</small>}</td>
                   <td data-label="Contacto"><div>{client.email || "Sin email"}</div><small>{client.telefono || "Sin teléfono"}</small></td>
                   <td data-label="Identificación">{client.identificacion_fiscal || "—"}</td>
                   <td data-label="Estado"><span className={`badge ${client.activo ? "text-bg-success" : "text-bg-secondary"}`}>{client.activo ? "Activo" : "Inactivo"}</span></td>
-                  <td data-label="Acciones" className="clients-actions"><button type="button" className="btn btn-sm btn-outline-primary" onClick={(event) => { event.stopPropagation(); openEdit(client); }}>Editar</button>{client.activo && <button type="button" className="btn btn-sm btn-outline-secondary" onClick={(event) => { event.stopPropagation(); void deactivate(client); }}>Desactivar</button>}</td>
+                  <td data-label="Vender">{client.activo ? <button type="button" className="btn btn-sm btn-success" onClick={(event) => { event.stopPropagation(); setSaleClient(client); }}>Vender</button> : "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -162,6 +162,7 @@ export default function Clients() {
       </section>
 
       <ClientCardLayout client={selectedClient} onClose={() => setSelectedClient(null)} onEdit={openEdit} />
+      {saleClient && <ClientSaleModal client={saleClient} onClose={() => setSaleClient(null)} onCreated={() => { setSaleClient(null); void loadClients(search, withoutPurchases); }} />}
 
       {showForm && <div className="client-modal-backdrop" role="presentation" onMouseDown={closeForm}>
         <section className="client-modal-card" role="dialog" aria-modal="true" aria-labelledby="client-form-title" onMouseDown={(event) => event.stopPropagation()}>

@@ -1,5 +1,5 @@
 import type { ApiResponse, AuthenticatedRequest } from "../../types/http";
-import { buildSaleCancellationPayload, buildSaleListFilters, buildSalePayload, buildSaleReturnPayload } from "./sales.validators";
+import { buildSaleCancellationPayload, buildSaleExportFilters, buildSaleListFilters, buildSalePayload, buildSaleReturnPayload } from "./sales.validators";
 const service = require("./sales.service") as typeof import("./sales.service");
 const { log, logUnexpectedError } = require("../../utils/logger");
 async function getSales(req: AuthenticatedRequest, res: ApiResponse) {
@@ -11,6 +11,18 @@ async function getSales(req: AuthenticatedRequest, res: ApiResponse) {
 async function getSaleFilterOptions(req: AuthenticatedRequest, res: ApiResponse) {
   try { res.json(await service.getFilterOptions(req.tenantId)); }
   catch (error) { logUnexpectedError(req, "sale_filter_options_failed", error); res.status(500).json({ error: "Error interno del servidor" }); }
+}
+function csvCell(value: unknown) { const text = value === null || value === undefined ? "" : String(value); return `"${text.replace(/"/g, '""')}"`; }
+async function exportSales(req: AuthenticatedRequest, res: ApiResponse) {
+  const validation = buildSaleExportFilters((req as AuthenticatedRequest & { query: Record<string, unknown> }).query || {});
+  if (validation.error !== undefined) return res.status(400).json({ error: validation.error });
+  try {
+    const rows = await service.exportSales(req.tenantId, validation.dateFrom, validation.dateTo);
+    const headers = ["Fecha", "Referencia", "Estado", "Cliente", "NIF/CIF", "Email", "Producto", "Cantidad", "Precio sin IVA", "IVA %", "Base imponible", "Cuota IVA", "Total línea", "Base neta", "IVA neto", "Total neto", "Moneda", "Observaciones"];
+    const body = [headers, ...rows.map((row) => [row.fecha, row.referencia, row.estado, row.cliente_nombre, row.cliente_identificacion_fiscal, row.cliente_email, row.producto, row.cantidad, row.precio_unitario, row.impuesto_porcentaje, Number(row.importe_total) - Number(row.impuesto_total), row.impuesto_total, row.importe_total, row.base_neta, row.iva_neto, row.total_neto, row.moneda, row.observaciones])].map((line) => line.map(csvCell).join(";")).join("\r\n");
+    const download = res as ApiResponse & { set: (field: string, value: string) => unknown; send: (body: string) => unknown };
+    download.set("Content-Type", "text/csv; charset=utf-8"); download.set("Content-Disposition", `attachment; filename="ventas_${validation.dateFrom}_${validation.dateTo}.csv"`); download.send(`\uFEFF${body}`);
+  } catch (error) { logUnexpectedError(req, "sales_export_failed", error); res.status(500).json({ error: "No se pudieron exportar las ventas" }); }
 }
 async function getSaleSummary(req: AuthenticatedRequest, res: ApiResponse) {
   try { res.json(await service.getSummary(req.tenantId)); }
@@ -78,4 +90,4 @@ async function completeSale(req: AuthenticatedRequest, res: ApiResponse) {
     logUnexpectedError(req, "sale_complete_failed", error); res.status(500).json({ error: "Error interno del servidor" });
   }
 }
-export { cancelSale, completeSale, createSale, getSaleDetail, getSaleFilterOptions, getSaleSummary, getSales, returnSale };
+export { cancelSale, completeSale, createSale, exportSales, getSaleDetail, getSaleFilterOptions, getSaleSummary, getSales, returnSale };

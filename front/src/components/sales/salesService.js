@@ -11,6 +11,11 @@ export const salesService = {
     return request(`${API_URL}/ventas${suffix}`);
   },
   filterOptions: () => request(`${API_URL}/ventas/filtros`),
+  export: async (dateFrom, dateTo) => {
+    const response = await fetchWithAuth(`${API_URL}/ventas/exportar?fecha_desde=${encodeURIComponent(dateFrom)}&fecha_hasta=${encodeURIComponent(dateTo)}`);
+    if (!response.ok) { const body = await response.json().catch(() => ({})); throw new Error(body.error || "No se pudieron exportar las ventas"); }
+    return response.blob();
+  },
   summary: () => request(`${API_URL}/ventas/resumen`),
   getById: (saleId) => request(`${API_URL}/ventas/${saleId}`),
   create: (sale) => request(`${API_URL}/ventas`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(sale) }),

@@ -120,6 +120,22 @@ para relacionar su respuesta con los logs del servidor.
 - Descuenta stock aplicando FIFO.
 - Registra movimientos de salida.
 
+### Ciclo de ventas
+
+Brétema no gestiona cobros ni facturas. Una venta se crea como `pendiente_pago`
+(pendiente de finalizar) y descuenta el stock inmediatamente. El usuario debe
+marcarla como `completa` únicamente cuando la operación esté cerrada y lista
+para exportarse al programa externo de facturación. Solo las ventas completas
+se incluyen en el CSV de exportación. Las anulaciones restauran el stock y las
+devoluciones ajustan los importes netos y el inventario.
+
+Antes de poner una actualización en producción, validar al menos:
+
+1. Cliente activo → venta → completar → exportar CSV.
+2. Devolución parcial → importes netos y stock restaurado.
+3. Anulación → stock restaurado y venta excluida del CSV.
+4. Métricas mensuales netas tras una devolución.
+
 ### Frontend
 
 - Login protegido.

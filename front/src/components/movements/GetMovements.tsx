@@ -1,8 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { movementService, type Movement, type MovementFilters, type MovementType } from "./movementService";
-import NewMovement from "./NewMovement";
 import MovementCardLayout from "./cardLayout/MovementCardLayout";
 import "./GetMovements.css";
+
+const dateInputValue = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+const defaultDateRange = () => {
+  const end = new Date();
+  const start = new Date(end);
+  const originalDay = start.getDate();
+  start.setDate(1);
+  start.setMonth(start.getMonth() - 3);
+  start.setDate(Math.min(originalDay, new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate()));
+  return { startDate: dateInputValue(start), endDate: dateInputValue(end) };
+};
 
 const GetMovements = () => {
   const [movements, setMovements] = useState<Movement[]>([]);
@@ -12,8 +22,8 @@ const GetMovements = () => {
   const [selectedMovement, setSelectedMovement] = useState<Movement | null>(null);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<MovementType | "">("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [startDate, setStartDate] = useState(() => defaultDateRange().startDate);
+  const [endDate, setEndDate] = useState(() => defaultDateRange().endDate);
   const requestId = useRef(0);
 
   const apiFilters = useMemo<MovementFilters>(() => ({
@@ -141,7 +151,6 @@ const GetMovements = () => {
           <h1 className="movements-title">Movimientos de inventario</h1>
         </div>
 
-        <NewMovement onCreated={() => void fetchMovements(apiFilters)} />
       </header>
 
       <section className="movements-metrics">
@@ -191,7 +200,7 @@ const GetMovements = () => {
             <section className="movement-filters" aria-label="Filtrar movimientos">
        <div className="toolbar-field toolbar-search">
          <label className="w-100">
-          <span className="form-label">Buscar cliente</span>
+          <span className="form-label">Buscar </span>
           <input
             type="search"
             value={search}
@@ -202,7 +211,7 @@ const GetMovements = () => {
        </div>
 
         <label>
-          <span>Tipo</span>
+          <span>Tipo de movimiento</span>
           <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as MovementType | "")}>
             <option value="">Todos</option>
             <option value="entrada">Entradas</option>

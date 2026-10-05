@@ -216,6 +216,23 @@
   font-size: 0.875rem;
 }
 
+.product-detail.is-readonly input:disabled,
+.product-detail.is-readonly textarea:disabled,
+.product-detail.is-readonly select:disabled {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #1f2937;
+  opacity: 1;
+  box-shadow: none;
+  cursor: default;
+}
+
+.product-detail.is-readonly textarea:disabled { resize: none; }
+
 .product-detail-empty {
   padding: 1.5rem !important;
   text-align: center;

@@ -1,9 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Routes, Route, Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 
-import GetProducts from "../products/getProducts.jsx";
-import Clients from "../clients/Clients";
-import Sales from "../sales/Sales";
+import { CommercialWorkspace, InventoryWorkspace } from "../workspaces/Workspaces";
 import UsersManager from "../logging.jsx";
 import { clearSession, getSession } from "../../services/authService";
 
@@ -109,31 +107,21 @@ function Nav() {
             <ul className="navegation">
             <li className="nav-item mt-2">
   <Link
-    to="/productos"
+    to="/inventario"
     onClick={handleNavLinkClick}
     className={`nav-link text-white ${
-      location.pathname === "/productos" ? "active" : ""
+      location.pathname === "/inventario" ? "active" : ""
     }`}
   >
     {/* ...svg... */}
-    Productos
+    Inventario
   </Link>
 </li>
 
 <li className="nav-item mt-2">
-  <Link to="/ventas" onClick={handleNavLinkClick} className={`nav-link text-white ${["/ventas", "/movimientos"].includes(location.pathname) ? "active" : ""}`}>Ventas / Movimientos</Link>
+  <Link to="/ventas" onClick={handleNavLinkClick} className={`nav-link text-white ${location.pathname === "/ventas" ? "active" : ""}`}>ventas</Link>
 </li>
-<li className="nav-item mt-2">
-  <Link
-    to="/clientes"
-    onClick={handleNavLinkClick}
-    className={`nav-link text-white ${
-      location.pathname === "/clientes" ? "active" : ""
-    }`}
-  >
-    Clientes
-  </Link>
-</li>
+
             </ul>
 
             <div className=" mt-auto mx-2 mb-4 ">
@@ -161,31 +149,20 @@ function Nav() {
         <Routes>
           <Route
             path="/"
-            element={<Navigate to={isAuthenticated ? "/productos" : "/login"} replace />}
+            element={<Navigate to={isAuthenticated ? "/inventario" : "/login"} replace />}
           />
-          <Route
-            path="/productos"
-            element={
-              <ProtectedRoute isAuthenticated={isAuthenticated}>
-                <GetProducts />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/movimientos" element={<Navigate to="/ventas" replace />} />
-          <Route
-            path="/clientes"
-            element={
-              <ProtectedRoute isAuthenticated={isAuthenticated}>
-                <Clients />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/ventas" element={<ProtectedRoute isAuthenticated={isAuthenticated}><Sales /></ProtectedRoute>} />
+          <Route path="/inventario" element={<ProtectedRoute isAuthenticated={isAuthenticated}><InventoryWorkspace /></ProtectedRoute>} />
+          <Route path="/ventas" element={<ProtectedRoute isAuthenticated={isAuthenticated}><CommercialWorkspace /></ProtectedRoute>} />
+          <Route path="/productos" element={<Navigate to="/inventario" replace />} />
+          <Route path="/movimientos" element={<Navigate to="/inventario" replace />} />
+          <Route path="/clientes" element={<Navigate to="/ventas" replace />} />
+          <Route path="/ventas" element={<Navigate to="/ventas" replace />} />
           <Route
             path="/login"
-            element={isAuthenticated ? <Navigate to="/productos" replace /> : <UsersManager />}
+            element={isAuthenticated ? <Navigate to="/inventario" replace /> : <UsersManager />}
           />
         </Routes>
+        {isAuthenticated && <footer className="app-footer"><span>Brétema · Gestión de inventario</span><span>© 2026 Cedeira.dev · v1.0</span></footer>}
       </div>
     </div>
   );

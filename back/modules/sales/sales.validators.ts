@@ -121,4 +121,13 @@ function buildSaleListFilters(query: Input): { filters: SaleListFilters; error?:
   };
 }
 
-export { buildSalePayload, buildSaleCancellationPayload, buildSaleListFilters, buildSaleReturnPayload };
+function buildSaleExportFilters(query: Input): { dateFrom: string; dateTo: string; error?: never } | { error: string } {
+  const dateFrom = optionalDate(query.fecha_desde, "La fecha inicial");
+  const dateTo = optionalDate(query.fecha_hasta, "La fecha final");
+  if (dateFrom.error || dateTo.error) return { error: dateFrom.error || dateTo.error || "Fecha no válida" };
+  if (!dateFrom.value || !dateTo.value) return { error: "Indica una fecha inicial y final para exportar" };
+  if (dateFrom.value > dateTo.value) return { error: "La fecha inicial no puede ser posterior a la final" };
+  return { dateFrom: dateFrom.value, dateTo: dateTo.value };
+}
+
+export { buildSalePayload, buildSaleCancellationPayload, buildSaleExportFilters, buildSaleListFilters, buildSaleReturnPayload };

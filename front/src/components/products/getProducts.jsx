@@ -3,6 +3,7 @@ import { useProducts } from "./useProducts";
 import { productService } from "./productService";
 
 import CardLayout from "./cardLayout/CardLayout";
+import NewMovement from "../movements/NewMovement";
 import NewProduct from "./newProduct/newProduct";
 import NewCategory from "./newCategory/NewCategory";
 
@@ -89,6 +90,7 @@ const GetProducts = () => {
   const [showCard, setShowCard] = useState(false);
   const [fadeIn, setFadeIn] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [movementProduct, setMovementProduct] = useState(null);
   const [showExpirationDays, setShowExpirationDays] = useState(false);
   const [showStockComparison, setShowStockComparison] = useState(false);
 
@@ -237,7 +239,7 @@ const GetProducts = () => {
       <header className="inventory-header">
         <div>
           <p className="text-secondary mb-1">Control de inventario</p>
-          <h1 className="inventory-title">Panel de productos</h1>
+          <div className="inventory-title-row"><h1 className="inventory-title">Panel de productos</h1><span className="inventory-value">Inventario: {loading ? "—" : formatCurrency(metrics.inventoryValue)}</span></div>
         </div>
 
         <div className="inventory-header-actions">
@@ -250,23 +252,13 @@ const GetProducts = () => {
       {categoryError && <div className="alert alert-warning" role="alert">{categoryError} <button type="button" className="btn btn-sm btn-outline-secondary" onClick={refetchCategories}>Reintentar categorías</button></div>}
       <section className="inventory-metrics">
         <article className="metric-card">
-          <span>Productos activos</span>
+          <span>Productos</span>
           {loading ? (
             <strong className="skeleton-text skeleton-text-short" />
           ) : (
             <strong>{metrics.activeProducts}</strong>
           )}
-          <small>Listado actual</small>
-        </article>
-
-        <article className="metric-card">
-          <span>Valor del inventario</span>
-          {loading ? (
-            <strong className="skeleton-text" />
-          ) : (
-            <strong>{formatCurrency(metrics.inventoryValue)}</strong>
-          )}
-          <small>Segun precio de compra</small>
+          <small>Activos actuales</small>
         </article>
 
         <button
@@ -312,7 +304,7 @@ const GetProducts = () => {
           disabled={loading}
           onClick={() => toggleMetric("expiring")}
         >
-          <span>Próximos a caducar</span>
+          <span>Caducan pronto</span>
           {loading ? (
             <strong className="skeleton-text skeleton-text-short" />
           ) : (
@@ -324,7 +316,7 @@ const GetProducts = () => {
         <button type="button" className={`metric-card metric-filter${activeMetric === "expired" ? " is-active" : ""}`}
           aria-pressed={activeMetric === "expired"} aria-controls="products-table" disabled={loading}
           onClick={() => toggleMetric("expired")}>
-          <span>Stock caducado</span>
+          <span>Caducados</span>
           {loading ? <strong className="skeleton-text skeleton-text-short" /> : <strong className="text-danger">{metrics.expiredProducts}</strong>}
           <small>Productos pendientes de retirada</small>
           <span className="metric-filter-hint">{activeMetric === "expired" ? "✓ Filtro activo · Desactivar" : "Filtrar productos"}</span>
@@ -332,7 +324,7 @@ const GetProducts = () => {
         <button type="button" className={`metric-card metric-filter${activeMetric === "noSales" ? " is-active" : ""}`}
           aria-pressed={activeMetric === "noSales"} aria-controls="products-table" disabled={loading || loadingProductsWithoutSales}
           onClick={() => toggleMetric("noSales")}>
-          <span>Sin ventas recientes</span>
+          <span>Sin ventas 30d</span>
           {loading || loadingProductsWithoutSales ? <strong className="skeleton-text skeleton-text-short" /> : <strong className="text-warning">{metrics.productsWithoutSales}</strong>}
           <small>Con stock y sin ventas en 30 días</small>
           <span className="metric-filter-hint">{activeMetric === "noSales" ? "✓ Filtro activo · Desactivar" : "Filtrar productos"}</span>
@@ -435,7 +427,7 @@ const GetProducts = () => {
                     {showExpirationDays ? "Dias restantes" : "Caducidad"}
                   </button>
                 </th>
-                <th>Estado</th>
+                <th>Estado</th><th>Movimiento</th>
               </tr>
             </thead>
 
@@ -539,6 +531,7 @@ const expirationStatus = getExpirationStatus(item);
     )}
   </div>
 </td>
+                    <td data-label="Movimiento"><button type="button" className="btn btn-sm btn-outline-primary" onClick={(event) => { event.stopPropagation(); setMovementProduct(item); }}>Movimiento</button></td>
 
                   </tr>
                 );
@@ -546,7 +539,7 @@ const expirationStatus = getExpirationStatus(item);
 
               {!loading && !error && !visibleItems.length && (
                 <tr>
-                    <td colSpan="6" className="empty-state">
+                    <td colSpan="7" className="empty-state">
                     {activeMetric ? "No hay productos que coincidan con este filtro." : "No hay productos para mostrar."}
                   </td>
                 </tr>
@@ -555,6 +548,8 @@ const expirationStatus = getExpirationStatus(item);
           </table>
         </div>
       </section>
+
+      {movementProduct && <NewMovement preselectedProduct={movementProduct} hideTrigger onClose={() => setMovementProduct(null)} onCreated={async () => { setMovementProduct(null); await refetch(); }} />}
 
       {showCard && selectedProduct && (
         <CardLayout

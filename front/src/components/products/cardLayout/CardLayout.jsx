@@ -140,7 +140,7 @@ const CardLayout = ({ onClose, id }) => {
       aria-modal="true"
     >
       <div className="product-modal-card" onClick={(e) => e.stopPropagation()}>
-        <form className="product-detail" onSubmit={handleSubmit}>
+        <form className={`product-detail${disabled ? " is-readonly" : ""}`} onSubmit={handleSubmit}>
           <header className="product-detail-header">
             <div className="product-detail-heading">
               <span className="product-detail-avatar">
@@ -162,7 +162,7 @@ const CardLayout = ({ onClose, id }) => {
                 className="btn btn-outline-primary"
                 onClick={() => setDisabled(!disabled)}
               >
-                {disabled ? "Editar" : "Bloquear"}
+                {disabled ? "Editar" : "Cancelar edición"}
               </button>
 
               <button
@@ -378,12 +378,10 @@ const CardLayout = ({ onClose, id }) => {
                 className="btn btn-outline-secondary"
                 onClick={onClose}
               >
-                Cancelar
+                {disabled ? "Cerrar" : "Cancelar"}
               </button>
 
-              <button className="btn btn-success" type="submit" disabled={disabled || saving}>
-                {saving ? "Guardando..." : "Guardar cambios"}
-              </button>
+              {!disabled && <button className="btn btn-success" type="submit" disabled={saving}>{saving ? "Guardando..." : "Guardar cambios"}</button>}
             </footer>
           </div>
         </form>

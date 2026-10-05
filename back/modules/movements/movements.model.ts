@@ -76,6 +76,7 @@ export interface SaleStockRestorationInput {
   tenantId: number;
   userId: number;
   productId: number;
+  inventoryId: number;
   quantity: number;
   lotNumber: string | null;
   expirationDate: OptionalDate;
@@ -446,21 +447,41 @@ async function addStockMovement(connection: PoolConnection, data: NormalizedMove
 async function restoreSaleStock(connection: PoolConnection, data: SaleStockRestorationInput): Promise<MovementResult> {
   const description = normalizeOptionalString(data.description);
   if (!description) throw createHttpError(400, "Escribe una descripción para el movimiento");
-
-  return addStockMovement(connection, {
+  if (!Number.isSafeInteger(data.inventoryId) || data.inventoryId <= 0) {
+    throw createHttpError(409, "No se puede revertir la venta: el lote original ya no existe");
+  }
+  const stockBefore = await getCurrentStock(connection, data.tenantId, data.productId);
+  const [lots] = await connection.execute<InventoryLot[]>(
+    `SELECT id, cantidad, numero_lote, fecha_caducidad
+     FROM inventario
+     WHERE id = ? AND tenant_id = ? AND producto_id = ?
+     FOR UPDATE`,
+    [data.inventoryId, data.tenantId, data.productId],
+  );
+  if (!lots.length) throw createHttpError(409, "No se puede revertir la venta: el lote original ya no existe");
+  const lot = lots[0];
+  await connection.execute(
+    "UPDATE inventario SET cantidad = cantidad + ? WHERE id = ? AND tenant_id = ? AND producto_id = ?",
+    [data.quantity, lot.id, data.tenantId, data.productId],
+  );
+  const newStock = stockBefore + data.quantity;
+  const movementId = await insertMovement(connection, {
     tenantId: data.tenantId,
     userId: data.userId,
     productId: data.productId,
-    inventoryId: null,
+    inventoryId: lot.id,
     type: "entrada",
     quantity: parseStockQuantity(data.quantity),
-    lotNumber: normalizeOptionalString(data.lotNumber),
-    expirationDate: normalizeOptionalDate(data.expirationDate),
+    lotNumber: lot.numero_lote || null,
+    expirationDate: lot.fecha_caducidad || null,
     reason: normalizeOptionalString(data.reason) || "Venta cancelada",
     description,
     saleLineId: data.saleLineId,
     returnLineId: data.returnLineId || null,
+    previousStock: stockBefore,
+    newStock,
   });
+  return { movementId, stock_anterior: stockBefore, stock_nuevo: newStock };
 }
 
 async function subtractStockMovement(connection: PoolConnection, data: NormalizedMovement): Promise<MovementResult> {
