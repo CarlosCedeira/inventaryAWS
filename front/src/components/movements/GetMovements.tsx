@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { movementService, type Movement, type MovementFilters, type MovementType } from "./movementService";
 import MovementCardLayout from "./cardLayout/MovementCardLayout";
+import { useTableSelectionShortcutKeys } from "../../hooks/useEscapeKey";
 import "./GetMovements.css";
 
 const dateInputValue = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -25,6 +26,8 @@ const GetMovements = () => {
   const [startDate, setStartDate] = useState(() => defaultDateRange().startDate);
   const [endDate, setEndDate] = useState(() => defaultDateRange().endDate);
   const requestId = useRef(0);
+  const tableRowRefs = useRef<(HTMLTableRowElement | null)[]>([]);
+  const [selectedRowIndex, setSelectedRowIndex] = useState(-1);
 
   const apiFilters = useMemo<MovementFilters>(() => ({
     ...(typeFilter ? { type: typeFilter } : {}),
@@ -57,6 +60,32 @@ const GetMovements = () => {
   }, [apiFilters, fetchMovements]);
 
   const visibleMovements = movements;
+
+  const moveSelectedRow = (direction: number) => {
+    setSelectedRowIndex((current) => {
+      if (!visibleMovements.length) return -1;
+      if (current < 0) return direction > 0 ? 0 : visibleMovements.length - 1;
+      return Math.max(0, Math.min(visibleMovements.length - 1, current + direction));
+    });
+  };
+
+  useTableSelectionShortcutKeys(
+    !loading && visibleMovements.length > 0,
+    () => moveSelectedRow(-1),
+    () => moveSelectedRow(1),
+    () => {
+      const selectedMovementRow = visibleMovements[selectedRowIndex];
+      if (selectedMovementRow) setSelectedMovement(selectedMovementRow);
+    }
+  );
+
+  useEffect(() => {
+    setSelectedRowIndex((current) => current >= visibleMovements.length ? visibleMovements.length - 1 : current);
+  }, [visibleMovements.length]);
+
+  useEffect(() => {
+    if (selectedRowIndex >= 0) tableRowRefs.current[selectedRowIndex]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [selectedRowIndex]);
 
   useEffect(() => {
     if (!loading) {
@@ -305,12 +334,14 @@ const GetMovements = () => {
                     </tr>
                   ))}
 
-                {!loading && visibleMovements.map((movement) => {
+                {!loading && visibleMovements.map((movement, index) => {
                   const type = getMovementType(movement.tipo);
 
                   return (
                     <tr
                       key={movement.movimiento_id}
+                      ref={(element) => { tableRowRefs.current[index] = element; }}
+                      className={selectedRowIndex === index ? "keyboard-selected" : ""}
                       onClick={() => setSelectedMovement(movement)}
                     >
                       <td data-label="Producto">

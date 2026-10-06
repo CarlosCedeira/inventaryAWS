@@ -1,8 +1,11 @@
+import { useEscapeKey } from "../../hooks/useEscapeKey";
+
 export default function NewSaleModal({
   activeClients, availableProducts, clientId, error, lines, onAddLine, onClose,
   onConfirm, onLineQuantityChange, onProductChange, onReferenceChange, onRemoveLine,
   onSelectClient, productIdToAdd, reference, saving, totals, lockedClient = false,
 }) {
+  useEscapeKey(!saving, onClose);
   const money = (value) => new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(Number(value || 0));
   const lineTotal = (line) => {
     const subtotal = Number(line.precio_venta || 0) * Number(line.cantidad || 0);

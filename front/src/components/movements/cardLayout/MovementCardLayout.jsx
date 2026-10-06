@@ -1,4 +1,5 @@
 import "./movementCardLayout.css";
+import { useEscapeKey } from "../../../hooks/useEscapeKey";
 
 const MOVEMENT_TYPES = {
   entrada: {
@@ -52,6 +53,7 @@ const DetailItem = ({ label, value }) => (
 );
 
 const MovementCardLayout = ({ movement, onClose }) => {
+  useEscapeKey(Boolean(movement), onClose);
   if (!movement) return null;
 
   const type = MOVEMENT_TYPES[movement.tipo] || {
@@ -134,11 +136,7 @@ const MovementCardLayout = ({ movement, onClose }) => {
             </div>
           </section>
 
-          <footer className="movement-detail-footer">
-            <button type="button" className="btn btn-outline-secondary" onClick={onClose}>
-              Cerrar
-            </button>
-          </footer>
+          
         </div>
       </article>
     </div>

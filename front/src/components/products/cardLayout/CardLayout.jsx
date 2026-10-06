@@ -5,6 +5,7 @@ import "./cardLayout.css";
 import { useProduct } from "./hooks/useProductForm";
 import { formatDate } from "./utils/date";
 import { validateProductForm } from "../productFormUtils";
+import { useEscapeKey } from "../../../hooks/useEscapeKey";
 
 const validateEditableStockQuantity = (value) => {
   if (value === undefined || value === null || String(value).trim() === "") {
@@ -40,6 +41,7 @@ const CardLayout = ({ onClose, onEdit, id }) => {
   const [error, setError] = useState("");
 
   const { formData, setFormData, categorias, impuestos, loading, loadError, reload, update } = useProduct(id);
+  useEscapeKey(!saving, onClose);
 
   const normalizeFormForValidation = () => {
     const firstInventario = formData.inventario?.[0] || {};
@@ -334,16 +336,7 @@ const CardLayout = ({ onClose, onEdit, id }) => {
 
             {error && <div className="alert alert-danger py-2" role="alert">{error} <button type="button" className="btn btn-sm btn-outline-danger" disabled={saving} onClick={() => { setError(""); reload(); }}>Recargar ficha (descarta cambios)</button></div>}
 
-            <footer className="product-detail-footer">
-              <button
-                type="button"
-                className="btn btn-outline-secondary"
-                onClick={onClose}
-              >
-                {disabled ? "Cerrar" : "Cancelar"}
-              </button>
-
-            </footer>
+            
           </div>
         </form>
       </div>

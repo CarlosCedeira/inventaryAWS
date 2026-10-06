@@ -4,6 +4,7 @@ import { Routes, Route, Link, Navigate, useLocation, useNavigate } from "react-r
 import { CommercialWorkspace, InventoryWorkspace } from "../workspaces/Workspaces";
 import UsersManager from "../logging.jsx";
 import { clearSession, getSession } from "../../services/authService";
+import { useNavigationShortcutKeys } from "../../hooks/useEscapeKey";
 
 import "./nav.css";
 
@@ -47,6 +48,12 @@ function Nav() {
     setIsCollapsed(false);
     navigate("/login", { replace: true });
   };
+
+  useNavigationShortcutKeys(
+    isAuthenticated,
+    () => navigate("/inventario"),
+    () => navigate("/ventas")
+  );
 
   return (
     <div className="d-flex w-100 min-vh-100">
@@ -112,6 +119,8 @@ function Nav() {
     className={`nav-link text-white ${
       location.pathname === "/inventario" ? "active" : ""
     }`}
+    title="Atajo: tecla W"
+    aria-keyshortcuts="W"
   >
     {/* ...svg... */}
     Inventario
@@ -119,7 +128,7 @@ function Nav() {
 </li>
 
 <li className="nav-item mt-2">
-  <Link to="/ventas" onClick={handleNavLinkClick} className={`nav-link text-white ${location.pathname === "/ventas" ? "active" : ""}`}>ventas</Link>
+  <Link to="/ventas" onClick={handleNavLinkClick} className={`nav-link text-white ${location.pathname === "/ventas" ? "active" : ""}`} title="Atajo: tecla S" aria-keyshortcuts="S">Comercial</Link>
 </li>
 
             </ul>

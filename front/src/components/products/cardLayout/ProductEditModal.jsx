@@ -2,12 +2,14 @@ import { useState } from "react";
 import Spinners from "../../spiners/spiners";
 import { useProduct } from "./hooks/useProductForm";
 import { validateProductForm } from "../productFormUtils";
+import { useEscapeKey } from "../../../hooks/useEscapeKey";
 import "./productEditModal.css";
 
 export default function ProductEditModal({ id, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const { formData, setFormData, categorias, impuestos, loading, loadError, update } = useProduct(id);
+  useEscapeKey(!saving, onClose);
 
   const changeField = (event) => {
     const { name, value } = event.target;

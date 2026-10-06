@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clientService } from "./clientService";
 import ClientCardLayout from "./cardLayout/ClientCardLayout";
 import ClientSaleModal from "../sales/ClientSaleModal";
+import { useEscapeKey, useTableSelectionShortcutKeys } from "../../hooks/useEscapeKey";
 import "./clients.css";
 
 const emptyClient = {
@@ -38,6 +39,34 @@ export default function Clients() {
   const [showForm, setShowForm] = useState(false);
   const [selectedClient, setSelectedClient] = useState(null);
   const [saleClient, setSaleClient] = useState(null);
+  const [selectedRowIndex, setSelectedRowIndex] = useState(-1);
+  const tableRowRefs = useRef([]);
+
+  const moveSelectedRow = (direction) => {
+    setSelectedRowIndex((current) => {
+      if (!clients.length) return -1;
+      if (current < 0) return direction > 0 ? 0 : clients.length - 1;
+      return Math.max(0, Math.min(clients.length - 1, current + direction));
+    });
+  };
+
+  useTableSelectionShortcutKeys(
+    !loading && clients.length > 0,
+    () => moveSelectedRow(-1),
+    () => moveSelectedRow(1),
+    () => {
+      const selectedClientRow = clients[selectedRowIndex];
+      if (selectedClientRow) setSelectedClient(selectedClientRow);
+    }
+  );
+
+  useEffect(() => {
+    setSelectedRowIndex((current) => current >= clients.length ? clients.length - 1 : current);
+  }, [clients.length]);
+
+  useEffect(() => {
+    if (selectedRowIndex >= 0) tableRowRefs.current[selectedRowIndex]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [selectedRowIndex]);
 
   const loadClients = useCallback(async (term = "", onlyWithoutPurchases = false) => {
     setLoading(true);
@@ -83,6 +112,7 @@ export default function Clients() {
   const closeForm = () => {
     if (!saving) setShowForm(false);
   };
+  useEscapeKey(showForm && !saving, closeForm);
 
   const saveClient = async (event) => {
     event.preventDefault();
@@ -147,8 +177,8 @@ export default function Clients() {
           <table className="table table-hover mb-0 clients-table">
             <thead><tr><th>Cliente</th><th>Contacto</th><th>Identificación</th><th>Estado</th><th>Vender</th></tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan="6" className="clients-empty">Cargando clientes…</td></tr> : clients.length === 0 ? <tr><td colSpan="6" className="clients-empty">No hay clientes que coincidan con la búsqueda.</td></tr> : clients.map((client) => (
-                <tr key={client.id} className="client-table-row" onClick={() => setSelectedClient(client)}>
+              {loading ? <tr><td colSpan="6" className="clients-empty">Cargando clientes…</td></tr> : clients.length === 0 ? <tr><td colSpan="6" className="clients-empty">No hay clientes que coincidan con la búsqueda.</td></tr> : clients.map((client, index) => (
+                <tr key={client.id} ref={(element) => { tableRowRefs.current[index] = element; }} className={`client-table-row${selectedRowIndex === index ? " keyboard-selected" : ""}`} onClick={() => setSelectedClient(client)}>
                   <td data-label="Cliente"><strong>{client.nombre}</strong>{client.direccion && <small>{client.direccion}</small>}</td>
                   <td data-label="Contacto"><div>{client.email || "Sin email"}</div><small>{client.telefono || "Sin teléfono"}</small></td>
                   <td data-label="Identificación">{client.identificacion_fiscal || "—"}</td>

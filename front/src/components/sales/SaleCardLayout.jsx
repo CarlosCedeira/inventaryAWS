@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useEscapeKey } from "../../hooks/useEscapeKey";
 import "./saleCardLayout.css";
 
 const money = (value) => new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(Number(value || 0));
@@ -12,6 +13,7 @@ export default function SaleCardLayout({ sale, onCancel, onClose, onComplete, on
   const [returnReason, setReturnReason] = useState("");
   const [returnQuantities, setReturnQuantities] = useState({});
   const [returnError, setReturnError] = useState("");
+  useEscapeKey(!cancelling && !completing && !returning, onClose);
 
   const handleCancel = async () => {
     const reason = cancellationReason.trim();

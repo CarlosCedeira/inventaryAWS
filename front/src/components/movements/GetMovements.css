@@ -142,6 +142,10 @@
   transform: translateY(-1px);
 }
 
+.movement-table tbody tr.keyboard-selected > td {
+  background: #e0f2fe !important;
+}
+
 .movement-table tbody tr:nth-child(2) {
   animation-delay: 0.04s;
 }

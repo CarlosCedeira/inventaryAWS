@@ -239,6 +239,10 @@
   transform: translateY(-1px);
 }
 
+.product-table tbody tr.keyboard-selected > td {
+  background: #e0f2fe !important;
+}
+
 .product-table tbody tr:nth-child(2) {
   animation-delay: 0.04s;
 }

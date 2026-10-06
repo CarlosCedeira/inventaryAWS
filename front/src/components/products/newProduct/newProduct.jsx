@@ -4,6 +4,7 @@ import {
   validateProductForm,
   buildProductPayload,
 } from "../productFormUtils";
+import { useEscapeKey } from "../../../hooks/useEscapeKey";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -76,6 +77,7 @@ const NewProduct = ({ onCreated }) => {
     setError("");
     setForm(initialForm);
   };
+  useEscapeKey(showModal && !saving, handleCloseModal);
 
   const handleChange = (e) => {
   const { name, value } = e.target;

@@ -19,8 +19,37 @@
     color: #fff
 }
 
+.workspace-view-notice {
+    position: fixed;
+    inset: 0;
+    z-index: 4000;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+    animation: workspaceViewNotice .9s ease both;
+}
+
+.workspace-view-notice strong {
+    padding: .8rem 1.25rem;
+    border-radius: 8px;
+    background: rgba(15, 23, 42, .9);
+    color: #fff;
+    font-size: 1.15rem;
+    box-shadow: 0 .75rem 2rem rgba(15, 23, 42, .25);
+}
+
+@keyframes workspaceViewNotice {
+    0% { opacity: 0; transform: scale(.96); }
+    15%, 75% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1.02); }
+}
+
 @media(max-width:767.98px) {
     .workspace-switcher {
         padding: 1rem 1rem 0
     }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .workspace-view-notice { animation: none; }
 }

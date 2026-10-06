@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useProducts } from "./useProducts";
 import { productService } from "./productService";
 
@@ -7,6 +7,7 @@ import ProductEditModal from "./cardLayout/ProductEditModal";
 import NewMovement from "../movements/NewMovement";
 import NewProduct from "./newProduct/newProduct";
 import NewCategory from "./newCategory/NewCategory";
+import { useTableSelectionShortcutKeys } from "../../hooks/useEscapeKey";
 
 import "./getProducts.css";
 
@@ -95,6 +96,34 @@ const GetProducts = () => {
   const [movementProduct, setMovementProduct] = useState(null);
   const [showExpirationDays, setShowExpirationDays] = useState(false);
   const [showStockComparison, setShowStockComparison] = useState(false);
+  const [selectedRowIndex, setSelectedRowIndex] = useState(-1);
+  const tableRowRefs = useRef([]);
+
+  const moveSelectedRow = (direction) => {
+    setSelectedRowIndex((current) => {
+      if (!visibleItems.length) return -1;
+      if (current < 0) return direction > 0 ? 0 : visibleItems.length - 1;
+      return Math.max(0, Math.min(visibleItems.length - 1, current + direction));
+    });
+  };
+
+  useTableSelectionShortcutKeys(
+    !loading && visibleItems.length > 0,
+    () => moveSelectedRow(-1),
+    () => moveSelectedRow(1),
+    () => {
+      const selectedItem = visibleItems[selectedRowIndex];
+      if (selectedItem) handleTdClick(selectedItem);
+    }
+  );
+
+  useEffect(() => {
+    setSelectedRowIndex((current) => current >= visibleItems.length ? visibleItems.length - 1 : current);
+  }, [visibleItems.length]);
+
+  useEffect(() => {
+    if (selectedRowIndex >= 0) tableRowRefs.current[selectedRowIndex]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [selectedRowIndex]);
 
   useEffect(() => {
     if (!loading) {
@@ -471,12 +500,14 @@ const GetProducts = () => {
                   </tr>
                 ))}
 
-              {!loading && visibleItems.map((item) => {
+              {!loading && visibleItems.map((item, index) => {
 const stockStatus = getStockStatus(item);
 const expirationStatus = getExpirationStatus(item);
                 return (
                   <tr
                     key={item.producto_id}
+                    ref={(element) => { tableRowRefs.current[index] = element; }}
+                    className={selectedRowIndex === index ? "keyboard-selected" : ""}
                     onClick={() => handleTdClick(item)}
                   >
                     <td data-label="Producto">

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { productService } from "../productService";
+import { useEscapeKey } from "../../../hooks/useEscapeKey";
 
 const initialForm = {
   nombre: "",
@@ -24,6 +25,7 @@ const NewCategory = ({ onCreated }) => {
     setError("");
     setForm(initialForm);
   };
+  useEscapeKey(showModal && !saving, handleCloseModal);
 
   const validateForm = () => {
   const nombre = form.nombre.trim();

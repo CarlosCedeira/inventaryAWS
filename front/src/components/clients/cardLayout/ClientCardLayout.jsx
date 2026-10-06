@@ -1,4 +1,5 @@
 import "./clientCardLayout.css";
+import { useEscapeKey } from "../../../hooks/useEscapeKey";
 
 const getInitials = (name = "") =>
   name.split(" ").filter(Boolean).slice(0, 2).map((word) => word[0]?.toUpperCase()).join("") || "CL";
@@ -15,6 +16,7 @@ const DetailItem = ({ label, value }) => (
 );
 
 export default function ClientCardLayout({ client, onClose, onEdit }) {
+  useEscapeKey(Boolean(client), onClose);
   if (!client) return null;
 
   return (

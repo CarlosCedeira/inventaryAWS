@@ -5,6 +5,7 @@ import {
   normalizeStockQuantity,
   validateStockQuantity,
 } from "../../utils/stockQuantity";
+import { useEscapeKey } from "../../hooks/useEscapeKey";
 
 const MOVEMENT_TYPES = ["entrada", "salida", "ajuste"];
 const OTHER_REASON = "__otro__";
@@ -90,6 +91,7 @@ const NewMovement = ({ onCreated, onClose, preselectedProduct = null, hideTrigge
     setForm(initialForm);
     onClose?.();
   };
+  useEscapeKey(showModal && !saving, handleClose);
 
   const normalizeDateValue = (date) => {
     if (!date) return "";
