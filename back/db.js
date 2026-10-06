@@ -7,6 +7,9 @@ const pool = mysql.createPool({
   database: process.env.DATABASE,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
+  // Las caducidades son fechas de calendario, no instantes horarios.
+  // Evita que mysql2 las convierta a Date y las desplace por zona horaria.
+  dateStrings: ["DATE"],
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 100,

@@ -93,6 +93,7 @@ interface HttpError extends Error {
 const ADD_TYPES = new Set<MovementType>(["entrada"]);
 const SUBTRACT_TYPES = new Set<MovementType>(["salida"]);
 const MOVEMENT_TYPES = new Set<MovementType>(["entrada", "salida", "ajuste"]);
+const SALES_ONLY_ENTRY_REASONS = new Set(["devolucion cliente", "devolución cliente", "venta cancelada"]);
 
 function createHttpError(statusCode: number, message: string): HttpError {
   const error = new Error(message) as HttpError;
@@ -108,12 +109,12 @@ function normalizeOptionalString(value: unknown): string | null {
 function normalizeOptionalDate(value: unknown): OptionalDate {
   if (!value) return null;
 
-  if (typeof value !== "string" && !(value instanceof Date)) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     throw createHttpError(400, "La fecha de caducidad no es valida");
   }
 
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
     throw createHttpError(400, "La fecha de caducidad no es valida");
   }
 
@@ -684,6 +685,9 @@ async function createMovement({
   }
   if (!normalizedData.reason) {
     throw createHttpError(400, "Selecciona un motivo para el movimiento");
+  }
+  if (normalizedData.type === "entrada" && SALES_ONLY_ENTRY_REASONS.has(normalizedData.reason.toLowerCase())) {
+    throw createHttpError(400, "Las devoluciones y anulaciones se gestionan desde la venta");
   }
   if (normalizedData.reason.length > 255) {
     throw createHttpError(400, "El motivo no puede superar los 255 caracteres");

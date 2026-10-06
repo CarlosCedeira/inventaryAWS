@@ -1,7 +1,7 @@
 import type { AuthenticatedRequest, ApiResponse } from "../../types/http";
 import { isHttpError } from "../../types/http";
 import type * as InventoryModel from "./inventory.model";
-import type { ProductFields, InventoryUpdate } from "./inventory.types";
+import type { ProductFields } from "./inventory.types";
 
 const inventoryService = require("./inventory.service") as {
   listProducts: typeof InventoryModel.getAllProducts;
@@ -14,7 +14,7 @@ const inventoryService = require("./inventory.service") as {
   searchProducts: typeof InventoryModel.searchProductsByName;
   listProductsByCategory: typeof InventoryModel.getProductsByCategory;
   getProduct: (tenantId: number, id: string) => Promise<unknown>;
-  updateProductData: (tenantId: number, id: string, product: ProductFields & { inventario: InventoryUpdate[] }, userId: number) => Promise<void>;
+  updateProductData: (tenantId: number, id: string, product: ProductFields) => Promise<void>;
   createNewProduct: typeof InventoryModel.createProduct;
   removeProduct: typeof InventoryModel.softDeleteProduct;
 };
@@ -151,15 +151,14 @@ async function updateProduct(req: AuthenticatedRequest, res: ApiResponse) {
     await inventoryService.updateProductData(
       req.tenantId,
       id,
-      validation.product,
-      req.user.id
+      validation.product
     );
 
     log("info", "product_updated", {
       requestId: req.requestId, tenantId: req.tenantId, userId: req.user.id,
-      productId: Number(id), inventoryLots: validation.product.inventario.length,
+      productId: Number(id),
     });
-    res.json({ message: "Producto e inventario actualizados correctamente" });
+    res.json({ message: "Producto actualizado correctamente" });
   } catch (error) {
     if (isHttpError(error) && error.statusCode) {
       return res.status(error.statusCode).json({ error: error.message });

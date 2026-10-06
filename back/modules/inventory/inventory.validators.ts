@@ -1,4 +1,4 @@
-import type { CategoryFields, InventoryDate, InventoryFields, InventoryUpdate, ProductFields, ProductId } from "./inventory.types";
+import type { CategoryFields, InventoryDate, InventoryFields, ProductFields } from "./inventory.types";
 
 type Input = Record<string, unknown>;
 type Validation<T> = (T & { error?: never }) | { error: string };
@@ -50,10 +50,10 @@ function validateRequiredInteger(value: unknown, label: string) {
 function validateOptionalDate(value: unknown, label: string) {
   if (isBlank(value)) return null;
 
-  const date = new Date(value as string | number | Date);
-  if (Number.isNaN(date.getTime())) {
-    return `${label} no es valida`;
-  }
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return `${label} no es valida`;
+
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) return `${label} no es valida`;
 
   return null;
 }
@@ -113,18 +113,6 @@ function validateInventoryItem(item: Input) {
   const quantityError = validateStockQuantity(item.cantidad, {
     label: "La cantidad inicial",
   });
-  if (quantityError) return quantityError;
-
-  const lot = toTrimmedString(item.numero_lote);
-  if (lot.length > 50) {
-    return "El numero de lote no puede superar los 50 caracteres";
-  }
-
-  return validateOptionalDate(item.fecha_caducidad, "La fecha de caducidad");
-}
-
-function validateInventoryUpdateItem(item: Input) {
-  const quantityError = validateRequiredInteger(item.cantidad, "La cantidad");
   if (quantityError) return quantityError;
 
   const lot = toTrimmedString(item.numero_lote);
@@ -221,39 +209,16 @@ function buildCreateCategoryPayload(body: Input): Validation<{ category: Categor
   };
 }
 
-function buildUpdateProductPayload(body: Input): Validation<{ product: ProductFields & { inventario: InventoryUpdate[] } }> {
+function buildUpdateProductPayload(body: Input): Validation<{ product: ProductFields }> {
   const productError = validateProductFields(body);
   if (productError) return { error: productError };
 
-  if (!Array.isArray(body.inventario)) {
-    return { error: "El inventario del producto es obligatorio" };
-  }
-
-  const normalizedInventory: InventoryUpdate[] = [];
-
-  for (const item of body.inventario as Input[]) {
-    if (!Number.isInteger(Number(item.inventario_id)) || Number(item.inventario_id) <= 0) {
-      return { error: "El lote de inventario no es valido" };
-    }
-
-    const inventoryError = validateInventoryUpdateItem(item);
-    if (inventoryError) return { error: inventoryError };
-
-    if (typeof item.version !== "string" || !/^[a-f0-9]{64}$/.test(item.version)) {
-      return { error: "Recarga la ficha para obtener la version actual del inventario" };
-    }
-    normalizedInventory.push(normalizeInventoryItem({
-      ...item,
-      inventario_id: item.inventario_id as ProductId,
-      version: item.version,
-    }));
+  if (Object.hasOwn(body, "inventario")) {
+    return { error: "Los lotes se gestionan desde Movimientos" };
   }
 
   return {
-    product: {
-      ...normalizeProductFields(body),
-      inventario: normalizedInventory,
-    },
+    product: normalizeProductFields(body),
   };
 }
 

@@ -58,6 +58,7 @@ export interface ProductRow extends RowDataPacket {
 
 export interface ProductSummaryRow extends ProductRow {
   stock_total: string;
+  lotes_activos: number;
   stock_fisico: string;
   stock_disponible: string;
   stock_caducado: string;
@@ -83,7 +84,7 @@ export interface InventoryMovement {
   previousStock: number;
   newStock: number;
   lotNumber: string | null;
-  expirationDate: Date | null;
+  expirationDate: InventoryDate;
   reason: string;
   description: string;
 }

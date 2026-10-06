@@ -74,20 +74,20 @@
 .movement-detail-body {
   overflow-y: auto;
   max-height: calc(min(88vh, 780px) - 90px);
-  padding: 1rem 1.25rem 1.25rem;
-  background:
-    radial-gradient(circle at 12% 0%, rgba(14, 165, 233, 0.1), transparent 28%),
-    #f8fafc;
+  padding: 0.9rem 1.25rem 1.1rem;
+  background: #f8fafc;
 }
 
 .movement-detail-summary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1rem;
-  margin-bottom: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  margin-bottom: 0.9rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
 }
 
-.movement-detail-metric,
 .movement-detail-section {
   border: 1px solid rgba(226, 232, 240, 0.75);
   border-radius: 8px;
@@ -97,10 +97,13 @@
 }
 
 .movement-detail-metric {
-  min-height: 112px;
-  padding: 1rem;
+  min-height: 84px;
+  padding: 0.85rem 1rem;
+  border-right: 1px solid #e5e7eb;
   animation: movementDetailMistIn 0.42s ease both;
 }
+
+.movement-detail-metric:last-child { border-right: 0; }
 
 .movement-detail-metric span,
 .movement-detail-metric small {
@@ -110,15 +113,15 @@
 
 .movement-detail-metric strong {
   display: block;
-  margin: 0.25rem 0;
-  font-size: 1.6rem;
+  margin: 0.15rem 0;
+  font-size: 1.35rem;
   line-height: 1.15;
   color: #0f172a;
 }
 
 .movement-detail-section {
   overflow: hidden;
-  margin-bottom: 1rem;
+  margin-bottom: 0.8rem;
   animation: movementDetailMistIn 0.46s ease both;
 }
 
@@ -127,7 +130,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1rem;
+  padding: 0.75rem 1rem;
   border-bottom: 1px solid #e5e7eb;
 }
 
@@ -212,32 +215,28 @@
 .movement-detail-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
-  padding: 1rem;
+  gap: 0;
+  padding: 0.2rem 1rem;
 }
 
 .movement-detail-item {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  gap: 0.75rem;
   min-width: 0;
-  padding: 0.85rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  background: #fff;
+  padding: 0.55rem 0;
 }
 
 .movement-detail-item span {
-  display: block;
-  margin-bottom: 0.35rem;
   color: #64748b;
-  font-size: 0.78rem;
-  font-weight: 700;
-  text-transform: uppercase;
+  font-size: 0.85rem;
+  font-weight: 500;
 }
 
 .movement-detail-item strong {
-  display: block;
   color: #1f2937;
-  font-size: 0.96rem;
-  font-weight: 600;
+  font-size: 0.95rem;
+  font-weight: 500;
   overflow-wrap: anywhere;
 }
 
@@ -318,7 +317,7 @@
     position: sticky;
     top: 0;
     z-index: 2;
-    padding: 1rem;
+    padding: 0.85rem 1rem;
   }
 
   .movement-detail-heading {
@@ -327,6 +326,7 @@
 
   .movement-detail-heading h2 {
     font-size: 1.2rem;
+    line-height: 1.25;
     overflow-wrap: anywhere;
   }
 
@@ -337,38 +337,59 @@
 
   .movement-detail-body {
     max-height: calc(100vh - 90px);
-    padding: 1rem;
+    padding: 0.8rem;
   }
 
-  .movement-detail-summary,
+  .movement-detail-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .movement-detail-grid {
     grid-template-columns: 1fr;
   }
 
   .movement-detail-metric {
     min-height: auto;
+    padding: 0.7rem 0.65rem;
+    border-bottom: 0;
+  }
+
+  .movement-detail-metric:nth-child(1),
+  .movement-detail-metric:nth-child(2) { border-right: 1px solid #e5e7eb; }
+
+  .movement-detail-metric:last-child {
+    border-right: 0;
+  }
+
+  .movement-detail-metric strong { font-size: 1.2rem; }
+
+  .movement-detail-item {
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
   }
 
   .movement-detail-section-title {
     align-items: flex-start;
     flex-direction: column;
     gap: 0.25rem;
+    padding: 0.7rem 0.9rem;
   }
 
   .movement-detail-footer {
     position: sticky;
-    bottom: -1rem;
+    bottom: -0.8rem;
     z-index: 1;
     display: grid;
     grid-template-columns: 1fr;
-    margin: 0 -1rem -1rem;
-    padding: 1rem;
+    margin: 0 -0.8rem -0.8rem;
+    padding: 0.8rem;
     border-top: 1px solid #e5e7eb;
     background: #f8fafc;
   }
 
   .movement-detail-footer .btn {
     width: 100%;
+    min-height: 42px;
   }
 }
 

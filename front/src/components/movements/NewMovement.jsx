@@ -13,8 +13,6 @@ const MOVEMENT_REASONS = {
   entrada: [
     "Compra proveedor",
     "Reposicion",
-    "Devolucion cliente",
-    "Venta cancelada",
     "Entrada manual",
   ],
   salida: [

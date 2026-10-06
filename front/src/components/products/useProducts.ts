@@ -20,6 +20,7 @@ export interface Product {
   stock_minimo: NumericValue;
   stock_total: NumericValue;
   stock_fisico: NumericValue;
+  lotes_activos: NumericValue;
   stock_disponible: NumericValue;
   stock_caducado: NumericValue;
   fecha_caducidad: string | null;

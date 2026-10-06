@@ -45,15 +45,8 @@ async function getProduct(tenantId, id) {
 
 
 
-async function updateProductData(tenantId, productId, productoData, userId) {
-  const { inventario } = productoData;
-  return await inventoryModel.updateProduct(
-    tenantId,
-    productId,
-    productoData,
-    inventario,
-    userId
-  );
+async function updateProductData(tenantId, productId, productoData) {
+  return await inventoryModel.updateProduct(tenantId, productId, productoData);
 }
 
 async function createNewProduct(productoData, inventarioData, userId) {

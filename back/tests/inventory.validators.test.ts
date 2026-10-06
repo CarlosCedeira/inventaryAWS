@@ -31,27 +31,14 @@ test("crear producto exige seleccionar un IVA", () => {
   assert.equal(result.error, "Debes seleccionar un IVA");
 });
 
-test("editar permite agotar un lote y conservar valores cero", () => {
-  const result = buildUpdateProductPayload({ ...product,
-    inventario: [{ inventario_id: 3, version: "a".repeat(64), cantidad: "0" }],
-  });
+test("editar permite valores cero en los datos maestros", () => {
+  const result = buildUpdateProductPayload(product);
   assert.equal(result.error, undefined);
-  assert.equal(result.product.inventario[0].cantidad, 0);
   assert.equal(result.product.precio_compra, 0);
   assert.equal(result.product.stock_minimo, 0);
 });
 
-test("editar rechaza cantidades invalidas de cualquier lote", () => {
-  for (const cantidad of [-1, 1.5, "texto", "", null, undefined]) {
-    const result = buildUpdateProductPayload({ ...product, inventario: [
-      { inventario_id: 3, version: "a".repeat(64), cantidad: 2 }, { inventario_id: 4, version: "a".repeat(64), cantidad },
-    ] });
-    assert.ok(result.error, `Debe rechazar ${String(cantidad)}`);
-    assert.equal(result.product, undefined);
-  }
-});
-
-test("editar permite un producto sin lotes pero exige el array de inventario", () => {
-  assert.deepEqual(buildUpdateProductPayload({ ...product, inventario: [] }).product.inventario, []);
-  assert.ok(buildUpdateProductPayload(product).error);
+test("editar rechaza lotes: se gestionan mediante movimientos", () => {
+  const result = buildUpdateProductPayload({ ...product, inventario: [] });
+  assert.equal(result.error, "Los lotes se gestionan desde Movimientos");
 });

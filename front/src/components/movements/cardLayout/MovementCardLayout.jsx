@@ -40,6 +40,7 @@ const formatDate = (dateString) => {
 
   return new Intl.DateTimeFormat("es-ES", {
     dateStyle: "medium",
+    timeZone: "UTC",
   }).format(new Date(dateString));
 };
 
@@ -61,9 +62,6 @@ const MovementCardLayout = ({ movement, onClose }) => {
   const quantity = Number(movement.cantidad || 0);
   const stockBefore = Number(movement.stock_anterior || 0);
   const stockAfter = Number(movement.stock_nuevo || 0);
-  const difference = stockAfter - stockBefore;
-  const formattedDifference =
-    difference > 0 ? `+${difference}` : String(difference);
   const movementAmount = `${type.sign}${quantity}`;
 
   return (
@@ -80,7 +78,6 @@ const MovementCardLayout = ({ movement, onClose }) => {
             </span>
 
             <div>
-              <p className="text-secondary mb-1">Detalle de movimiento</p>
               <h2>{movement.producto_nombre || "Producto"}</h2>
               <div className="movement-detail-meta">
                 <span className={`badge rounded-pill ${type.className}`}>
@@ -102,62 +99,32 @@ const MovementCardLayout = ({ movement, onClose }) => {
         <div className="movement-detail-body">
           <section className="movement-detail-summary">
             <article className="movement-detail-metric">
-              <span>Cantidad</span>
-              <strong>{quantity}</strong>
-              <small>{type.label}</small>
+              <span>{type.label}</span>
+              <strong>{movementAmount}</strong>
+              <small>unidades movidas</small>
             </article>
 
             <article className="movement-detail-metric">
               <span>Stock anterior</span>
               <strong>{stockBefore}</strong>
-              <small>Antes del registro</small>
+              <small>unidades</small>
             </article>
 
             <article className="movement-detail-metric">
-              <span>Stock nuevo</span>
+              <span>Stock resultante</span>
               <strong>{stockAfter}</strong>
-              <small>Despues del registro</small>
-            </article>
-
-            <article className="movement-detail-metric">
-              <span>Diferencia</span>
-              <strong className={difference < 0 ? "text-danger" : "text-success"}>
-                {formattedDifference}
-              </strong>
-              <small>Impacto neto</small>
+              <small>unidades</small>
             </article>
           </section>
 
           <section className="movement-detail-section">
             <div className="movement-detail-section-title">
-              <h3>Trazabilidad</h3>
+              <h3>Información</h3>
               <span>ID #{movement.movimiento_id}</span>
             </div>
 
-            <div className="movement-trace">
-              <div className="movement-trace-node">
-                <span>Stock anterior</span>
-                <strong>{stockBefore}</strong>
-              </div>
-              <div className="movement-trace-connector">{"=>"}</div>
-              <div className={`movement-trace-node movement-trace-action ${type.className}`}>
-                <span>{type.label}</span>
-                <strong>{movementAmount}</strong>
-              </div>
-              <div className="movement-trace-connector">{"=>"}</div>
-              <div className="movement-trace-node">
-                <span>Stock nuevo</span>
-                <strong>{stockAfter}</strong>
-              </div>
-            </div>
-          </section>
-
-          <section className="movement-detail-section">
-            <div className="movement-detail-section-title">
-              <h3>Detalles operativos</h3>
-            </div>
-
             <div className="movement-detail-grid">
+              <DetailItem label="Fecha" value={formatDateTime(movement.created_at)} />
               <DetailItem label="Categoria" value={movement.producto_categoria || "Sin categoria"} />
               <DetailItem label="Lote" value={movement.numero_lote || "Sin lote"} />
               <DetailItem label="Caducidad" value={formatDate(movement.fecha_caducidad)} />

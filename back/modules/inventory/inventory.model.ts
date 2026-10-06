@@ -1,10 +1,10 @@
 import type { PoolConnection, RowDataPacket, ResultSetHeader } from "mysql2/promise";
-import type { CategoryFields, InventoryFields, InventoryMovement, InventoryRow, InventoryUpdate, ProductFields, ProductId, ProductSummaryRow, ProductDetailRow, TaxFields } from "./inventory.types";
+import type { CategoryFields, InventoryFields, InventoryMovement, InventoryRow, ProductFields, ProductId, ProductSummaryRow, ProductDetailRow, TaxFields } from "./inventory.types";
 import type { HttpError } from "../../types/http";
-const { inventoryVersion } = require("./inventory.version") as { inventoryVersion: (row: InventoryRow) => string };
 const { getConnection } = require("../../db") as { getConnection: () => Promise<PoolConnection> };
 
 const STOCK_PROJECTION = `COALESCE(SUM(i.cantidad), 0) AS stock_total,
+        COUNT(CASE WHEN i.cantidad > 0 THEN 1 END) AS lotes_activos,
         COALESCE(SUM(i.cantidad), 0) AS stock_fisico,
         COALESCE(SUM(CASE WHEN i.fecha_caducidad IS NULL OR i.fecha_caducidad >= CURDATE()
           THEN i.cantidad ELSE 0 END), 0) AS stock_disponible,
@@ -362,8 +362,8 @@ async function getProductById(tenantId: number, id: ProductId) {
 }
 
 
-// Actualizar producto e inventario
-async function updateProduct(tenantId: number, productId: ProductId, productoData: ProductFields, invnetarioData: InventoryUpdate[], userId: number) {
+// Actualizar solo los datos maestros del producto. Los lotes se modifican mediante movimientos.
+async function updateProduct(tenantId: number, productId: ProductId, productoData: ProductFields) {
   const connection = await getConnection();
   try {
     await connection.beginTransaction();
@@ -389,77 +389,6 @@ async function updateProduct(tenantId: number, productId: ProductId, productoDat
       const error: HttpError = new Error("Producto no encontrado");
       error.statusCode = 404;
       throw error;
-    }
-
-    let runningStock = await getCurrentStock(connection, tenantId, productId);
-
-    for (const item of invnetarioData) {
-      const [inventoryRows] = await connection.execute<InventoryRow[]>(
-        `
-        SELECT id, cantidad, fecha_caducidad, numero_lote
-        FROM inventario
-        WHERE tenant_id = ? AND producto_id = ? AND id = ?
-        LIMIT 1
-        FOR UPDATE
-        `,
-        [tenantId, productId, item.inventario_id]
-      );
-
-      if (!inventoryRows.length) {
-        const error: HttpError = new Error("Lote de inventario no encontrado");
-        error.statusCode = 404;
-        throw error;
-      }
-
-      if (item.version !== inventoryVersion(inventoryRows[0])) {
-        const error: HttpError = new Error("El inventario ha cambiado. Recarga la ficha antes de guardar.");
-        error.statusCode = 409;
-        throw error;
-      }
-      const previousQuantity = Number(inventoryRows[0].cantidad);
-      const newQuantity = Number(item.cantidad);
-      const quantityDifference = newQuantity - previousQuantity;
-      const previousStock = runningStock;
-      const newStock = runningStock + quantityDifference;
-      const expirationDate = item.fecha_caducidad
-        ? new Date(item.fecha_caducidad)
-        : null;
-      const lotNumber = item.numero_lote || null;
-
-      await connection.execute(
-        `
-        UPDATE inventario
-        SET cantidad = ?, fecha_caducidad = ?, numero_lote = ?
-        WHERE tenant_id = ? AND producto_id = ? AND id = ?
-        `,
-        [
-          newQuantity,
-          expirationDate,
-          lotNumber,
-          tenantId,
-          productId,
-          item.inventario_id,
-        ]
-      );
-
-      if (quantityDifference !== 0) {
-        await insertInventoryMovement(connection, {
-          tenantId,
-          productId,
-          inventoryId: item.inventario_id,
-          type: "ajuste",
-          quantity: Math.abs(quantityDifference),
-          previousStock,
-          newStock,
-          lotNumber,
-          expirationDate,
-          reason: "Edicion de producto",
-          description: "Ajuste generado al editar el inventario del producto",
-          userId,
-        });
-
-        runningStock = newStock;
-      }
     }
 
     await connection.commit();
@@ -504,7 +433,7 @@ async function createProduct(productoData: ProductFields & { tenant_id: number }
         inventarioData.tenant_id,
         productoId,
         inventarioData.cantidad,
-        inventarioData.fecha_caducidad ? new Date(inventarioData.fecha_caducidad) : null,
+        inventarioData.fecha_caducidad,
         inventarioData.numero_lote,
       ]
     );
@@ -518,9 +447,7 @@ async function createProduct(productoData: ProductFields & { tenant_id: number }
       previousStock: 0,
       newStock: inventarioData.cantidad,
       lotNumber: inventarioData.numero_lote || null,
-      expirationDate: inventarioData.fecha_caducidad
-        ? new Date(inventarioData.fecha_caducidad)
-        : null,
+      expirationDate: inventarioData.fecha_caducidad,
       reason: "Creacion de producto",
       description: "Entrada inicial generada al crear el producto",
       userId,

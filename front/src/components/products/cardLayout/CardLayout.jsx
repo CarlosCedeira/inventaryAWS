@@ -28,7 +28,13 @@ const getInitials = (name = "") =>
     .map((word) => word[0]?.toUpperCase())
     .join("") || "PR";
 
-const CardLayout = ({ onClose, id }) => {
+const formatCurrency = (value) =>
+  new Intl.NumberFormat("es-ES", {
+    style: "currency",
+    currency: "EUR",
+  }).format(Number(value || 0));
+
+const CardLayout = ({ onClose, onEdit, id }) => {
   const [disabled, setDisabled] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -125,6 +131,8 @@ const CardLayout = ({ onClose, id }) => {
     (acc, item) => acc + Number(item.cantidad || 0),
     0
   );
+  const categoriaActual = categorias.find((categoria) => String(categoria.id) === String(formData.categoria_id));
+  const impuestoActual = impuestos.find((impuesto) => String(impuesto.id) === String(formData.impuesto_id));
 
   if (loading) return <Spinners />;
   if (loadError) return <div className="product-modal-backdrop position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" role="dialog" aria-modal="true" aria-label="Error al cargar producto">
@@ -148,11 +156,7 @@ const CardLayout = ({ onClose, id }) => {
               </span>
 
               <div>
-                <p className="text-secondary mb-1">Detalle de producto</p>
                 <h2>{formData.nombre || "Producto"}</h2>
-                <span className="badge rounded-pill product-category-pill">
-                  {formData.categoria_nombre || "Inventario"}
-                </span>
               </div>
             </div>
 
@@ -160,9 +164,9 @@ const CardLayout = ({ onClose, id }) => {
               <button
                 type="button"
                 className="btn btn-outline-primary"
-                onClick={() => setDisabled(!disabled)}
+                onClick={onEdit}
               >
-                {disabled ? "Editar" : "Cancelar edición"}
+                Editar
               </button>
 
               <button
@@ -175,116 +179,51 @@ const CardLayout = ({ onClose, id }) => {
           </header>
 
           <div className="product-detail-body">
-            <section className="product-detail-summary">
+            <section className="product-detail-summary" aria-label="Resumen del producto">
               <article className="product-detail-metric">
-                <span>Stock total</span>
+                <span>Disponibles</span>
                 <strong>{totalCantidad}</strong>
-                <small>Unidades disponibles</small>
+                <small>unidades</small>
               </article>
 
               <article className="product-detail-metric">
-                <span>Precio compra</span>
-                <strong>{formData.precio_compra || 0}</strong>
-                <small>Coste unitario</small>
+                <span>Coste</span>
+                <strong>{formatCurrency(formData.precio_compra)}</strong>
+                <small>por unidad</small>
               </article>
 
               <article className="product-detail-metric">
-                <span>Precio sin IVA</span>
-                <strong>{formData.precio_venta || 0}</strong>
-                <small>Base imponible</small>
+                <span>Precio de venta</span>
+                <strong>{formatCurrency(formData.precio_venta)}</strong>
+                <small>sin IVA</small>
               </article>
             </section>
 
             <section className="product-detail-section">
               <div className="product-detail-section-title">
-                <h3>Lotes de inventario</h3>
-                <span>{formData.inventario?.length || 0} lotes</span>
+                <h3>Información</h3>
               </div>
 
-              <div className="table-responsive">
-                <table className="table table-hover align-middle mb-0 product-lots-table">
-                  <thead>
-                    <tr>
-                      <th>Cantidad</th>
-                      <th>Caducidad</th>
-                      <th>Numero de lote</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {formData.inventario?.map((item, index) => (
-                      <tr key={item.inventario_id}>
-                        <td data-label="Cantidad">
-                          <input
-                            type="number"
-                            disabled={disabled || saving}
-                            value={item.cantidad || ""}
-                            onChange={(e) =>
-                              handleInventarioChange(
-                                index,
-                                "cantidad",
-                                e.target.value
-                              )
-                            }
-                            className="form-control"
-                            min="0"
-                            step="1"
-                          />
-                        </td>
-
-                        <td data-label="Caducidad">
-                          <input
-                            type="date"
-                            disabled={disabled || saving}
-                            value={formatDate(item.fecha_caducidad)}
-                            onChange={(e) =>
-                              handleInventarioChange(
-                                index,
-                                "fecha_caducidad",
-                                e.target.value
-                              )
-                            }
-                            className="form-control"
-                          />
-                        </td>
-
-                        <td data-label="Numero de lote">
-                          <input
-                            type="text"
-                            disabled={disabled || saving}
-                            value={item.numero_lote || ""}
-                            onChange={(e) =>
-                              handleInventarioChange(
-                                index,
-                                "numero_lote",
-                                e.target.value
-                              )
-                            }
-                            className="form-control"
-                            maxLength={50}
-                          />
-                        </td>
-                      </tr>
-                    ))}
-
-                    {!formData.inventario?.length && (
-                      <tr>
-                        <td colSpan="3" className="product-detail-empty">
-                          No hay lotes registrados.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-
-            <section className="product-detail-section">
-              <div className="product-detail-section-title">
-                <h3>Informacion general</h3>
-              </div>
-
-              <div className="product-form-grid">
+              {disabled ? (
+                <dl className="product-readonly-details">
+                  <div className="product-readonly-detail product-readonly-detail-wide">
+                    <dt>Descripción</dt>
+                    <dd>{formData.descripcion || "Sin descripción"}</dd>
+                  </div>
+                  <div className="product-readonly-detail">
+                    <dt>Categoría</dt>
+                    <dd>{formData.categoria_nombre || categoriaActual?.nombre || "Sin categoría"}</dd>
+                  </div>
+                  <div className="product-readonly-detail">
+                    <dt>IVA</dt>
+                    <dd>{impuestoActual ? `${impuestoActual.nombre} · ${impuestoActual.porcentaje}%` : "No definido"}</dd>
+                  </div>
+                  <div className="product-readonly-detail">
+                    <dt>Stock mínimo</dt>
+                    <dd>{formData.stock_minimo ?? 0} unidades</dd>
+                  </div>
+                </dl>
+              ) : <div className="product-form-grid">
                 <div className="product-form-field product-form-field-wide">
                   <label className="form-label">Nombre</label>
                   <input
@@ -293,7 +232,7 @@ const CardLayout = ({ onClose, id }) => {
                     value={formData.nombre || ""}
                     onChange={handleChange}
                     className="form-control"
-                    disabled={disabled || saving}
+                    disabled={saving}
                     minLength={3}
                     maxLength={80}
                   />
@@ -307,7 +246,7 @@ const CardLayout = ({ onClose, id }) => {
                     onChange={handleChange}
                     className="form-control"
                     rows="2"
-                    disabled={disabled || saving}
+                    disabled={saving}
                     maxLength={300}
                   />
                 </div>
@@ -319,7 +258,7 @@ const CardLayout = ({ onClose, id }) => {
                     value={formData.categoria_id || ""}
                     onChange={handleChange}
                     className="form-select"
-                    disabled={disabled || saving}
+                    disabled={saving}
                   >
                     <option value="">Selecciona una categoria</option>
 
@@ -338,7 +277,7 @@ const CardLayout = ({ onClose, id }) => {
                     value={formData.impuesto_id || ""}
                     onChange={handleChange}
                     className="form-select"
-                    disabled={disabled || saving}
+                    disabled={saving}
                   >
                     {impuestos.map((impuesto) => (
                       <option key={impuesto.id} value={impuesto.id}>
@@ -361,12 +300,35 @@ const CardLayout = ({ onClose, id }) => {
                       value={formData[name] || ""}
                       onChange={handleChange}
                       className="form-control"
-                      disabled={disabled || saving}
+                      disabled={saving}
                       min="0"
                       step={name.includes("precio") ? "0.01" : "1"}
                     />
                   </div>
                 ))}
+              </div>}
+            </section>
+
+            <section className="product-detail-section">
+              <div className="product-detail-section-title">
+                <h3>Lotes</h3>
+                <span>{formData.inventario?.length || 0} {formData.inventario?.length === 1 ? "lote" : "lotes"}</span>
+              </div>
+
+              <div className="table-responsive">
+                <table className="table table-hover align-middle mb-0 product-lots-table">
+                  <thead><tr><th>Cantidad</th><th>Caducidad</th><th>Nº lote</th></tr></thead>
+                  <tbody>
+                    {formData.inventario?.map((item, index) => (
+                      <tr key={item.inventario_id}>
+                        <td data-label="Cantidad">{disabled ? item.cantidad : <input type="number" disabled={saving} value={item.cantidad || ""} onChange={(e) => handleInventarioChange(index, "cantidad", e.target.value)} className="form-control" min="0" step="1" />}</td>
+                        <td data-label="Caducidad">{disabled ? (item.fecha_caducidad ? new Intl.DateTimeFormat("es-ES").format(new Date(`${formatDate(item.fecha_caducidad)}T00:00:00`)) : "Sin caducidad") : <input type="date" disabled={saving} value={formatDate(item.fecha_caducidad)} onChange={(e) => handleInventarioChange(index, "fecha_caducidad", e.target.value)} className="form-control" />}</td>
+                        <td data-label="Nº lote">{disabled ? (item.numero_lote || "Sin número") : <input type="text" disabled={saving} value={item.numero_lote || ""} onChange={(e) => handleInventarioChange(index, "numero_lote", e.target.value)} className="form-control" maxLength={50} />}</td>
+                      </tr>
+                    ))}
+                    {!formData.inventario?.length && <tr><td colSpan="3" className="product-detail-empty">No hay lotes registrados.</td></tr>}
+                  </tbody>
+                </table>
               </div>
             </section>
 
@@ -381,7 +343,6 @@ const CardLayout = ({ onClose, id }) => {
                 {disabled ? "Cerrar" : "Cancelar"}
               </button>
 
-              {!disabled && <button className="btn btn-success" type="submit" disabled={saving}>{saving ? "Guardando..." : "Guardar cambios"}</button>}
             </footer>
           </div>
         </form>

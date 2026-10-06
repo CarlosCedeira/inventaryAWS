@@ -3,6 +3,7 @@ import { useProducts } from "./useProducts";
 import { productService } from "./productService";
 
 import CardLayout from "./cardLayout/CardLayout";
+import ProductEditModal from "./cardLayout/ProductEditModal";
 import NewMovement from "../movements/NewMovement";
 import NewProduct from "./newProduct/newProduct";
 import NewCategory from "./newCategory/NewCategory";
@@ -90,6 +91,7 @@ const GetProducts = () => {
   const [showCard, setShowCard] = useState(false);
   const [fadeIn, setFadeIn] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [editingProductId, setEditingProductId] = useState(null);
   const [movementProduct, setMovementProduct] = useState(null);
   const [showExpirationDays, setShowExpirationDays] = useState(false);
   const [showStockComparison, setShowStockComparison] = useState(false);
@@ -104,9 +106,9 @@ const GetProducts = () => {
   }, [loading]);
 
   useEffect(() => {
-    document.body.style.overflow = showCard ? "hidden" : "";
+    document.body.style.overflow = showCard || editingProductId ? "hidden" : "";
     return () => (document.body.style.overflow = "");
-  }, [showCard]);
+  }, [showCard, editingProductId]);
 
   useEffect(() => {
     let active = true;
@@ -163,6 +165,7 @@ const GetProducts = () => {
 
     return new Intl.DateTimeFormat("es-ES", {
       dateStyle: "medium",
+      timeZone: "UTC",
     }).format(new Date(dateString));
   };
 
@@ -496,7 +499,7 @@ const expirationStatus = getExpirationStatus(item);
 
                     <td className="text-center fw-semibold" data-label="Cantidad">
                       {formatQuantity(item.stock_disponible, item.stock_minimo)}
-                      <div className="small text-secondary">Físico: {item.stock_fisico} · Caducado: {item.stock_caducado}</div>
+                      <div className="small text-secondary">Lotes: {item.lotes_activos}</div>
                     </td>
 
                     <td
@@ -557,8 +560,13 @@ const expirationStatus = getExpirationStatus(item);
           formatDate={formatDate}
           id={selectedProduct.producto_id}
           onClose={handleCloseCard}
+          onEdit={() => {
+            setShowCard(false);
+            setEditingProductId(selectedProduct.producto_id);
+          }}
         />
       )}
+      {editingProductId && <ProductEditModal id={editingProductId} onClose={() => setEditingProductId(null)} onSaved={async () => { setEditingProductId(null); await refetch(); }} />}
     </main>
   );
 };

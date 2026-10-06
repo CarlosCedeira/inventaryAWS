@@ -165,8 +165,8 @@ test("la API de productos permite crear, consultar, buscar, filtrar, editar y bo
     ...detailResponse.body,
     nombre: "Jabón líquido concentrado",
     precio_venta: 5,
-    inventario: detailResponse.body.inventario.map((lot: { inventario_id: number; cantidad: number; version: string }) => ({ ...lot, cantidad: 8 })),
   };
+  delete updatedProduct.inventario;
   const updateResponse = await request(app)
     .put(`/productos/actualizar/${productoId}`)
     .set("Authorization", `Bearer ${token}`)
@@ -179,7 +179,7 @@ test("la API de productos permite crear, consultar, buscar, filtrar, editar y bo
   expect(updatedDetailResponse.body).toMatchObject({
     nombre: "Jabón líquido concentrado",
     precio_venta: "5.00",
-    inventario: [expect.objectContaining({ cantidad: 8 })],
+    inventario: [expect.objectContaining({ cantidad: 6 })],
   });
 
   const foreignDetailResponse = await request(app)
