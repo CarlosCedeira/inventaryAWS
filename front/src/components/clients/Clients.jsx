@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clientService } from "./clientService";
 import ClientCardLayout from "./cardLayout/ClientCardLayout";
 import ClientSaleModal from "../sales/ClientSaleModal";
+import { salesService } from "../sales/salesService";
 import { useEscapeKey, useTableSelectionShortcutKeys } from "../../hooks/useEscapeKey";
+import { useToast } from "../feedback/ToastProvider";
 import "./clients.css";
 
 const emptyClient = {
@@ -25,11 +27,14 @@ function normalizeClient(client) {
   };
 }
 
-export default function Clients() {
+export default function Clients({ onShowOperations, workspaceHeader }) {
+  const { success } = useToast();
   const [clients, setClients] = useState([]);
+  const [dashboardClients, setDashboardClients] = useState([]);
+  const [recentSales, setRecentSales] = useState([]);
   const [search, setSearch] = useState("");
   const [withoutPurchases, setWithoutPurchases] = useState(false);
-  const [inactivePurchaseCount, setInactivePurchaseCount] = useState(null);
+  const [statusFilter, setStatusFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [formError, setFormError] = useState("");
@@ -68,10 +73,10 @@ export default function Clients() {
     if (selectedRowIndex >= 0) tableRowRefs.current[selectedRowIndex]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [selectedRowIndex]);
 
-  const loadClients = useCallback(async (term = "", onlyWithoutPurchases = false) => {
+  const loadClients = useCallback(async (term = "", onlyWithoutPurchases = false, status = "") => {
     setLoading(true);
     try {
-      setClients(await clientService.getAll(term, onlyWithoutPurchases ? 30 : null));
+      setClients(await clientService.getAll(term, onlyWithoutPurchases ? 30 : null, status));
       setError("");
     } catch (requestError) {
       setError(requestError.message || "No se pudieron cargar los clientes");
@@ -81,18 +86,63 @@ export default function Clients() {
   }, []);
 
   useEffect(() => {
-    const timeoutId = setTimeout(() => void loadClients(search, withoutPurchases), 250);
+    const timeoutId = setTimeout(() => void loadClients(search, withoutPurchases, statusFilter), 250);
     return () => clearTimeout(timeoutId);
-  }, [search, withoutPurchases, loadClients]);
+  }, [search, withoutPurchases, statusFilter, loadClients]);
 
-  useEffect(() => {
-    void clientService.getAll("", 30).then((rows) => setInactivePurchaseCount(rows.length)).catch(() => setInactivePurchaseCount(null));
+  const loadDashboard = useCallback(async () => {
+    try {
+      const [clientRows, saleRows] = await Promise.all([
+        clientService.getAll(),
+        salesService.recent(),
+      ]);
+      setDashboardClients(clientRows);
+      setRecentSales(saleRows);
+    } catch {
+      setDashboardClients([]);
+      setRecentSales([]);
+    }
   }, []);
 
+  useEffect(() => {
+    void loadDashboard();
+  }, [loadDashboard]);
+
   const metrics = useMemo(() => ({
-    total: clients.length,
-    active: clients.filter((client) => client.activo).length,
-  }), [clients]);
+    active: dashboardClients.filter((client) => client.activo).length,
+    inactive: dashboardClients.filter((client) => !client.activo).length,
+    newClients: dashboardClients.filter((client) => {
+      if (!client.created_at) return false;
+      const createdAt = new Date(client.created_at);
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      return createdAt >= thirtyDaysAgo;
+    }).length,
+    withoutPurchases: dashboardClients.filter((client) => client.activo && !client.ultima_compra).length,
+    recurring: dashboardClients.filter((client) => client.activo && Number(client.compras_30d || 0) >= 2).length,
+    incompleteBilling: dashboardClients.filter((client) => client.activo && (!client.email || !client.identificacion_fiscal)).length,
+  }), [dashboardClients]);
+
+  const getInitials = (name = "") => name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase())
+    .join("") || "CL";
+
+  const formatLastPurchase = (dateString) => {
+    if (!dateString) return "Sin compras";
+    const purchaseDate = new Date(dateString);
+    if (Number.isNaN(purchaseDate.getTime())) return "Sin compras";
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    purchaseDate.setHours(0, 0, 0, 0);
+    const days = Math.round((today - purchaseDate) / 86400000);
+    if (days <= 0) return "Hoy";
+    if (days === 1) return "Ayer";
+    if (days < 30) return `Hace ${days} días`;
+    return new Intl.DateTimeFormat("es-ES", { day: "2-digit", month: "short", year: "numeric" }).format(purchaseDate);
+  };
 
   const openCreate = () => {
     setEditingClient(null);
@@ -124,8 +174,12 @@ export default function Clients() {
       } else {
         await clientService.create(form);
       }
+      success(editingClient ? "Cliente actualizado correctamente" : "Cliente creado correctamente");
       setShowForm(false);
-      await loadClients(search, withoutPurchases);
+      await Promise.all([
+        loadClients(search, withoutPurchases, statusFilter),
+        loadDashboard(),
+      ]);
     } catch (requestError) {
       setFormError(requestError.message || "No se pudo guardar el cliente");
     } finally {
@@ -137,7 +191,8 @@ export default function Clients() {
     if (!window.confirm(`¿Desactivar a ${client.nombre}? Podrás volver a activarlo después.`)) return;
     try {
       await clientService.update(client.id, { ...normalizeClient(client), activo: false });
-      await loadClients(search, withoutPurchases);
+      await loadClients(search, withoutPurchases, statusFilter);
+      await loadDashboard();
     } catch (requestError) {
       setError(requestError.message || "No se pudo desactivar el cliente");
     }
@@ -150,21 +205,31 @@ export default function Clients() {
 
   return (
     <main className="clients-page">
+      {workspaceHeader}
       <header className="clients-header">
-        <div>
-          <p className="text-secondary mb-1">Módulo comercial</p>
-          <h1 className="clients-title">Clientes</h1>
-        </div>
-        <button type="button" className="btn btn-primary" onClick={openCreate}>Nuevo cliente</button>
+       
+        <button type="button" className="btn btn-success" onClick={openCreate}>Nuevo cliente</button>
       </header>
 
-      <section className="clients-metrics" aria-label="Resumen de clientes">
-        <article className="client-metric-card"><span>Clientes</span><strong>{loading ? "—" : metrics.total}</strong><small>Resultados actuales</small></article>
-        <article className="client-metric-card"><span>Activos</span><strong>{loading ? "—" : metrics.active}</strong><small>Disponibles para ventas</small></article>
-        <button type="button" className={`client-metric-card client-metric-filter${withoutPurchases ? " is-active" : ""}`} onClick={() => setWithoutPurchases((current) => !current)}><span>Sin compras recientes</span><strong>{inactivePurchaseCount ?? "—"}</strong><small>{withoutPurchases ? "Filtro activo · Desactivar" : "Sin ventas en 30 días · Filtrar"}</small></button>
+      <section className="clients-dashboard" aria-label="Resumen de clientes">
+        <section className="clients-metrics">
+          <article className="client-metric-card"><span>Activos</span><strong>{loading ? "—" : metrics.active}</strong><small>Disponibles para ventas</small></article>
+          <article className="client-metric-card"><span>Inactivos</span><strong>{loading ? "—" : metrics.inactive}</strong><small>Clientes desactivados</small></article>
+          <article className="client-metric-card"><span>Nuevos 30d</span><strong>{loading ? "—" : metrics.newClients}</strong><small>Altas en los últimos 30 días</small></article>
+          <button type="button" className={`client-metric-card client-metric-filter${withoutPurchases ? " is-active" : ""}`} aria-pressed={withoutPurchases} onClick={() => setWithoutPurchases((current) => !current)}><span>Sin compras 30d</span><strong>{loading ? "—" : metrics.withoutPurchases}</strong><small>{withoutPurchases ? "Filtro activo · Desactivar" : "Clientes activos sin compras"}</small></button>
+          <article className="client-metric-card"><span>Recurrentes 30d</span><strong>{loading ? "—" : metrics.recurring}</strong><small>Dos o más compras completadas</small></article>
+          <article className="client-metric-card"><span>Datos incompletos</span><strong>{loading ? "—" : metrics.incompleteBilling}</strong><small>Sin NIF/CIF o email</small></article>
+        </section>
+        <aside className="clients-recent-sales" aria-label="Últimas ventas">
+          <h2>Últimas ventas</h2>
+          <ul>
+            {recentSales.map((sale) => <li key={sale.id}><span>{sale.cliente_nombre || "Venta sin cliente"}</span><strong>{new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(Number(sale.total_neto ?? sale.total ?? 0))}</strong></li>)}
+          </ul>
+          <button type="button" onClick={onShowOperations}>Ver operaciones completas</button>
+        </aside>
       </section>
 
-      {error && <div className="alert alert-danger" role="alert">{error} <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => void loadClients(search, withoutPurchases)}>Reintentar</button></div>}
+      {error && <div className="alert alert-danger" role="alert">{error} <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => void loadClients(search, withoutPurchases, statusFilter)}>Reintentar</button></div>}
 
       <section className="clients-card">
         <div className="clients-toolbar">
@@ -172,18 +237,27 @@ export default function Clients() {
             <span className="form-label">Buscar cliente</span>
             <input className="form-control" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nombre, email o identificación fiscal" />
           </label>
+          <label className="client-status-filter">
+            <span className="form-label">Estado</span>
+            <select className="form-select" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+              <option value="">Todos</option>
+              <option value="activo">Activos</option>
+              <option value="inactivo">Inactivos</option>
+            </select>
+          </label>
         </div>
         <div className="table-responsive">
           <table className="table table-hover mb-0 clients-table">
-            <thead><tr><th>Cliente</th><th>Contacto</th><th>Identificación</th><th>Estado</th><th>Vender</th></tr></thead>
+            <thead><tr><th>Cliente</th><th>Contacto</th><th>Identificación</th><th>Última compra</th><th>Estado</th><th>Vender</th></tr></thead>
             <tbody>
               {loading ? <tr><td colSpan="6" className="clients-empty">Cargando clientes…</td></tr> : clients.length === 0 ? <tr><td colSpan="6" className="clients-empty">No hay clientes que coincidan con la búsqueda.</td></tr> : clients.map((client, index) => (
                 <tr key={client.id} ref={(element) => { tableRowRefs.current[index] = element; }} className={`client-table-row${selectedRowIndex === index ? " keyboard-selected" : ""}`} onClick={() => setSelectedClient(client)}>
-                  <td data-label="Cliente"><strong>{client.nombre}</strong>{client.direccion && <small>{client.direccion}</small>}</td>
+                  <td data-label="Cliente"><div className="client-identity"><span className="client-avatar">{getInitials(client.nombre)}</span><div><strong>{client.nombre}</strong>{client.direccion && <small>{client.direccion}</small>}</div></div></td>
                   <td data-label="Contacto"><div>{client.email || "Sin email"}</div><small>{client.telefono || "Sin teléfono"}</small></td>
                   <td data-label="Identificación">{client.identificacion_fiscal || "—"}</td>
+                  <td data-label="Última compra"><span className={client.ultima_compra ? "client-last-purchase" : "client-no-purchase"}>{formatLastPurchase(client.ultima_compra)}</span></td>
                   <td data-label="Estado"><span className={`badge ${client.activo ? "text-bg-success" : "text-bg-secondary"}`}>{client.activo ? "Activo" : "Inactivo"}</span></td>
-                  <td data-label="Vender">{client.activo ? <button type="button" className="btn btn-sm btn-success" onClick={(event) => { event.stopPropagation(); setSaleClient(client); }}>Vender</button> : "—"}</td>
+                  <td data-label="Vender">{client.activo ? <button type="button" className="btn btn-sm btn-outline-primary" onClick={(event) => { event.stopPropagation(); setSaleClient(client); }}>Vender</button> : "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -192,7 +266,7 @@ export default function Clients() {
       </section>
 
       <ClientCardLayout client={selectedClient} onClose={() => setSelectedClient(null)} onEdit={openEdit} />
-      {saleClient && <ClientSaleModal client={saleClient} onClose={() => setSaleClient(null)} onCreated={() => { setSaleClient(null); void loadClients(search, withoutPurchases); }} />}
+      {saleClient && <ClientSaleModal client={saleClient} onClose={() => setSaleClient(null)} onCreated={() => { setSaleClient(null); void Promise.all([loadClients(search, withoutPurchases, statusFilter), loadDashboard()]); }} />}
 
       {showForm && <div className="client-modal-backdrop" role="presentation" onMouseDown={closeForm}>
         <section className="client-modal-card" role="dialog" aria-modal="true" aria-labelledby="client-form-title" onMouseDown={(event) => event.stopPropagation()}>

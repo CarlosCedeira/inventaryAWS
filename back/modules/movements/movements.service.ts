@@ -10,4 +10,8 @@ async function createMovement(movementData: Parameters<typeof movementsModel.cre
   return movementsModel.createMovement(movementData);
 }
 
-export { listMovements, createMovement };
+async function completePicking(tenantId: number, movementId: number) {
+  return movementsModel.completePicking(tenantId, movementId);
+}
+
+export { listMovements, createMovement, completePicking };

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useProducts } from "./useProducts";
 import { productService } from "./productService";
 
@@ -8,10 +8,12 @@ import NewMovement from "../movements/NewMovement";
 import NewProduct from "./newProduct/newProduct";
 import NewCategory from "./newCategory/NewCategory";
 import { useTableSelectionShortcutKeys } from "../../hooks/useEscapeKey";
+import { movementService } from "../movements/movementService";
 
 import "./getProducts.css";
 
 const EXPIRING_SOON_DAYS = 45;
+const DESKTOP_MEDIA_QUERY = "(min-width: 992px)";
 
 const parseExpirationDate = (dateValue) => {
   if (!dateValue) return null;
@@ -45,26 +47,23 @@ const getDaysUntilExpiration = (dateString) => {
 };
 
 const metricFilters = {
-  expired: { label: "Stock caducado", matches: (item) => Number(item.stock_caducado) > 0 },
   lowStock: {
     label: "Stock bajo",
-    matches: (item) => Number(item.stock_disponible) > 0 && Number(item.stock_minimo) > 0 && Number(item.stock_disponible) <= Number(item.stock_minimo),
-  },
-  noStock: {
-    label: "Sin stock",
-    matches: (item) => Number(item.stock_disponible) <= 0,
+    // Incluye el agotado: es el caso más urgente de stock bajo.
+    matches: (item) => Number(item.stock_minimo) > 0 && Number(item.stock_disponible) <= Number(item.stock_minimo),
   },
   expiring: {
-    label: "Próximos a caducar",
+    label: "Caducidad",
     matches: (item) => {
       const days = getDaysUntilExpiration(item.fecha_caducidad);
-      return days !== null && days >= 0 && days <= EXPIRING_SOON_DAYS;
+      // Un producto puede tener un lote caducado y otro próximo a caducar.
+      return Number(item.stock_caducado) > 0 || (days !== null && days >= 0 && days <= EXPIRING_SOON_DAYS);
     },
   },
   noSales: { label: "Sin ventas recientes", matches: () => false },
 };
 
-const GetProducts = () => {
+const GetProducts = ({ onShowMovements, workspaceHeader }) => {
   const {
     items,
     error,
@@ -86,6 +85,10 @@ const GetProducts = () => {
   const [activeMetric, setActiveMetric] = useState(null);
   const [productsWithoutSales, setProductsWithoutSales] = useState(new Set());
   const [loadingProductsWithoutSales, setLoadingProductsWithoutSales] = useState(true);
+  const [recentMovements, setRecentMovements] = useState([]);
+  const [loadingRecentMovements, setLoadingRecentMovements] = useState(true);
+  const [recentMovementsError, setRecentMovementsError] = useState("");
+  const [isDesktop, setIsDesktop] = useState(() => window.matchMedia(DESKTOP_MEDIA_QUERY).matches);
   const visibleItems = activeMetric === "noSales" ? items.filter((item) => productsWithoutSales.has(item.producto_id)) : activeMetric ? items.filter(metricFilters[activeMetric].matches) : items;
   const toggleMetric = (key) => setActiveMetric((current) => current === key ? null : key);
 
@@ -147,11 +150,43 @@ const GetProducts = () => {
     return () => { active = false; };
   }, [items.length]);
 
+  const loadRecentMovements = useCallback(async () => {
+    setLoadingRecentMovements(true);
+    try {
+      const movements = await movementService.getAll({ limit: 15 });
+      setRecentMovements(movements);
+      setRecentMovementsError("");
+    } catch (recentError) {
+      setRecentMovementsError(recentError instanceof Error ? recentError.message : "No se pudieron cargar los últimos movimientos");
+    } finally {
+      setLoadingRecentMovements(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(DESKTOP_MEDIA_QUERY);
+    const handleViewportChange = () => setIsDesktop(mediaQuery.matches);
+
+    handleViewportChange();
+    mediaQuery.addEventListener("change", handleViewportChange);
+    return () => mediaQuery.removeEventListener("change", handleViewportChange);
+  }, []);
+
+  useEffect(() => {
+    if (!isDesktop) {
+      setLoadingRecentMovements(false);
+      return;
+    }
+
+    void loadRecentMovements();
+  }, [isDesktop, loadRecentMovements]);
+
   const metrics = useMemo(() => {
     const products = items || [];
-    const productsWithoutStock = products.filter(metricFilters.noStock.matches).length;
     const lowStockProducts = products.filter(metricFilters.lowStock.matches).length;
     const expiringSoonProducts = products.filter(metricFilters.expiring.matches).length;
+    const activeLots = products.reduce((total, item) => total + Number(item.lotes_activos || 0), 0);
+    const availableUnits = products.reduce((total, item) => total + Number(item.stock_disponible || 0), 0);
     const inventoryValue = products.reduce(
       (total, item) =>
         total + Number(item.stock_total || 0) * Number(item.precio_compra || 0),
@@ -162,10 +197,10 @@ const GetProducts = () => {
 
     return {
       activeProducts: products.length,
-      expiredProducts: products.filter(metricFilters.expired.matches).length,
+      activeLots,
+      availableUnits,
       expiringSoonProducts,
       lowStockProducts,
-      productsWithoutStock,
       productsWithoutSales: products.filter((item) => productsWithoutSales.has(item.producto_id)).length,
       inventoryValue,
     };
@@ -268,12 +303,13 @@ const GetProducts = () => {
 
   return (
     <main className="inventory-page">
+      {workspaceHeader}
       <header className="inventory-header">
-        <div>
-          <p className="text-secondary mb-1">Control de inventario</p>
-          <div className="inventory-title-row"><h1 className="inventory-title">Panel de productos</h1><span className="inventory-value">Inventario: {loading ? "—" : formatCurrency(metrics.inventoryValue)}</span></div>
-        </div>
-
+            
+            <div className="inventory-value">
+              <span>Valor del inventario:</span>
+              <strong>{loading ? "—" : formatCurrency(metrics.inventoryValue)}</strong>
+            </div>
         <div className="inventory-header-actions">
           <NewCategory onCreated={refetchCategories} />
           <NewProduct onCreated={refetch} />
@@ -282,6 +318,7 @@ const GetProducts = () => {
 
       {error && <div className="alert alert-danger" role="alert">{error} <button type="button" className="btn btn-sm btn-outline-danger" onClick={refetch}>Reintentar</button></div>}
       {categoryError && <div className="alert alert-warning" role="alert">{categoryError} <button type="button" className="btn btn-sm btn-outline-secondary" onClick={refetchCategories}>Reintentar categorías</button></div>}
+      <section className="inventory-overview">
       <section className="inventory-metrics">
         <article className="metric-card">
           <span>Productos</span>
@@ -291,6 +328,26 @@ const GetProducts = () => {
             <strong>{metrics.activeProducts}</strong>
           )}
           <small>Activos actuales</small>
+        </article>
+
+        <article className="metric-card">
+          <span>Lotes activos</span>
+          {loading ? (
+            <strong className="skeleton-text skeleton-text-short" />
+          ) : (
+            <strong>{metrics.activeLots}</strong>
+          )}
+          <small>Con unidades disponibles</small>
+        </article>
+
+        <article className="metric-card">
+          <span>Unidades disponibles</span>
+          {loading ? (
+            <strong className="skeleton-text skeleton-text-short" />
+          ) : (
+            <strong>{metrics.availableUnits}</strong>
+          )}
+          <small>Stock vendible actual</small>
         </article>
 
         <button
@@ -307,27 +364,10 @@ const GetProducts = () => {
           ) : (
             <strong className="text-warning">{metrics.lowStockProducts}</strong>
           )}
-          <small>Requieren reposicion</small>
+          <small>Bajo mínimo o sin stock</small>
                   <span className="metric-filter-hint">{activeMetric === "lowStock" ? "✓ Filtro activo · Desactivar" : "Filtrar productos"}</span>
         </button>
 
-        <button
-          type="button"
-          className={`metric-card metric-filter${activeMetric === "noStock" ? " is-active" : ""}`}
-          aria-pressed={activeMetric === "noStock"}
-          aria-controls="products-table"
-          disabled={loading}
-          onClick={() => toggleMetric("noStock")}
-        >
-          <span>Sin stock</span>
-          {loading ? (
-            <strong className="skeleton-text skeleton-text-short" />
-          ) : (
-            <strong className="text-danger">{metrics.productsWithoutStock}</strong>
-          )}
-          <small>Ventas detenidas</small>
-                  <span className="metric-filter-hint">{activeMetric === "noStock" ? "✓ Filtro activo · Desactivar" : "Filtrar productos"}</span>
-        </button>
         <button
           type="button"
           className={`metric-card metric-filter${activeMetric === "expiring" ? " is-active" : ""}`}
@@ -336,22 +376,14 @@ const GetProducts = () => {
           disabled={loading}
           onClick={() => toggleMetric("expiring")}
         >
-          <span>Caducan pronto</span>
+          <span>Caducidad</span>
           {loading ? (
             <strong className="skeleton-text skeleton-text-short" />
           ) : (
             <strong className="text-warning">{metrics.expiringSoonProducts}</strong>
           )}
-          <small>De hoy a {EXPIRING_SOON_DAYS} días · Listado actual</small>
+          <small>Caducados y de hoy a {EXPIRING_SOON_DAYS} días</small>
                   <span className="metric-filter-hint">{activeMetric === "expiring" ? "✓ Filtro activo · Desactivar" : "Filtrar productos"}</span>
-        </button>
-        <button type="button" className={`metric-card metric-filter${activeMetric === "expired" ? " is-active" : ""}`}
-          aria-pressed={activeMetric === "expired"} aria-controls="products-table" disabled={loading}
-          onClick={() => toggleMetric("expired")}>
-          <span>Caducados</span>
-          {loading ? <strong className="skeleton-text skeleton-text-short" /> : <strong className="text-danger">{metrics.expiredProducts}</strong>}
-          <small>Productos pendientes de retirada</small>
-          <span className="metric-filter-hint">{activeMetric === "expired" ? "✓ Filtro activo · Desactivar" : "Filtrar productos"}</span>
         </button>
         <button type="button" className={`metric-card metric-filter${activeMetric === "noSales" ? " is-active" : ""}`}
           aria-pressed={activeMetric === "noSales"} aria-controls="products-table" disabled={loading || loadingProductsWithoutSales}
@@ -363,11 +395,52 @@ const GetProducts = () => {
         </button>
       </section>
 
+      {isDesktop && <section className="recent-movements-card" aria-labelledby="recent-movements-title">
+        <div className="recent-movements-heading">
+          <h2 id="recent-movements-title">Últimos movimientos</h2>
+        </div>
+
+        {loadingRecentMovements ? (
+          <div className="recent-movements-loading" aria-label="Cargando últimos movimientos">
+            <span className="skeleton-text" />
+            <span className="skeleton-text" />
+            <span className="skeleton-text" />
+          </div>
+        ) : recentMovementsError ? (
+          <div className="recent-movements-message">
+            <span>No se pudo cargar la actividad.</span>
+            <button type="button" onClick={() => void loadRecentMovements()}>Reintentar</button>
+          </div>
+        ) : recentMovements.length ? (
+          <ul className="recent-movements-list">
+            {recentMovements.map((movement) => (
+              <li key={movement.movimiento_id}>
+                <div className="recent-movement-detail">
+                  <strong>{movement.producto_nombre}</strong>
+                </div>
+                <strong className={`recent-movement-quantity recent-movement-${movement.tipo}`}>
+                  {movement.tipo === "entrada" ? "+" : movement.tipo === "salida" ? "−" : "±"}{Math.abs(Number(movement.cantidad))}
+                </strong>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="recent-movements-message">Todavía no hay movimientos registrados.</p>
+        )}
+
+        <button type="button" className="recent-movements-link" onClick={onShowMovements}>
+          Ver historial completo
+        </button>
+      </section>
+      }
+      </section>
+
       <section
         className={`product-table-card${loading ? "" : ` fade-init${fadeIn ? " fade-in" : ""}`}`}
       >
         <div className="product-table-toolbar">
-          <div className="toolbar-field toolbar-search">
+          <div className="product-toolbar-row product-toolbar-primary">
+            <div className="toolbar-field toolbar-search">
             <label className="w-100">
                         <span className="form-label">Buscar producto</span>
 
@@ -379,9 +452,9 @@ const GetProducts = () => {
               onChange={(e) => handleSearch(e.target.value)}
               />
               </label>
-          </div>
+            </div>
 
-          <div className="toolbar-field">
+            <div className="toolbar-field">
             <label className="form-label small text-secondary">Categoria</label>
             <select
               className="form-select"
@@ -395,9 +468,11 @@ const GetProducts = () => {
                 </option>
               ))}
             </select>
+            </div>
           </div>
 
-          <div className="toolbar-field">
+          <div className="product-toolbar-row product-toolbar-secondary">
+            <div className="toolbar-field">
             <label className="form-label small text-secondary">Ordenar por</label>
             <select
               className="form-select"
@@ -409,9 +484,9 @@ const GetProducts = () => {
               <option value="precio_compra">Precio compra</option>
               <option value="fecha_caducidad">Caducidad</option>
             </select>
-          </div>
+            </div>
 
-          <div className="toolbar-field">
+            <div className="toolbar-field">
             <label className="form-label small text-secondary">Direccion</label>
             <select
               className="form-select"
@@ -421,6 +496,7 @@ const GetProducts = () => {
               <option value="asc">Menor / proxima</option>
               <option value="desc">Mayor / lejana</option>
             </select>
+            </div>
           </div>
         </div>
 
@@ -436,9 +512,9 @@ const GetProducts = () => {
           <table id="products-table" className="table table-hover align-middle mb-0 product-table">
             <thead>
               <tr >
-                <th >Producto</th>
-                <th className="d-none d-md-table-cell">Categoria</th>
-                <th className="text-center">
+                <th className="sticky-top">Producto</th>
+                <th className="sticky-top d-none d-md-table-cell">Categoria</th>
+                <th className="sticky-top text-center">
                   <button
                     type="button"
                     className="table-heading-button"
@@ -448,8 +524,8 @@ const GetProducts = () => {
                     {showStockComparison ? "Estado stock" : "Disponible"}
                   </button>
                 </th>
-                <th className="d-none d-lg-table-cell text-center">Precio sin IVA</th>
-                <th className="d-none d-md-table-cell text-center">
+                <th className="sticky-top d-none d-lg-table-cell text-center">Precio sin IVA</th>
+                <th className="sticky-top d-none d-md-table-cell text-center">
                   <button
                     type="button"
                     className="table-heading-button"
@@ -459,7 +535,7 @@ const GetProducts = () => {
                     {showExpirationDays ? "Dias restantes" : "Caducidad"}
                   </button>
                 </th>
-                <th>Estado</th><th>Movimiento</th>
+                <th className="sticky-top">Estado</th><th className="sticky-top">Movimiento</th>
               </tr>
             </thead>
 
@@ -583,7 +659,7 @@ const expirationStatus = getExpirationStatus(item);
         </div>
       </section>
 
-      {movementProduct && <NewMovement preselectedProduct={movementProduct} hideTrigger onClose={() => setMovementProduct(null)} onCreated={async () => { setMovementProduct(null); await refetch(); }} />}
+      {movementProduct && <NewMovement preselectedProduct={movementProduct} hideTrigger onClose={() => setMovementProduct(null)} onCreated={async () => { setMovementProduct(null); await Promise.all([refetch(), ...(isDesktop ? [loadRecentMovements()] : [])]); }} />}
 
       {showCard && selectedProduct && (
         <CardLayout

@@ -17,6 +17,9 @@ export const salesService = {
     return response.blob();
   },
   summary: () => request(`${API_URL}/ventas/resumen`),
+  // El resumen de clientes solo muestra ventas terminadas: no pedidos
+  // pendientes, anulados ni devoluciones con importe neto cero.
+  recent: () => request(`${API_URL}/ventas?limite=15&estado=completa`),
   getById: (saleId) => request(`${API_URL}/ventas/${saleId}`),
   create: (sale) => request(`${API_URL}/ventas`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(sale) }),
   cancel: (saleId, reason) => request(`${API_URL}/ventas/${saleId}/anular`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ motivo: reason }) }),

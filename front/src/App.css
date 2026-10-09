@@ -1,8 +1,65 @@
 body {
   font-family: "Inter", sans-serif;
   background:
-    radial-gradient(circle at 18% 8%, rgba(14, 165, 233, 0.13), transparent 28%),
+    radial-gradient(circle at 82% 8%, rgba(14, 165, 233, 0.13), transparent 28%),
     radial-gradient(circle at 84% 0%, rgba(20, 184, 166, 0.1), transparent 24%),
     linear-gradient(180deg, #f8fafc 0%, #eef5f8 52%, #f5f7fb 100%);
   color: #0f172a;
+}
+
+.app-content.app-surface {
+  position: relative;
+  isolation: isolate;
+  background: transparent;
+}
+
+.app-content.app-surface::before {
+  content: "";
+  position: fixed;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 6% 3%, rgba(8, 52, 84, .35), transparent 44%),
+    radial-gradient(circle at 88% 8%, rgba(56, 189, 248, .16), transparent 28%),
+    radial-gradient(circle at 76% 96%, rgba(255, 255, 255, .96), transparent 38%),
+    linear-gradient(180deg, #d6e8f0 0%, #e8f2f5 48%, #f7fafb 100%);
+}
+
+.app-content.app-surface > main,
+.app-content.app-surface > footer,
+.app-content.app-surface > .workspace-switcher {
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 767.98px), (hover: none) and (pointer: coarse) {
+  .product-modal-backdrop,
+  .product-edit-backdrop,
+  .movement-detail-backdrop,
+  .movement-create-backdrop {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+  }
+
+  .product-modal-card,
+  .product-edit-modal,
+  .movement-detail-card,
+  .movement-create-card {
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    box-sizing: border-box;
+  }
 }

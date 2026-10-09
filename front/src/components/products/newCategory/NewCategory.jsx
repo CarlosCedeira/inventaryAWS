@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { productService } from "../productService";
 import { useEscapeKey } from "../../../hooks/useEscapeKey";
+import { useToast } from "../../feedback/ToastProvider";
 
 const initialForm = {
   nombre: "",
@@ -8,6 +9,7 @@ const initialForm = {
 };
 
 const NewCategory = ({ onCreated }) => {
+  const { success } = useToast();
   const [form, setForm] = useState(initialForm);
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -52,7 +54,10 @@ const NewCategory = ({ onCreated }) => {
     return "El nombre contiene caracteres no válidos";
   }
 
-  // descripción opcional
+  if (!form.descripcion.trim()) {
+    return "La descripción de la categoría es obligatoria";
+  }
+
   if (form.descripcion.length > 200) {
     return "La descripción no puede superar los 200 caracteres";
   }
@@ -93,6 +98,7 @@ const NewCategory = ({ onCreated }) => {
   descripcion: form.descripcion.trim(),
 });
 
+      success("Categoría creada correctamente");
       onCreated?.();
       handleCloseModal();
     } catch (submitError) {
@@ -163,6 +169,7 @@ const NewCategory = ({ onCreated }) => {
                       className="form-control"
                       rows="3"
                       maxLength={200}
+                      required
                     />
                   </div>
 

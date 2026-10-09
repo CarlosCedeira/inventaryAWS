@@ -13,6 +13,8 @@ export interface SaleListFilters {
   taxRate: number | null;
   userId: number | null;
   minimumTotal: number | null;
+  status: "pendiente_pago" | "completa" | "parcialmente_devuelta" | "devuelta" | "anulada" | null;
+  limit: number | null;
 }
 
 function optionalText(value: unknown, limit: number) {
@@ -112,11 +114,18 @@ function buildSaleListFilters(query: Input): { filters: SaleListFilters; error?:
   if (taxRate !== null && (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 100)) return { error: "El IVA no es válido" };
   const minimumTotal = query.importe_minimo === undefined || query.importe_minimo === null || query.importe_minimo === "" ? null : Number(query.importe_minimo);
   if (minimumTotal !== null && (!Number.isFinite(minimumTotal) || minimumTotal < 0)) return { error: "El importe mínimo no es válido" };
+  const status = queryText(query.estado, 32);
+  const allowedStatuses = ["pendiente_pago", "completa", "parcialmente_devuelta", "devuelta", "anulada"] as const;
+  if (status && !allowedStatuses.includes(status as typeof allowedStatuses[number])) return { error: "El estado no es válido" };
+  const limit = query.limite === undefined || query.limite === null || query.limite === "" ? null : Number(query.limite);
+  if (limit !== null && (!Number.isSafeInteger(limit) || limit < 1 || limit > 20)) return { error: "El límite no es válido" };
 
   return {
     filters: {
       search: queryText(query.buscar), period: period as SaleListFilters["period"], dateFrom: dateFrom.value, dateTo: dateTo.value,
       clientId: client.value, productId: product.value, categoryId: category.value, taxRate, userId: user.value, minimumTotal,
+      status: (status || null) as SaleListFilters["status"],
+      limit,
     },
   };
 }

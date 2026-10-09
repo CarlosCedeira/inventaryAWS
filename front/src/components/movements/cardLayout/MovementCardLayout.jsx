@@ -19,6 +19,21 @@ const MOVEMENT_TYPES = {
   },
 };
 
+const LOGISTICS_STATUSES = {
+  pendiente_picking: {
+    label: "Pendiente de picking",
+    className: "movement-detail-logistics-pending",
+  },
+  finalizado: {
+    label: "Finalizado",
+    className: "movement-detail-logistics-complete",
+  },
+  cancelado: {
+    label: "Cancelado",
+    className: "movement-detail-logistics-cancelled",
+  },
+};
+
 const getInitials = (name = "") =>
   name
     .split(" ")
@@ -65,6 +80,10 @@ const MovementCardLayout = ({ movement, onClose }) => {
   const stockBefore = Number(movement.stock_anterior || 0);
   const stockAfter = Number(movement.stock_nuevo || 0);
   const movementAmount = `${type.sign}${quantity}`;
+  const logisticsStatus = LOGISTICS_STATUSES[movement.estado_logistico] || {
+    label: "Finalizado",
+    className: "movement-detail-logistics-complete",
+  };
 
   return (
     <div
@@ -84,6 +103,9 @@ const MovementCardLayout = ({ movement, onClose }) => {
               <div className="movement-detail-meta">
                 <span className={`badge rounded-pill ${type.className}`}>
                   {type.label} {movementAmount}
+                </span>
+                <span className={`badge rounded-pill ${logisticsStatus.className}`}>
+                  {logisticsStatus.label}
                 </span>
                 <span>{formatDateTime(movement.created_at)}</span>
               </div>
@@ -126,13 +148,15 @@ const MovementCardLayout = ({ movement, onClose }) => {
             </div>
 
             <div className="movement-detail-grid">
-              <DetailItem label="Fecha" value={formatDateTime(movement.created_at)} />
               <DetailItem label="Categoria" value={movement.producto_categoria || "Sin categoria"} />
               <DetailItem label="Lote" value={movement.numero_lote || "Sin lote"} />
               <DetailItem label="Caducidad" value={formatDate(movement.fecha_caducidad)} />
               <DetailItem label="Usuario" value={movement.usuario_nombre || "Sin usuario"} />
               <DetailItem label="Motivo" value={movement.motivo} />
+              <DetailItem label="Estado logístico" value={logisticsStatus.label} />
               <DetailItem label="Descripcion" value={movement.descripcion} />
+              <DetailItem label="Fecha del movimiento" value={formatDateTime(movement.created_at)} />
+
             </div>
           </section>
 

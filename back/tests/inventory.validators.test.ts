@@ -3,12 +3,12 @@ import assert from "node:assert/strict";
 const { buildCreateProductPayload, buildUpdateProductPayload } = require("../modules/inventory/inventory.validators");
 
 const product = {
-  nombre: "Producto demo", descripcion: "", categoria_id: "2",
+  nombre: "Producto demo", descripcion: "Producto de demostración", categoria_id: "2",
   impuesto_id: "1",
   precio_compra: "0", precio_venta: "5", stock_minimo: "0",
 };
 const createBody = {
-  ...product, producto_nombre: product.nombre, producto_descripcion: "",
+  ...product, producto_nombre: product.nombre, producto_descripcion: product.descripcion,
   cantidad: "4", numero_lote: " L-01 ", fecha_caducidad: "",
 };
 

@@ -6,6 +6,8 @@ import {
   validateStockQuantity,
 } from "../../utils/stockQuantity";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
+import { useToast } from "../feedback/ToastProvider";
+import "./NewMovement.css";
 
 const MOVEMENT_TYPES = ["entrada", "salida", "ajuste"];
 const OTHER_REASON = "__otro__";
@@ -45,6 +47,7 @@ const initialForm = {
 };
 
 const NewMovement = ({ onCreated, onClose, preselectedProduct = null, hideTrigger = false }) => {
+  const { success } = useToast();
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -217,10 +220,6 @@ const NewMovement = ({ onCreated, onClose, preselectedProduct = null, hideTrigge
       return "El motivo no puede superar los 255 caracteres";
     }
 
-    if (!form.descripcion.trim()) {
-      return "Escribe una descripción";
-    }
-
     if (form.descripcion.trim().length > 4000) {
       return "La descripción no puede superar los 4000 caracteres";
     }
@@ -257,6 +256,7 @@ const NewMovement = ({ onCreated, onClose, preselectedProduct = null, hideTrigge
         descripcion: form.descripcion.trim(),
       });
 
+      success("Movimiento registrado correctamente");
       await onCreated?.();
       handleClose();
     } catch (submitError) {
@@ -275,221 +275,28 @@ const NewMovement = ({ onCreated, onClose, preselectedProduct = null, hideTrigge
 
       {showModal && (
         <div
-          className="modal d-block modal-lg"
-          tabIndex="-1"
-          style={{ background: "rgba(0,0,0,0.5)" }}
+          className="movement-create-backdrop"
+          role="presentation"
+          onMouseDown={handleClose}
         >
-          <div className="modal-dialog">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title w-100 text-center">Anadir movimiento</h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={handleClose}
-                  disabled={saving}
-                />
+          <section className="movement-create-card" role="dialog" aria-modal="true" aria-labelledby="movement-create-title" onMouseDown={(event) => event.stopPropagation()}>
+            <header className="movement-create-header"><h2 id="movement-create-title">Añadir movimiento</h2><button type="button" className="btn-close" aria-label="Cerrar" onClick={handleClose} disabled={saving} /></header>
+            <form onSubmit={handleSubmit}>
+              <div className="movement-create-fields row g-3">
+                <label className="col-12 movement-product-picker"><span className="form-label">Producto</span><input type="text" name="producto_nombre" value={form.producto_nombre} onChange={handleChange} className="form-control" placeholder="Buscar por nombre" autoComplete="off" required disabled={Boolean(preselectedProduct)} />{products.length > 0 && <div className="list-group movement-product-results">{products.map((product) => <button type="button" className="list-group-item list-group-item-action" key={product.producto_id} onClick={() => handleSelectProduct(product)}>{product.producto_nombre}<span>Stock: {product.stock_total}</span></button>)}</div>}{searching && <div className="form-text">Buscando productos...</div>}</label>
+                <label className="col-md-6"><span className="form-label">Tipo</span><select name="tipo" value={form.tipo} onChange={handleChange} className="form-select" required>{MOVEMENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}</select></label>
+                <label className="col-md-6"><span className="form-label">{form.tipo === "ajuste" ? "Stock nuevo" : "Cantidad"}</span><input type="number" name="cantidad" value={form.cantidad} onChange={handleChange} className="form-control" min={form.tipo === "ajuste" ? "0" : "1"} step="1" required /></label>
+                <label className="col-12"><span className="form-label">Motivo</span><select name="motivo" value={form.motivo} onChange={handleChange} className="form-select" required><option value="">Selecciona un motivo</option>{MOVEMENT_REASONS[form.tipo].map((reason) => <option key={reason} value={reason}>{reason}</option>)}</select></label>
+                <label className="col-12"><span className="form-label">Descripción <span className="text-secondary">(opcional)</span></span><textarea name="descripcion" value={form.descripcion} onChange={handleChange} className="form-control" rows="2" maxLength="4000" /></label>
+                {isEntry ? <><label className="col-md-6"><span className="form-label">Nº de lote</span><input type="text" name="numero_lote" value={form.numero_lote} onChange={handleChange} className="form-control" /></label><label className="col-md-6"><span className="form-label">Caducidad</span><input type="date" name="fecha_caducidad" value={form.fecha_caducidad} onChange={handleChange} className="form-control" /></label></> : <label className="col-12"><span className="form-label">Lote</span><select name="inventario_id" value={form.inventario_id} onChange={handleSelectLot} className="form-select" disabled={!form.producto_id || loadingLots} required><option value="">{loadingLots ? "Cargando lotes..." : "Selecciona un lote"}</option>{availableLots.map((lot) => <option key={lot.inventario_id} value={lot.inventario_id}>{getLotLabel(lot)}</option>)}</select>{!loadingLots && form.producto_id && !availableLots.length && <small className="form-text">Este producto no tiene lotes con stock.</small>}</label>}
               </div>
-
-              <div className="modal-body">
-                <form onSubmit={handleSubmit}>
-                  <div className="container-fluid">
-                    <div className="mb-3 row align-items-center position-relative">
-                      <label className="col-sm-3 col-form-label text-nowrap">Producto</label>
-                      <div className="col-sm-9">
-                        <input
-                          type="text"
-                          name="producto_nombre"
-                          value={form.producto_nombre}
-                          onChange={handleChange}
-                          className="form-control"
-                          placeholder="Buscar por nombre"
-                          autoComplete="off"
-                          required
-                          disabled={Boolean(preselectedProduct)}
-                        />
-                        {products.length > 0 && (
-                          <div className="list-group position-absolute start-0 end-0 mx-3 mt-1 shadow movement-product-results">
-                            {products.map((product) => (
-                              <button
-                                type="button"
-                                className="list-group-item list-group-item-action"
-                                key={product.producto_id}
-                                onClick={() => handleSelectProduct(product)}
-                              >
-                                {product.producto_nombre}
-                                <span className="text-muted ms-2">
-                                  Stock: {product.stock_total}
-                                </span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                        {searching && (
-                          <div className="form-text">Buscando productos...</div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="row">
-                      <div className="col-md-6">
-                        <div className="mb-3 row align-items-center">
-                          <label className="col-sm-5 col-form-label text-nowrap">Tipo</label>
-                          <div className="col-sm-7">
-                            <select
-                              name="tipo"
-                              value={form.tipo}
-                              onChange={handleChange}
-                              className="form-control"
-                              required
-                            >
-                              {MOVEMENT_TYPES.map((type) => (
-                                <option key={type} value={type}>
-                                  {type}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-
-                        <div className="mb-3 row align-items-center">
-                          <label className="col-sm-5 col-form-label text-nowrap">
-                            {form.tipo === "ajuste" ? "Stock nuevo" : "Cantidad"}
-                          </label>
-                          <div className="col-sm-7">
-                            <input
-                              type="number"
-                              name="cantidad"
-                              value={form.cantidad}
-                              onChange={handleChange}
-                              className="form-control"
-                              min={form.tipo === "ajuste" ? "0" : "1"}
-                              step="1"
-                              required
-                            />
-                          </div>
-                        </div>
-
-                        <div className="mb-3 row align-items-center">
-                          <label className="col-sm-5 col-form-label text-nowrap">Motivo</label>
-                          <div className="col-sm-7">
-                            <select
-                              name="motivo"
-                              value={form.motivo}
-                              onChange={handleChange}
-                              className="form-control"
-                              required
-                            >
-                              <option value="">Selecciona un motivo</option>
-                              {MOVEMENT_REASONS[form.tipo].map((reason) => (
-                                <option key={reason} value={reason}>
-                                  {reason}
-                                </option>
-                              ))}
-                            </select>
-
-                          </div>
-                        </div>
-
-                        <div className="mb-3 row align-items-center">
-                          <label className="col-sm-5 col-form-label text-nowrap">Descripción</label>
-                          <div className="col-sm-7">
-                            <textarea
-                              name="descripcion"
-                              value={form.descripcion}
-                              onChange={handleChange}
-                              className="form-control"
-                              rows="3"
-                              maxLength="4000"
-                              required
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="col-md-6">
-                        {isEntry ? (
-                          <>
-                            <div className="mb-3 row align-items-center">
-                              <label className="col-sm-5 col-form-label text-nowrap">Lote</label>
-                              <div className="col-sm-7">
-                                <input
-                                  type="text"
-                                  name="numero_lote"
-                                  value={form.numero_lote}
-                                  onChange={handleChange}
-                                  className="form-control"
-                                />
-                              </div>
-                            </div>
-
-                            <div className="mb-3 row align-items-center">
-                              <label className="col-sm-5 col-form-label text-nowrap">Caducidad</label>
-                              <div className="col-sm-7">
-                                <input
-                                  type="date"
-                                  name="fecha_caducidad"
-                                  value={form.fecha_caducidad}
-                                  onChange={handleChange}
-                                  className="form-control"
-                                />
-                              </div>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="mb-3 row align-items-center">
-                            <label className="col-sm-5 col-form-label text-nowrap">Lote</label>
-                            <div className="col-sm-7">
-                              <select
-                                name="inventario_id"
-                                value={form.inventario_id}
-                                onChange={handleSelectLot}
-                                className="form-control"
-                                disabled={!form.producto_id || loadingLots}
-                                required
-                              >
-                                <option value="">
-                                  {loadingLots ? "Cargando lotes..." : "Selecciona un lote"}
-                                </option>
-                                {availableLots.map((lot) => (
-                                  <option
-                                    key={lot.inventario_id}
-                                    value={lot.inventario_id}
-                                  >
-                                    {getLotLabel(lot)}
-                                  </option>
-                                ))}
-                              </select>
-                              {!loadingLots && form.producto_id && !availableLots.length && (
-                                <div className="form-text">
-                                  Este producto no tiene lotes con stock.
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    {error && <div className="alert alert-danger py-2">{error}</div>}
-
-                    <div className="d-flex justify-content-between align-items-end gap-5">
-                      <button
-                        type="button"
-                        className="btn btn-secondary"
-                        onClick={handleClose}
-                        disabled={saving}
-                      >
-                        Cancelar
-                      </button>
-                      <button className="btn btn-success" type="submit" disabled={saving}>
-                        {saving ? "Guardando..." : "Crear movimiento"}
-                      </button>
-                    </div>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
+              {error && <div className="alert alert-danger py-2 mt-3 mb-0">{error}</div>}
+              <footer className="movement-create-footer">
+                <button type="button" className="btn btn-outline-secondary" onClick={handleClose} disabled={saving}>Cancelar</button>
+                <button className="btn btn-success" type="submit" disabled={saving}>{saving ? "Guardando..." : "Crear movimiento"}</button>
+              </footer>
+            </form>
+          </section>
         </div>
       )}
     </>

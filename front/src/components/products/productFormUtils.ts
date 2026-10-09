@@ -57,6 +57,7 @@ export const validateProductForm = (
     return "El nombre contiene caracteres no válidos";
   }
 
+  if (!descripcion) return "La descripción del producto es obligatoria";
   if (descripcion.length > 300) {
     return "La descripción no puede superar los 300 caracteres";
   }

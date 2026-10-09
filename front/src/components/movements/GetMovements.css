@@ -2,10 +2,8 @@
   min-height: 100vh;
   padding: 1.5rem;
   padding-left: 2.5rem;
-  background:
-    radial-gradient(circle at 16% 0%, rgba(14, 165, 233, 0.12), transparent 28%),
-    linear-gradient(180deg, rgba(248, 250, 252, 0.92) 0%, #f5f7fb 100%);
 }
+
 
 .movements-header {
   display: flex;
@@ -29,9 +27,43 @@
 
 .movements-metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: minmax(170px, 0.9fr) minmax(300px, 1.5fr) minmax(300px, 1.5fr) minmax(170px, 0.9fr);
   gap: 1rem;
   margin-bottom: 1rem;
+}
+
+.movement-metric-group {
+  min-width: 0;
+  padding: 0.7rem;
+  border: 1px solid rgba(226, 232, 240, 0.75);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.movement-metric-group > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0 0.25rem 0.55rem;
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.movement-metric-group > header strong {
+  color: #0f172a;
+  font-size: 1.15rem;
+}
+
+.movement-metric-group-items {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.movement-metric-group-adjustment .movement-metric-group-items {
+  grid-template-columns: 1fr;
 }
 
 .movement-filters {
@@ -40,11 +72,7 @@
   align-items: end;
   gap: 0.75rem;
   padding: 1rem;
-  margin-bottom: 1rem;
-  border: 1px solid rgba(226, 232, 240, 0.75);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.88);
-  box-shadow: 0 0.75rem 1.5rem rgba(15, 23, 42, 0.06);
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .movement-filters label {
@@ -54,6 +82,10 @@
   color: #475569;
   font-size: 0.78rem;
   font-weight: 700;
+}
+
+.movement-filter-row {
+  display: contents;
 }
 
 .movement-filters input,
@@ -73,7 +105,7 @@
 }
 
 .movement-metric-card {
-  min-height: 126px;
+  min-height: 106px;
   padding: 1rem;
   border: 1px solid rgba(226, 232, 240, 0.75);
   border-radius: 8px;
@@ -82,6 +114,28 @@
   box-shadow: 0 0.75rem 1.5rem rgba(15, 23, 42, 0.06);
   animation: mistIn 0.46s ease both;
 }
+
+.movement-metric-filter {
+  width: 100%;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease, background .2s ease;
+}
+
+.movement-metric-filter:hover,
+.movement-metric-filter.is-active {
+  border-color: #0ea5e9;
+  background: #f0f9ff;
+  box-shadow: 0 1rem 1.75rem rgba(14, 116, 144, .13);
+}
+
+.movement-metric-filter:hover { transform: translateY(-2px); }
+
+.movement-metric-filter.is-active { box-shadow: inset 0 0 0 1px #0ea5e9; }
+
+.movement-metric-filter:focus-visible { outline: 3px solid rgba(14, 165, 233, .35); outline-offset: 2px; }
 
 .movement-metric-card span,
 .movement-metric-card small {
@@ -122,6 +176,14 @@
   text-transform: uppercase;
   letter-spacing: 0;
   border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 1px 0 #e5e7eb;
+}
+
+.movement-results-summary {
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  color: #64748b;
+  font-size: 0.85rem;
 }
 
 .movement-table tbody td {
@@ -210,6 +272,106 @@
   background: #f1f5f9;
   border: 1px solid #e2e8f0;
   color: #475569;
+}
+
+.movement-logistics-status {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.movement-logistics-action {
+  appearance: none;
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.movement-logistics-action:hover,
+.movement-logistics-action:focus-visible {
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.18);
+  transform: translateY(-1px);
+}
+
+.movement-logistics-pending {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #c2410c;
+}
+
+.movement-logistics-complete {
+  background: #ecfdf5;
+  border: 1px solid #bbf7d0;
+  color: #047857;
+}
+
+.movement-logistics-cancelled {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+}
+
+.movement-completion-backdrop {
+  position: fixed;
+  z-index: 3100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.48);
+  backdrop-filter: blur(5px);
+}
+
+.movement-completion-dialog {
+  width: min(440px, 100%);
+  padding: 1.5rem;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 1.5rem 3rem rgba(15, 23, 42, 0.25);
+}
+
+.movement-completion-dialog h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.movement-completion-dialog > p {
+  margin: 0.55rem 0 1rem;
+  color: #475569;
+}
+
+.movement-completion-dialog dl {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0;
+  padding: 1rem;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.movement-completion-dialog dl div {
+  display: grid;
+  grid-template-columns: 8.5rem minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+.movement-completion-dialog dt {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.movement-completion-dialog dd {
+  margin: 0;
+  color: #1e293b;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.movement-completion-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
 }
 
 .movement-stock-arrow {
@@ -322,6 +484,15 @@
 }
 
 @media (max-width: 991.98px) {
+  .movements-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .movement-metric-total,
+  .movement-metric-group-adjustment {
+    grid-column: 1 / -1;
+  }
+
   .movement-filters {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -330,14 +501,39 @@
     width: 100%;
   }
 
-  .movements-metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 767.98px) {
   .movement-filters {
     grid-template-columns: 1fr;
+  }
+
+  .movement-filter-row {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .movement-filter-primary {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.9fr);
+  }
+
+  .movement-filter-secondary {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .movement-filter-secondary label {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .movement-filter-secondary input {
+    min-width: 0;
+  }
+
+  .movement-filter-clear {
+    justify-self: end;
+    width: auto;
   }
 
   .movements-page {
@@ -355,6 +551,11 @@
 
   .movements-metrics {
     grid-template-columns: 1fr;
+  }
+
+  .movement-metric-total,
+  .movement-metric-group-adjustment {
+    grid-column: auto;
   }
 
   .movement-table-card {

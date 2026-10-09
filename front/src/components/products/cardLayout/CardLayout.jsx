@@ -250,6 +250,7 @@ const CardLayout = ({ onClose, onEdit, id }) => {
                     rows="2"
                     disabled={saving}
                     maxLength={300}
+                    required
                   />
                 </div>
 

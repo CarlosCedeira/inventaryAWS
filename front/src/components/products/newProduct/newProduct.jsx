@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { fetchWithAuth } from "../../../services/authService";
 import {
   validateProductForm,
   buildProductPayload,
 } from "../productFormUtils";
 import { useEscapeKey } from "../../../hooks/useEscapeKey";
+import { useToast } from "../../feedback/ToastProvider";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -30,6 +31,7 @@ const numberFields = new Set([
 ]);
 
 const NewProduct = ({ onCreated }) => {
+  const { success } = useToast();
   const [categorias, setCategorias] = useState([]);
   const [impuestos, setImpuestos] = useState([]);
   const [loadingCategorias, setLoadingCategorias] = useState(true);
@@ -38,37 +40,41 @@ const NewProduct = ({ onCreated }) => {
   const [error, setError] = useState("");
   const [form, setForm] = useState(initialForm);
 
-  useEffect(() => {
-    const fetchOptions = async () => {
-      try {
-        const [categoriasResponse, impuestosResponse] = await Promise.all([
-          fetchWithAuth(`${API_URL}/productos/categorias`),
-          fetchWithAuth(`${API_URL}/productos/impuestos`),
-        ]);
+  const fetchOptions = useCallback(async () => {
+    setLoadingCategorias(true);
+    try {
+      const [categoriasResponse, impuestosResponse] = await Promise.all([
+        fetchWithAuth(`${API_URL}/productos/categorias`),
+        fetchWithAuth(`${API_URL}/productos/impuestos`),
+      ]);
 
-        if (!categoriasResponse.ok || !impuestosResponse.ok) {
-          throw new Error("Error al obtener las opciones del producto");
-        }
-
-        const [categoriasData, impuestosData] = await Promise.all([
-          categoriasResponse.json(),
-          impuestosResponse.json(),
-        ]);
-        setCategorias(categoriasData);
-        setImpuestos(impuestosData);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoadingCategorias(false);
+      if (!categoriasResponse.ok || !impuestosResponse.ok) {
+        throw new Error("Error al obtener las opciones del producto");
       }
-    };
 
-    fetchOptions();
+      const [categoriasData, impuestosData] = await Promise.all([
+        categoriasResponse.json(),
+        impuestosResponse.json(),
+      ]);
+      setCategorias(categoriasData);
+      setImpuestos(impuestosData);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingCategorias(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void fetchOptions();
+  }, [fetchOptions]);
 
   const handleAddClick = () => {
     setError("");
     setShowModal(true);
+    // Las categorías pueden haberse creado desde esta misma vista desde la
+    // última apertura del formulario, por lo que se recargan al abrirlo.
+    void fetchOptions();
   };
 
   const handleCloseModal = () => {
@@ -123,6 +129,7 @@ const NewProduct = ({ onCreated }) => {
     }
 
     await response.json();
+    success("Producto creado correctamente");
     onCreated?.();
     handleCloseModal();
   } catch (submitError) {
@@ -135,7 +142,7 @@ const NewProduct = ({ onCreated }) => {
 
   return (
     <>
-      <button className="btn btn-primary" onClick={handleAddClick}>
+      <button className="btn btn-success" onClick={handleAddClick}>
         Nuevo producto
       </button>
 
@@ -183,6 +190,7 @@ const NewProduct = ({ onCreated }) => {
                           onChange={handleChange}
                           className="form-control"
                           rows="2"
+                          required
                         />
                       </div>
                     </div>

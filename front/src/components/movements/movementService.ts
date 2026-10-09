@@ -3,6 +3,7 @@ import { fetchWithAuth } from "../../services/authService";
 const API_URL = import.meta.env.VITE_API_URL;
 
 export type MovementType = "entrada" | "salida" | "ajuste";
+export type LogisticsStatus = "pendiente_picking" | "finalizado" | "cancelado";
 export type NumericValue = number | string;
 
 export interface Movement {
@@ -20,6 +21,7 @@ export interface Movement {
   numero_lote: string | null;
   fecha_caducidad: string | null;
   motivo: string | null;
+  estado_logistico: LogisticsStatus;
   descripcion: string | null;
   usuario_id: number;
   usuario_nombre: string | null;
@@ -27,10 +29,12 @@ export interface Movement {
 }
 
 export interface MovementFilters {
+  productId?: number;
   type?: MovementType;
   startDate?: string;
   endDate?: string;
   search?: string;
+  limit?: number;
 }
 
 export interface CreateMovementPayload {
@@ -46,10 +50,12 @@ export interface CreateMovementPayload {
 
 function buildFiltersQuery(filters: MovementFilters): string {
   const params = new URLSearchParams();
+  if (filters.productId) params.set("producto_id", String(filters.productId));
   if (filters.type) params.set("tipo", filters.type);
   if (filters.startDate) params.set("fecha_desde", filters.startDate);
   if (filters.endDate) params.set("fecha_hasta", filters.endDate);
   if (filters.search) params.set("buscar", filters.search);
+  if (filters.limit) params.set("limite", String(filters.limit));
   const query = params.toString();
   return query ? `?${query}` : "";
 }
@@ -74,5 +80,18 @@ export const movementService = {
     }
 
     return res.json() as Promise<{ movementId: number; stock_anterior: number; stock_nuevo: number }>;
+  },
+
+  completePicking: async (movementId: number): Promise<{ movementId: number; estado_logistico: LogisticsStatus }> => {
+    const res = await fetchWithAuth(`${API_URL}/movimientos/${movementId}/finalizar-picking`, {
+      method: "PATCH",
+    });
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || "No se pudo finalizar el picking");
+    }
+
+    return res.json() as Promise<{ movementId: number; estado_logistico: LogisticsStatus }>;
   },
 };

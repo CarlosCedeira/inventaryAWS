@@ -12,7 +12,12 @@ beforeEach(() => {
 
 test("consulta clientes con el texto de búsqueda codificado", async () => {
   await clientService.getAll("Ana López");
-  expect(fetchWithAuthMock).toHaveBeenCalledWith(expect.stringMatching(/\/clientes\?buscar=Ana%20L%C3%B3pez$/));
+  expect(fetchWithAuthMock).toHaveBeenCalledWith(expect.stringMatching(/\/clientes\?buscar=Ana(?:\+|%20)L%C3%B3pez$/));
+});
+
+test("consulta clientes por estado", async () => {
+  await clientService.getAll("", null, "activo");
+  expect(fetchWithAuthMock).toHaveBeenCalledWith(expect.stringMatching(/\/clientes\?estado=activo$/));
 });
 
 test("crea y actualiza clientes mediante las rutas esperadas", async () => {

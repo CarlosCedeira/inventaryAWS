@@ -173,6 +173,24 @@
   color: #475569;
 }
 
+.movement-detail-logistics-pending {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #c2410c;
+}
+
+.movement-detail-logistics-complete {
+  background: #ecfdf5;
+  border: 1px solid #bbf7d0;
+  color: #047857;
+}
+
+.movement-detail-logistics-cancelled {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+}
+
 .movement-trace {
   display: grid;
   grid-template-columns: 1fr auto 1fr auto 1fr;

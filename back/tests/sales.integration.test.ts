@@ -79,11 +79,16 @@ test("confirmar venta crea cabecera, linea y una salida por lote", async () => {
   try {
     const [stock] = await cancellationVerify.execute<RowDataPacket[]>("SELECT SUM(cantidad) AS total FROM inventario WHERE tenant_id = ? AND producto_id = ?", [user.tenantId, productId!]);
     expect(Number(stock[0].total)).toBe(7);
-    const [restorations] = await cancellationVerify.execute<RowDataPacket[]>("SELECT tipo,cantidad,numero_lote,motivo,linea_venta_id FROM movimientos_inventario WHERE tenant_id = ? AND tipo = 'entrada' ORDER BY id", [user.tenantId]);
+    const [restorations] = await cancellationVerify.execute<RowDataPacket[]>("SELECT tipo,cantidad,numero_lote,motivo,linea_venta_id,estado_logistico FROM movimientos_inventario WHERE tenant_id = ? AND tipo = 'entrada' ORDER BY id", [user.tenantId]);
     expect(restorations).toEqual([
-      { tipo: "entrada", cantidad: 3, numero_lote: "A", motivo: "Venta cancelada", linea_venta_id: response.body.lineas[0].id },
-      { tipo: "entrada", cantidad: 2, numero_lote: "B", motivo: "Venta cancelada", linea_venta_id: response.body.lineas[0].id },
+      { tipo: "entrada", cantidad: 3, numero_lote: "A", motivo: "Venta cancelada", linea_venta_id: response.body.lineas[0].id, estado_logistico: "finalizado" },
+      { tipo: "entrada", cantidad: 2, numero_lote: "B", motivo: "Venta cancelada", linea_venta_id: response.body.lineas[0].id, estado_logistico: "finalizado" },
     ]);
+    const [cancelledExits] = await cancellationVerify.execute<RowDataPacket[]>(
+      "SELECT estado_logistico FROM movimientos_inventario WHERE tenant_id = ? AND tipo = 'salida' ORDER BY id",
+      [user.tenantId],
+    );
+    expect(cancelledExits).toEqual([{ estado_logistico: "cancelado" }, { estado_logistico: "cancelado" }]);
   } finally { cancellationVerify.release(); }
 
   const cancelledDetailResponse = await request(app).get(`/ventas/${response.body.id}`).set("Authorization", `Bearer ${token}`);
@@ -147,6 +152,15 @@ test("una venta admite devoluciones parciales y completas por lote", async () =>
   expect(Number(partialDetail.body.lineas[0].impuesto_neto)).toBeCloseTo(6.3);
   expect(Number(partialDetail.body.movimientos[0].cantidad_devuelta)).toBe(2);
 
+  const partialStatusVerification = await getConnection();
+  try {
+    const [rows] = await partialStatusVerification.execute<RowDataPacket[]>(
+      "SELECT estado_logistico FROM movimientos_inventario WHERE id = ? AND tenant_id = ?",
+      [movementId, user.tenantId],
+    );
+    expect(rows).toEqual([{ estado_logistico: "pendiente_picking" }]);
+  } finally { partialStatusVerification.release(); }
+
   const completeReturn = await request(app).post(`/ventas/${sale.body.id}/devolver`).set("Authorization", `Bearer ${token}`).send({ motivo: "Resto de la devolución", lineas: [{ movimiento_id: movementId, cantidad: 3 }] });
   expect(completeReturn.status).toBe(201);
   expect(completeReturn.body).toMatchObject({ estado_venta: "devuelta" });
@@ -162,9 +176,14 @@ test("una venta admite devoluciones parciales y completas por lote", async () =>
   try {
     const [stock] = await verify.execute<RowDataPacket[]>("SELECT SUM(cantidad) AS total FROM inventario WHERE tenant_id = ? AND producto_id = ?", [user.tenantId, productId!]);
     expect(Number(stock[0].total)).toBe(5);
-    const [entries] = await verify.execute<RowDataPacket[]>("SELECT cantidad,motivo,linea_devolucion_id FROM movimientos_inventario WHERE tenant_id = ? AND tipo = 'entrada' ORDER BY id", [user.tenantId]);
+    const [entries] = await verify.execute<RowDataPacket[]>("SELECT cantidad,motivo,linea_devolucion_id,estado_logistico FROM movimientos_inventario WHERE tenant_id = ? AND tipo = 'entrada' ORDER BY id", [user.tenantId]);
     expect(entries).toHaveLength(2);
-    expect(entries.every((entry) => entry.motivo === "Devolución cliente" && entry.linea_devolucion_id !== null)).toBe(true);
+    expect(entries.every((entry) => entry.motivo === "Devolución cliente" && entry.linea_devolucion_id !== null && entry.estado_logistico === "finalizado")).toBe(true);
+    const [returnedExit] = await verify.execute<RowDataPacket[]>(
+      "SELECT estado_logistico FROM movimientos_inventario WHERE id = ? AND tenant_id = ?",
+      [movementId, user.tenantId],
+    );
+    expect(returnedExit).toEqual([{ estado_logistico: "cancelado" }]);
   } finally { verify.release(); }
 });
 

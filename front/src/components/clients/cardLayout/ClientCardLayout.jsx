@@ -8,10 +8,10 @@ const formatDate = (value) => value
   ? new Intl.DateTimeFormat("es-ES", { dateStyle: "medium" }).format(new Date(value))
   : "No disponible";
 
-const DetailItem = ({ label, value }) => (
-  <div className="client-detail-item">
-    <span>{label}</span>
-    <strong>{value || "No indicado"}</strong>
+const DetailItem = ({ label, value, wide = false }) => (
+  <div className={`client-readonly-detail${wide ? " client-readonly-detail-wide" : ""}`}>
+    <dt>{label}</dt>
+    <dd>{value || "No indicado"}</dd>
   </div>
 );
 
@@ -26,15 +26,13 @@ export default function ClientCardLayout({ client, onClose, onEdit }) {
           <div className="client-detail-heading">
             <span className="client-detail-avatar">{getInitials(client.nombre)}</span>
             <div>
-              <p className="text-secondary mb-1">Ficha de cliente</p>
               <h2 id="client-detail-title">{client.nombre}</h2>
-              <div className="client-detail-meta">
-                <span className={`badge rounded-pill ${client.activo ? "text-bg-success" : "text-bg-secondary"}`}>{client.activo ? "Activo" : "Inactivo"}</span>
-                <span>Cliente #{client.id}</span>
-              </div>
             </div>
           </div>
-          <button type="button" className="btn-close" aria-label="Cerrar" onClick={onClose} />
+          <div className="client-detail-actions">
+            <button type="button" className="btn btn-outline-primary" onClick={() => onEdit(client)}>Editar</button>
+            <button type="button" className="btn-close" aria-label="Cerrar" onClick={onClose} />
+          </div>
         </header>
 
         <div className="client-detail-body">
@@ -45,19 +43,16 @@ export default function ClientCardLayout({ client, onClose, onEdit }) {
           </section>
 
           <section className="client-detail-section">
-            <div className="client-detail-section-title"><h3>Información de contacto</h3></div>
-            <div className="client-detail-grid">
-              <DetailItem label="Email" value={client.email} />
+            <div className="client-detail-section-title"><h3>Información</h3></div>
+            <dl className="client-readonly-details">
+              <DetailItem label="Email" value={client.email} wide />
               <DetailItem label="Teléfono" value={client.telefono} />
-              <DetailItem label="Dirección" value={client.direccion} />
               <DetailItem label="Identificación fiscal" value={client.identificacion_fiscal} />
-            </div>
+              <DetailItem label="Dirección" value={client.direccion} wide />
+              <DetailItem label="Cliente" value={`#${client.id}`} />
+              <DetailItem label="Estado" value={client.activo ? "Activo" : "Inactivo"} />
+            </dl>
           </section>
-
-          <footer className="client-detail-footer">
-            <button type="button" className="btn btn-outline-secondary" onClick={onClose}>Cerrar</button>
-            <button type="button" className="btn btn-primary" onClick={() => onEdit(client)}>Editar cliente</button>
-          </footer>
         </div>
       </article>
     </div>

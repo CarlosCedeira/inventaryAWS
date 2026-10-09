@@ -45,6 +45,7 @@ async function listSales(tenantId: number, filters: SaleListFilters) {
     }
     if (filters.userId !== null) { conditions.push("v.usuario_id = ?"); parameters.push(filters.userId); }
     if (filters.minimumTotal !== null) { conditions.push("v.total >= ?"); parameters.push(filters.minimumTotal); }
+    if (filters.status !== null) { conditions.push("v.estado = ?"); parameters.push(filters.status); }
 
     if (filters.period === "today") conditions.push(`DATE(${saleDate}) = CURDATE()`);
     if (filters.period === "week") conditions.push(`DATE(${saleDate}) >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)`);
@@ -72,7 +73,7 @@ async function listSales(tenantId: number, filters: SaleListFilters) {
        WHERE ${conditions.join(" AND ")}
        GROUP BY v.id, v.referencia, v.estado, v.moneda, v.subtotal, v.total, v.fecha_confirmacion, v.created_at, v.cliente_nombre, c.nombre, u.nombre
        ORDER BY v.created_at DESC, v.id DESC
-       LIMIT 200`, parameters);
+       LIMIT ?`, [...parameters, filters.limit ?? 200]);
     return rows;
   } finally { connection.release(); }
 }
@@ -311,6 +312,22 @@ async function cancelSale(tenantId: number, userId: number, saleId: number, reas
       restoredMovementIds.push(restored.movementId);
     }
 
+    // Una venta puede haber consumido varios productos y lotes. Solo las
+    // salidas que aún no llegaron a prepararse dejan de ser una tarea de
+    // almacén; las ya finalizadas mantienen su trazabilidad física.
+    await connection.execute(
+      `UPDATE movimientos_inventario m
+       INNER JOIN lineas_venta l
+         ON l.id = m.linea_venta_id
+        AND l.tenant_id = m.tenant_id
+       SET m.estado_logistico = 'cancelado'
+       WHERE l.venta_id = ?
+         AND m.tenant_id = ?
+         AND m.tipo = 'salida'
+         AND m.estado_logistico = 'pendiente_picking'`,
+      [saleId, tenantId],
+    );
+
     await connection.execute(
       `UPDATE ventas
        SET estado = 'anulada', fecha_anulacion = NOW(), anulada_por = ?, motivo_anulacion = ?
@@ -373,6 +390,7 @@ async function returnSale(tenantId: number, userId: number, saleId: number, sale
     let taxCents = 0;
     const restoredMovementIds: number[] = [];
     const touchedSaleLines = new Set<number>();
+    const fullyReturnedMovementIds: number[] = [];
 
     for (const requested of saleReturn.lines) {
       const movement = movementById.get(requested.movementId)!;
@@ -403,8 +421,23 @@ async function returnSale(tenantId: number, userId: number, saleId: number, sale
       });
       restoredMovementIds.push(restored.movementId);
       touchedSaleLines.add(Number(movement.linea_venta_id));
+      if (requested.quantity === available) fullyReturnedMovementIds.push(Number(movement.id));
       subtotalCents += lineSubtotalCents;
       taxCents += lineTaxCents;
+    }
+
+    // Si se devuelve toda la cantidad restante de un lote que todavía estaba
+    // pendiente de preparar, deja de existir una tarea de picking para él.
+    if (fullyReturnedMovementIds.length) {
+      const placeholders = fullyReturnedMovementIds.map(() => "?").join(",");
+      await connection.execute(
+        `UPDATE movimientos_inventario
+         SET estado_logistico = 'cancelado'
+         WHERE tenant_id = ?
+           AND id IN (${placeholders})
+           AND estado_logistico = 'pendiente_picking'`,
+        [tenantId, ...fullyReturnedMovementIds],
+      );
     }
 
     for (const saleLineId of touchedSaleLines) {

@@ -7,5 +7,6 @@ router.use(requireAuth, requireRoles(ROLES.OWNER, ROLES.ADMIN));
 
 router.get("/", movementsController.getMovements);
 router.post("/", movementsController.createMovement);
+router.patch("/:movimientoId/finalizar-picking", movementsController.finalizePicking);
 
 module.exports = router;

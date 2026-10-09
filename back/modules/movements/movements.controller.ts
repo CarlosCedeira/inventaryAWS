@@ -12,6 +12,7 @@ interface AuthenticatedRequest {
   requestId?: string;
   query: Record<string, unknown>;
   body: Record<string, unknown>;
+  params: Record<string, string | undefined>;
 }
 
 interface ApiResponse {
@@ -53,6 +54,7 @@ function parseMovementFilters(query: Record<string, unknown>): MovementFilters {
   const startValue = readQueryValue(query, "fecha_desde");
   const endValue = readQueryValue(query, "fecha_hasta");
   const searchValue = readQueryValue(query, "buscar");
+  const limitValue = readQueryValue(query, "limite");
   const filters: MovementFilters = {};
 
   if (productValue !== undefined) {
@@ -75,6 +77,13 @@ function parseMovementFilters(query: Record<string, unknown>): MovementFilters {
   if (searchValue !== undefined) {
     if (searchValue.length > 100) throw createHttpError(400, "El filtro buscar no puede superar los 100 caracteres");
     filters.search = searchValue;
+  }
+  if (limitValue !== undefined) {
+    const limit = Number(limitValue);
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 20) {
+      throw createHttpError(400, "El filtro limite debe estar entre 1 y 20");
+    }
+    filters.limit = limit;
   }
   if (filters.startDate && filters.endDate && filters.startDate > filters.endDate) {
     throw createHttpError(400, "fecha_desde no puede ser posterior a fecha_hasta");
@@ -139,4 +148,26 @@ async function createMovement(req: AuthenticatedRequest, res: ApiResponse) {
   }
 }
 
-export { getMovements, createMovement };
+async function finalizePicking(req: AuthenticatedRequest, res: ApiResponse) {
+  try {
+    const movementId = Number(req.params.movimientoId);
+    if (!Number.isSafeInteger(movementId) || movementId <= 0) {
+      throw createHttpError(400, "El movimiento no es valido");
+    }
+
+    const movement = await movementsService.completePicking(req.tenantId, movementId);
+    log("info", "movement_picking_completed", {
+      requestId: req.requestId,
+      tenantId: req.tenantId,
+      userId: req.user.id,
+      movementId,
+    });
+    res.json(movement);
+  } catch (error) {
+    if (hasStatusCode(error)) return res.status(error.statusCode).json({ error: error.message });
+    logUnexpectedError(req, "movement_picking_completion_failed", error, { movementId: req.params.movimientoId });
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
+export { getMovements, createMovement, finalizePicking };

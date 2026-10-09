@@ -18,12 +18,15 @@ function ProtectedRoute({ isAuthenticated, children }) {
 
 function Nav() {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileMenuVisible, setIsMobileMenuVisible] = useState(true);
+  const [navigationNotice, setNavigationNotice] = useState("");
   const location = useLocation();
   const navigate = useNavigate();
   const session = getSession();
   const user = session?.user;
   const isAuthenticated = Boolean(session?.token && session?.user?.tenant_id);
   const wasAuthenticated = useRef(isAuthenticated); // <-- esto faltaba
+  const lastScrollY = useRef(0);
   const toggleSidebar = () => setIsCollapsed(!isCollapsed);
   const userInitial = user?.nombre?.trim()?.charAt(0)?.toUpperCase() || "U";
 
@@ -37,6 +40,30 @@ function Nav() {
     wasAuthenticated.current = isAuthenticated;
   }, [isAuthenticated]);
 
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!isMobileViewport()) {
+        setIsMobileMenuVisible(true);
+        return;
+      }
+
+      const currentScrollY = window.scrollY;
+      const scrollDifference = currentScrollY - lastScrollY.current;
+
+      if (currentScrollY <= 8) {
+        setIsMobileMenuVisible(true);
+      } else if (Math.abs(scrollDifference) >= 8) {
+        setIsMobileMenuVisible(scrollDifference < 0);
+      }
+
+      lastScrollY.current = currentScrollY;
+    };
+
+    lastScrollY.current = window.scrollY;
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   const handleNavLinkClick = () => {
     if (!isCollapsed && isMobileViewport()) {
       setIsCollapsed(true);
@@ -49,20 +76,34 @@ function Nav() {
     navigate("/login", { replace: true });
   };
 
+  const changeSection = (path, label) => {
+    if (location.pathname === path) return;
+    navigate(path);
+    setNavigationNotice(label);
+  };
+
+  useEffect(() => {
+    if (!navigationNotice) return undefined;
+    const timeoutId = window.setTimeout(() => setNavigationNotice(""), 900);
+    return () => window.clearTimeout(timeoutId);
+  }, [navigationNotice]);
+
   useNavigationShortcutKeys(
     isAuthenticated,
-    () => navigate("/inventario"),
-    () => navigate("/ventas")
+    () => changeSection("/inventario", "Productos"),
+    () => changeSection("/ventas", "Clientes")
   );
 
   return (
     <div className="d-flex w-100 min-vh-100">
       {isAuthenticated && isCollapsed && (
-        <button
-          className="navbar-toggler border-0 bg-dark"
-          type="button"
-          onClick={toggleSidebar}
-        >
+        <>
+          <button
+            className="navbar-toggler border-0 bg-dark"
+            type="button"
+            onClick={toggleSidebar}
+            aria-label="Mostrar navegación"
+          >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="28"
@@ -82,7 +123,29 @@ function Nav() {
               strokeLinejoin="round"
             />
           </svg>
-        </button>
+          </button>
+
+          <button
+            className={`mobile-menu-toggle${isMobileMenuVisible ? "" : " is-hidden"}`}
+            type="button"
+            onClick={toggleSidebar}
+            aria-label="Abrir menú de navegación"
+            aria-expanded="false"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 7h16M4 12h16M4 17h16" />
+            </svg>
+          </button>
+        </>
+      )}
+
+      {isAuthenticated && !isCollapsed && (
+        <button
+          className="mobile-navigation-backdrop"
+          type="button"
+          onClick={toggleSidebar}
+          aria-label="Cerrar menú de navegación"
+        />
       )}
 
       {isAuthenticated && (
@@ -100,6 +163,14 @@ function Nav() {
             <div className="sidebar-brand">
               <span className="sidebar-brand-mark">B</span>
               <span>Brétema</span>
+              <button
+                className="mobile-sidebar-close"
+                type="button"
+                onClick={toggleSidebar}
+                aria-label="Cerrar menú de navegación"
+              >
+                ×
+              </button>
             </div>
 
             <div className="d-flex justify-content-center">
@@ -154,7 +225,7 @@ function Nav() {
         </aside>
       )}
 
-      <div className="flex-grow-1 ps-md-3" style={{ minWidth: 0 }}>
+      <div className={`flex-grow-1 ps-md-3 app-content${["/inventario", "/ventas"].includes(location.pathname) ? " app-surface" : ""}`} style={{ minWidth: 0 }}>
         <Routes>
           <Route
             path="/"
@@ -173,6 +244,7 @@ function Nav() {
         </Routes>
         {isAuthenticated && <footer className="app-footer"><span>Brétema · Gestión de inventario</span><span>© 2026 Cedeira.dev · v1.0</span></footer>}
       </div>
+      {navigationNotice && <div className="navigation-view-notice" role="status" aria-live="polite"><strong>{navigationNotice}</strong></div>}
     </div>
   );
 }

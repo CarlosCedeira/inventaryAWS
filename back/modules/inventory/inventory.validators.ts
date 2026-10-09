@@ -70,6 +70,7 @@ function validateProductFields(product: Input, { requireTax = false }: { require
     return "El nombre contiene caracteres no validos";
   }
 
+  if (!descripcion) return "La descripcion del producto es obligatoria";
   if (descripcion.length > 300) {
     return "La descripcion no puede superar los 300 caracteres";
   }
@@ -197,6 +198,7 @@ function buildCreateCategoryPayload(body: Input): Validation<{ category: Categor
     return { error: "El nombre contiene caracteres no validos" };
   }
 
+  if (!descripcion) return { error: "La descripcion de la categoria es obligatoria" };
   if (descripcion.length > 200) {
     return { error: "La descripcion no puede superar los 200 caracteres" };
   }

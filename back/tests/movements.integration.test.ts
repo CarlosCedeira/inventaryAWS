@@ -60,17 +60,17 @@ test("la API exige un motivo al crear un movimiento", async () => {
   expect(response.body).toEqual({ error: "Selecciona un motivo para el movimiento" });
 });
 
-test("la API exige una descripción al crear un movimiento", async () => {
+test("la API permite crear un movimiento sin descripción", async () => {
   const user = await seedTenantAndUser({ email: "movimientos-sin-descripcion@demo.com" });
   const token = await loginAs(user);
+  const { productId } = await seedProductWithLot(user.tenantId, "Producto sin descripción", 1);
 
   const response = await request(app)
     .post("/movimientos")
     .set("Authorization", `Bearer ${token}`)
-    .send({ tipo: "entrada", producto_id: 1, cantidad: 1, motivo: "Entrada manual" });
+    .send({ tipo: "entrada", producto_id: productId, cantidad: 1, motivo: "Entrada manual" });
 
-  expect(response.status).toBe(400);
-  expect(response.body).toEqual({ error: "Escribe una descripción para el movimiento" });
+  expect(response.status).toBe(201);
 });
 
 test("la API registra entradas, salidas y ajustes, y conserva el historial del tenant", async () => {

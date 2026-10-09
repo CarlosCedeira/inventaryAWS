@@ -8,6 +8,7 @@ const { getConnection } = require("../../db") as {
 };
 
 export type MovementType = "entrada" | "salida" | "ajuste";
+export type LogisticsStatus = "pendiente_picking" | "finalizado" | "cancelado";
 
 export interface MovementFilters {
   productId?: number;
@@ -15,6 +16,7 @@ export interface MovementFilters {
   startDate?: string;
   endDate?: string;
   search?: string;
+  limit?: number;
 }
 type OptionalDate = string | Date | null;
 
@@ -198,8 +200,16 @@ async function getInventoryLotForUpdate(
 
 async function insertMovement(
   connection: PoolConnection,
-  data: NormalizedMovement & { inventoryId: number; previousStock: number; newStock: number; description?: string | null; saleLineId?: number | null; returnLineId?: number | null },
+  data: NormalizedMovement & { inventoryId: number; previousStock: number; newStock: number; description?: string | null; saleLineId?: number | null; returnLineId?: number | null; logisticsStatus?: LogisticsStatus },
 ): Promise<number> {
+  // Solo la salida automática de una venta queda pendiente: el stock ya se
+  // reserva, mientras almacén prepara el pedido. Entradas, devoluciones,
+  // anulaciones, ajustes y movimientos manuales están completados al crearse.
+  const isSalePicking = data.type === "salida"
+    && data.reason?.trim().toLocaleLowerCase("es-ES") === "venta"
+    && Boolean(data.saleLineId)
+    && !data.returnLineId;
+  const logisticsStatus = data.logisticsStatus || (isSalePicking ? "pendiente_picking" : "finalizado");
   const [result] = await connection.execute<ResultSetHeader>(
     `
     INSERT INTO movimientos_inventario
@@ -216,10 +226,11 @@ async function insertMovement(
         numero_lote,
         fecha_caducidad,
         motivo,
+        estado_logistico,
         descripcion,
         usuario_id
       )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       data.tenantId,
@@ -234,6 +245,7 @@ async function insertMovement(
       data.lotNumber,
       data.expirationDate,
       data.reason,
+      logisticsStatus,
       data.description || null,
       data.userId,
     ]
@@ -320,6 +332,8 @@ async function getAllMovements(
       conditions.push("(p.nombre LIKE ? OR m.numero_lote LIKE ? OR u.nombre LIKE ?)");
       parameters.push(pattern, pattern, pattern);
     }
+    const limitClause = filters.limit !== undefined ? "LIMIT ?" : "";
+    if (filters.limit !== undefined) parameters.push(filters.limit);
 
     const [rows] = await connection.execute<RowDataPacket[]>(
       `
@@ -341,6 +355,7 @@ async function getAllMovements(
         m.numero_lote,
         m.fecha_caducidad,
         m.motivo,
+        m.estado_logistico,
         m.descripcion,
 
         m.usuario_id,
@@ -365,6 +380,7 @@ async function getAllMovements(
       WHERE ${conditions.join(" AND ")}
 
       ORDER BY m.created_at DESC, m.id DESC
+      ${limitClause}
       `,
       parameters,
     );
@@ -443,6 +459,37 @@ async function addStockMovement(connection: PoolConnection, data: NormalizedMove
     stock_anterior: previousStock,
     stock_nuevo: newStock,
   };
+}
+
+async function completePicking(tenantId: number, movementId: number): Promise<{ movementId: number; estado_logistico: LogisticsStatus }> {
+  const connection = await getConnection();
+
+  try {
+    const [result] = await connection.execute<ResultSetHeader>(
+      `
+      UPDATE movimientos_inventario
+      SET estado_logistico = 'finalizado'
+      WHERE id = ?
+        AND tenant_id = ?
+        AND estado_logistico = 'pendiente_picking'
+      `,
+      [movementId, tenantId],
+    );
+
+    if (result.affectedRows) {
+      return { movementId, estado_logistico: "finalizado" };
+    }
+
+    const [rows] = await connection.execute<RowDataPacket[]>(
+      "SELECT estado_logistico FROM movimientos_inventario WHERE id = ? AND tenant_id = ? LIMIT 1",
+      [movementId, tenantId],
+    );
+
+    if (!rows.length) throw createHttpError(404, "Movimiento no encontrado");
+    throw createHttpError(409, "Este movimiento ya no está pendiente de picking");
+  } finally {
+    connection.release();
+  }
 }
 
 async function restoreSaleStock(connection: PoolConnection, data: SaleStockRestorationInput): Promise<MovementResult> {
@@ -692,10 +739,7 @@ async function createMovement({
   if (normalizedData.reason.length > 255) {
     throw createHttpError(400, "El motivo no puede superar los 255 caracteres");
   }
-  if (!normalizedData.description) {
-    throw createHttpError(400, "Escribe una descripción para el movimiento");
-  }
-  if (normalizedData.description.length > 4000) {
+  if (normalizedData.description && normalizedData.description.length > 4000) {
     throw createHttpError(400, "La descripción no puede superar los 4000 caracteres");
   }
 
@@ -738,4 +782,4 @@ async function createMovement({
   }
 }
 
-export { getAllMovements, createMovement, consumeStockByFEFO, restoreSaleStock };
+export { getAllMovements, createMovement, completePicking, consumeStockByFEFO, restoreSaleStock };
