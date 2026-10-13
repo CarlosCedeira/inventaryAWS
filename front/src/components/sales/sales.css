@@ -81,3 +81,58 @@
     min-height: 0;
   }
 }
+
+/* Operaciones comparte el lenguaje visual de Clientes. */
+.sales-page {
+  padding: 1.5rem 1.5rem 1.5rem 2.5rem;
+  background: transparent;
+}
+
+.sales-overview {
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.sales-metric-card {
+  min-height: 126px;
+  padding: 1rem;
+  border: 1px solid rgba(226, 232, 240, .75);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .9);
+  box-shadow: 0 .75rem 1.5rem rgba(15, 23, 42, .06);
+}
+
+.sales-metric-card span,
+.sales-metric-card small { color: #64748b; }
+
+.sales-metric-card span {
+  font-size: 1rem;
+  font-weight: 400;
+  text-transform: none;
+}
+
+.sales-metric-card strong {
+  color: #0f172a;
+  font-size: 1.75rem;
+}
+
+.sales-export,
+.sales-list {
+  border: 1px solid rgba(226, 232, 240, .75);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .9);
+  box-shadow: 0 .75rem 1.5rem rgba(15, 23, 42, .06);
+}
+
+.sales-export {
+  margin-bottom: 1rem;
+}
+
+.sales-result-filters {
+  border-top: 1px solid #e5e7eb;
+  background: transparent;
+}
+
+@media (max-width: 767.98px) {
+  .sales-page { padding: 1rem; }
+}

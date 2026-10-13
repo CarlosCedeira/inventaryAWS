@@ -7,12 +7,13 @@ type ProductRow = RowDataPacket & { id: number; nombre: string; precio_venta: st
 function httpError(statusCode: number, message: string) { const error = new Error(message) as Error & { statusCode: number }; error.statusCode = statusCode; return error; }
 function cents(value: string | number) { return Math.round(Number(value) * 100); }
 
-async function listSales(tenantId: number, filters: SaleListFilters) {
+async function listSales(tenantId: number, filters: SaleListFilters, scopeUserId: number | null = null) {
   const connection = await getConnection();
   try {
     const conditions = ["v.tenant_id = ?"];
     const parameters: Array<string | number> = [tenantId];
     const saleDate = "COALESCE(v.fecha_confirmacion, v.created_at)";
+    if (scopeUserId !== null) { conditions.push("v.usuario_id = ?"); parameters.push(scopeUserId); }
 
     if (filters.search) {
       const pattern = `%${filters.search}%`;
@@ -78,12 +79,12 @@ async function listSales(tenantId: number, filters: SaleListFilters) {
   } finally { connection.release(); }
 }
 
-async function getSaleFilterOptions(tenantId: number) {
+async function getSaleFilterOptions(tenantId: number, scopeUserId: number | null = null) {
   const connection = await getConnection();
   try {
     const [users] = await connection.execute<RowDataPacket[]>(
-      "SELECT id, nombre FROM usuarios WHERE tenant_id = ? AND activo = TRUE ORDER BY nombre, id",
-      [tenantId],
+      "SELECT id, nombre FROM usuarios WHERE tenant_id = ? AND activo = TRUE AND (? IS NULL OR id = ?) ORDER BY nombre, id",
+      [tenantId, scopeUserId, scopeUserId],
     );
     return { users };
   } finally { connection.release(); }
@@ -144,7 +145,7 @@ async function getSaleSummary(tenantId: number) {
   } finally { connection.release(); }
 }
 
-async function getSaleDetail(tenantId: number, saleId: number) {
+async function getSaleDetail(tenantId: number, saleId: number, scopeUserId: number | null = null) {
   const connection = await getConnection();
   try {
     const [sales] = await connection.execute<RowDataPacket[]>(
@@ -153,8 +154,8 @@ async function getSaleDetail(tenantId: number, saleId: number) {
               v.fecha_anulacion, v.motivo_anulacion, v.anulada_por, ua.nombre AS anulada_por_nombre, v.created_at
        FROM ventas v
        LEFT JOIN usuarios ua ON ua.id = v.anulada_por AND ua.tenant_id = v.tenant_id
-       WHERE v.id = ? AND v.tenant_id = ?`,
-      [saleId, tenantId],
+       WHERE v.id = ? AND v.tenant_id = ? AND (? IS NULL OR v.usuario_id = ?)`,
+      [saleId, tenantId, scopeUserId, scopeUserId],
     );
     if (!sales.length) throw httpError(404, "Venta no encontrada");
     const [lines] = await connection.execute<RowDataPacket[]>(
@@ -218,11 +219,11 @@ async function getSaleDetail(tenantId: number, saleId: number) {
   } finally { connection.release(); }
 }
 
-async function confirmSale(tenantId: number, userId: number, sale: SaleInput) {
+async function confirmSale(tenantId: number, userId: number, sale: SaleInput, scopeUserId: number | null = null) {
   const connection = await getConnection();
   try {
     await connection.beginTransaction();
-    const [rows] = await connection.execute<ClientRow[]>("SELECT id,nombre,contacto_email,identificacion_fiscal FROM clientes WHERE id = ? AND tenant_id = ? AND activo = TRUE FOR UPDATE", [sale.clientId, tenantId]);
+    const [rows] = await connection.execute<ClientRow[]>("SELECT id,nombre,contacto_email,identificacion_fiscal FROM clientes WHERE id = ? AND tenant_id = ? AND activo = TRUE AND (? IS NULL OR usuario_id = ?) FOR UPDATE", [sale.clientId, tenantId, scopeUserId, scopeUserId]);
     if (!rows.length) throw httpError(404, "Cliente no encontrado");
     const client = rows[0];
     const [saleResult] = await connection.execute<ResultSetHeader>(
@@ -273,13 +274,13 @@ async function confirmSale(tenantId: number, userId: number, sale: SaleInput) {
   } catch (error) { await connection.rollback(); throw error; } finally { connection.release(); }
 }
 
-async function cancelSale(tenantId: number, userId: number, saleId: number, reason: string) {
+async function cancelSale(tenantId: number, userId: number, saleId: number, reason: string, scopeUserId: number | null = null) {
   const connection = await getConnection();
   try {
     await connection.beginTransaction();
     const [sales] = await connection.execute<RowDataPacket[]>(
-      "SELECT id, estado, referencia FROM ventas WHERE id = ? AND tenant_id = ? FOR UPDATE",
-      [saleId, tenantId],
+      "SELECT id, estado, referencia FROM ventas WHERE id = ? AND tenant_id = ? AND (? IS NULL OR usuario_id = ?) FOR UPDATE",
+      [saleId, tenantId, scopeUserId, scopeUserId],
     );
     if (!sales.length) throw httpError(404, "Venta no encontrada");
     if (sales[0].estado === "anulada") throw httpError(409, "La venta ya está anulada");
@@ -345,13 +346,13 @@ async function cancelSale(tenantId: number, userId: number, saleId: number, reas
   }
 }
 
-async function returnSale(tenantId: number, userId: number, saleId: number, saleReturn: SaleReturnInput) {
+async function returnSale(tenantId: number, userId: number, saleId: number, saleReturn: SaleReturnInput, scopeUserId: number | null = null) {
   const connection = await getConnection();
   try {
     await connection.beginTransaction();
     const [sales] = await connection.execute<RowDataPacket[]>(
-      "SELECT id, estado, referencia FROM ventas WHERE id = ? AND tenant_id = ? FOR UPDATE",
-      [saleId, tenantId],
+      "SELECT id, estado, referencia FROM ventas WHERE id = ? AND tenant_id = ? AND (? IS NULL OR usuario_id = ?) FOR UPDATE",
+      [saleId, tenantId, scopeUserId, scopeUserId],
     );
     if (!sales.length) throw httpError(404, "Venta no encontrada");
     if (!["pendiente_pago", "completa", "parcialmente_devuelta"].includes(String(sales[0].estado))) {
@@ -472,15 +473,15 @@ async function returnSale(tenantId: number, userId: number, saleId: number, sale
   }
 }
 
-async function completeSale(tenantId: number, saleId: number) {
+async function completeSale(tenantId: number, saleId: number, scopeUserId: number | null = null) {
   const connection = await getConnection();
   try {
     const [result] = await connection.execute<ResultSetHeader>(
-      "UPDATE ventas SET estado = 'completa' WHERE id = ? AND tenant_id = ? AND estado = 'pendiente_pago'",
-      [saleId, tenantId],
+      "UPDATE ventas SET estado = 'completa' WHERE id = ? AND tenant_id = ? AND estado = 'pendiente_pago' AND (? IS NULL OR usuario_id = ?)",
+      [saleId, tenantId, scopeUserId, scopeUserId],
     );
     if (result.affectedRows) return { id: saleId, estado: "completa" };
-    const [sales] = await connection.execute<RowDataPacket[]>("SELECT estado FROM ventas WHERE id = ? AND tenant_id = ?", [saleId, tenantId]);
+    const [sales] = await connection.execute<RowDataPacket[]>("SELECT estado FROM ventas WHERE id = ? AND tenant_id = ? AND (? IS NULL OR usuario_id = ?)", [saleId, tenantId, scopeUserId, scopeUserId]);
     if (!sales.length) throw httpError(404, "Venta no encontrada");
     throw httpError(409, "Solo se pueden completar ventas pendientes de pago");
   } finally {

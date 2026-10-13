@@ -35,7 +35,7 @@ const formatCurrency = (value) =>
     currency: "EUR",
   }).format(Number(value || 0));
 
-const CardLayout = ({ onClose, onEdit, id }) => {
+const CardLayout = ({ onClose, onEdit, id, canEdit = true }) => {
   const [disabled, setDisabled] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -163,13 +163,13 @@ const CardLayout = ({ onClose, onEdit, id }) => {
             </div>
 
             <div className="product-detail-actions">
-              <button
+              {canEdit && <button
                 type="button"
                 className="btn btn-outline-primary"
                 onClick={onEdit}
               >
                 Editar
-              </button>
+              </button>}
 
               <button
                 type="button"

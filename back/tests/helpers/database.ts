@@ -49,7 +49,7 @@ async function seedTenantAndUser(options: {
   userActive?: boolean;
   email?: string;
   password?: string;
-  role?: "owner" | "admin";
+  role?: "owner" | "admin" | "almacen" | "vendedor";
 } = {}) {
   const {
     tenantActive = true,

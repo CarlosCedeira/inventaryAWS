@@ -17,14 +17,10 @@ const initialForm = {
   precio_compra: "",
   precio_venta: "",
   stock_minimo: "",
-  cantidad: "",
-  fecha_caducidad: "",
-  numero_lote: "",
 };
 
 const numberFields = new Set([
   "producto_categoria",
-  "cantidad",
   "precio_compra",
   "precio_venta",
   "stock_minimo",
@@ -195,8 +191,8 @@ const NewProduct = ({ onCreated }) => {
                       </div>
                     </div>
 
-                    <div className="row">
-                      <div className="col-md-6">
+                    <div className="row justify-content-center">
+                      <div className="col-md-8">
                         <div className="mb-3 row align-items-center">
                           <label className="col-sm-6 col-form-label text-nowrap">Categoria</label>
                           <div className="col-sm-6">
@@ -260,30 +256,6 @@ const NewProduct = ({ onCreated }) => {
                                 min="0"
                                 step={numberFields.has(name) && name.includes("precio") ? "0.01" : "1"}
                                 required
-                              />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="col-md-6">
-                        {[
-                          ["Cantidad inicial", "cantidad", "number"],
-                          ["Fecha de caducidad", "fecha_caducidad", "date"],
-                          ["Numero de lote", "numero_lote", "text"],
-                        ].map(([label, name, type]) => (
-                          <div className="mb-3 row align-items-center" key={name}>
-                            <label className="col-sm-6 col-form-label text-nowrap">{label}</label>
-                            <div className="col-sm-6">
-                              <input
-                                type={type}
-                                name={name}
-                                value={form[name]}
-                                onChange={handleChange}
-                                className="form-control"
-                                min={type === "number" ? "0" : undefined}
-                                step={type === "number" ? "1" : undefined}
-                                required={name === "cantidad"}
                               />
                             </div>
                           </div>

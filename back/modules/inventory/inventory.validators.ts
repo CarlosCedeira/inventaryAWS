@@ -4,7 +4,7 @@ type Input = Record<string, unknown>;
 type Validation<T> = (T & { error?: never }) | { error: string };
 type CreatePayload = {
   product: ProductFields & { tenant_id: number };
-  inventory: InventoryFields & { tenant_id: number };
+  inventory?: InventoryFields & { tenant_id: number };
 };
 
 const {
@@ -157,27 +157,29 @@ function buildCreateProductPayload(body: Input, tenantId: number): Validation<Cr
     stock_minimo: body.stock_minimo,
   };
 
-  const inventory = {
+  const productError = validateProductFields(product, { requireTax: true });
+  if (productError) return { error: productError };
+
+  const includesInitialInventory = ["cantidad", "fecha_caducidad", "numero_lote"]
+    .some((field) => Object.hasOwn(body, field));
+  const inventory = includesInitialInventory ? {
     tenant_id: tenantId,
     cantidad: body.cantidad,
     fecha_caducidad: body.fecha_caducidad,
     numero_lote: body.numero_lote,
-  };
+  } : undefined;
 
-  const productError = validateProductFields(product, { requireTax: true });
-  if (productError) return { error: productError };
-
-  const inventoryError = validateInventoryItem(inventory);
-  if (inventoryError) return { error: inventoryError };
+  if (inventory) {
+    const inventoryError = validateInventoryItem(inventory);
+    if (inventoryError) return { error: inventoryError };
+  }
 
   return {
     product: {
       tenant_id: tenantId,
       ...normalizeProductFields(product),
     },
-    inventory: {
-      ...normalizeInventoryItem(inventory),
-    },
+    ...(inventory ? { inventory: normalizeInventoryItem(inventory) } : {}),
   };
 }
 

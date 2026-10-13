@@ -3,7 +3,7 @@ const router = express.Router();
 const movementsController = require("./movements.controller.ts");
 const { ROLES, requireAuth, requireRoles } = require("../auth/auth.middleware");
 
-router.use(requireAuth, requireRoles(ROLES.OWNER, ROLES.ADMIN));
+router.use(requireAuth, requireRoles(ROLES.OWNER, ROLES.ADMIN, ROLES.WAREHOUSE));
 
 router.get("/", movementsController.getMovements);
 router.post("/", movementsController.createMovement);

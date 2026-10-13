@@ -4,26 +4,33 @@ import { Routes, Route, Link, Navigate, useLocation, useNavigate } from "react-r
 import { CommercialWorkspace, InventoryWorkspace } from "../workspaces/Workspaces";
 import UsersManager from "../logging.jsx";
 import { clearSession, getSession } from "../../services/authService";
+import { canAccessCommercial, canAccessInventory } from "../../utils/permissions";
 import { useNavigationShortcutKeys } from "../../hooks/useEscapeKey";
 
 import "./nav.css";
 
-function ProtectedRoute({ isAuthenticated, children }) {
+function ProtectedRoute({ isAuthenticated, hasAccess = true, children }) {
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
+
+  if (!hasAccess) return <Navigate to="/inventario" replace />;
 
   return children;
 }
 
 function Nav() {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const [isMobileMenuVisible, setIsMobileMenuVisible] = useState(true);
+  const [isScrollToTopVisible, setIsScrollToTopVisible] = useState(false);
   const [navigationNotice, setNavigationNotice] = useState("");
   const location = useLocation();
   const navigate = useNavigate();
   const session = getSession();
   const user = session?.user;
+  const hasInventoryAccess = canAccessInventory(user);
+  const hasCommercialAccess = canAccessCommercial(user);
+  const defaultWorkspace = hasInventoryAccess ? "/inventario" : "/ventas";
   const isAuthenticated = Boolean(session?.token && session?.user?.tenant_id);
   const wasAuthenticated = useRef(isAuthenticated); // <-- esto faltaba
   const lastScrollY = useRef(0);
@@ -42,15 +49,18 @@ function Nav() {
 
   useEffect(() => {
     const handleScroll = () => {
-      if (!isMobileViewport()) {
-        setIsMobileMenuVisible(true);
-        return;
-      }
-
       const currentScrollY = window.scrollY;
       const scrollDifference = currentScrollY - lastScrollY.current;
 
-      if (currentScrollY <= 8) {
+      if (currentScrollY <= 160) {
+        setIsScrollToTopVisible(false);
+      } else if (Math.abs(scrollDifference) >= 8) {
+        setIsScrollToTopVisible(scrollDifference < 0);
+      }
+
+      if (!isMobileViewport()) {
+        setIsMobileMenuVisible(true);
+      } else if (currentScrollY <= 8) {
         setIsMobileMenuVisible(true);
       } else if (Math.abs(scrollDifference) >= 8) {
         setIsMobileMenuVisible(scrollDifference < 0);
@@ -90,8 +100,8 @@ function Nav() {
 
   useNavigationShortcutKeys(
     isAuthenticated,
-    () => changeSection("/inventario", "Productos"),
-    () => changeSection("/ventas", "Clientes")
+    () => { if (hasInventoryAccess) changeSection("/inventario", "Productos"); },
+    () => { if (hasCommercialAccess) changeSection("/ventas", "Clientes"); }
   );
 
   return (
@@ -99,7 +109,7 @@ function Nav() {
       {isAuthenticated && isCollapsed && (
         <>
           <button
-            className="navbar-toggler border-0 bg-dark"
+            className="navbar-toggler navigation-menu-trigger"
             type="button"
             onClick={toggleSidebar}
             aria-label="Mostrar navegación"
@@ -109,14 +119,12 @@ function Nav() {
             width="28"
             height="28"
             fill="currentColor"
-            className="text-white"
             viewBox="0 0 16 16"
           >
-            <circle cx="8" cy="8" r="8" fill="#212529" />
             <path
               fillRule="evenodd"
               d="M6 4l4 4-4 4"
-              stroke="#fff"
+              stroke="currentColor"
               strokeWidth="2"
               fill="none"
               strokeLinecap="round"
@@ -152,7 +160,7 @@ function Nav() {
         <aside
           className={`sidebar-sticky${isCollapsed ? " collapsed" : ""}`}
           style={{
-            width: isCollapsed ? "0" : "200px",
+            width: isCollapsed ? "0" : "240px",
             padding: isCollapsed ? "0" : "0.1rem 0.1rem",
             overflowX: "hidden",
             transition:
@@ -183,7 +191,7 @@ function Nav() {
             </div>
 
             <ul className="navegation">
-            <li className="nav-item mt-2">
+{hasInventoryAccess && <li className="nav-item mt-2">
   <Link
     to="/inventario"
     onClick={handleNavLinkClick}
@@ -196,11 +204,11 @@ function Nav() {
     {/* ...svg... */}
     Inventario
   </Link>
-</li>
+</li>}
 
-<li className="nav-item mt-2">
+{hasCommercialAccess && <li className="nav-item mt-2">
   <Link to="/ventas" onClick={handleNavLinkClick} className={`nav-link text-white ${location.pathname === "/ventas" ? "active" : ""}`} title="Atajo: tecla S" aria-keyshortcuts="S">Comercial</Link>
-</li>
+</li>}
 
             </ul>
 
@@ -229,21 +237,34 @@ function Nav() {
         <Routes>
           <Route
             path="/"
-            element={<Navigate to={isAuthenticated ? "/inventario" : "/login"} replace />}
+            element={<Navigate to={isAuthenticated ? defaultWorkspace : "/login"} replace />}
           />
-          <Route path="/inventario" element={<ProtectedRoute isAuthenticated={isAuthenticated}><InventoryWorkspace /></ProtectedRoute>} />
-          <Route path="/ventas" element={<ProtectedRoute isAuthenticated={isAuthenticated}><CommercialWorkspace /></ProtectedRoute>} />
-          <Route path="/productos" element={<Navigate to="/inventario" replace />} />
-          <Route path="/movimientos" element={<Navigate to="/inventario" replace />} />
+          <Route path="/inventario" element={<ProtectedRoute isAuthenticated={isAuthenticated} hasAccess={hasInventoryAccess}><InventoryWorkspace /></ProtectedRoute>} />
+          <Route path="/ventas" element={<ProtectedRoute isAuthenticated={isAuthenticated} hasAccess={hasCommercialAccess}><CommercialWorkspace /></ProtectedRoute>} />
+          <Route path="/productos" element={<Navigate to={defaultWorkspace} replace />} />
+          <Route path="/movimientos" element={<Navigate to={defaultWorkspace} replace />} />
           <Route path="/clientes" element={<Navigate to="/ventas" replace />} />
           <Route path="/ventas" element={<Navigate to="/ventas" replace />} />
           <Route
             path="/login"
-            element={isAuthenticated ? <Navigate to="/inventario" replace /> : <UsersManager />}
+            element={isAuthenticated ? <Navigate to={defaultWorkspace} replace /> : <UsersManager />}
           />
         </Routes>
-        {isAuthenticated && <footer className="app-footer"><span>Brétema · Gestión de inventario</span><span>© 2026 Cedeira.dev · v1.0</span></footer>}
+      {isAuthenticated && <footer className="app-footer"><span>Brétema · Gestión de inventario</span><span>© 2026 Cedeira.dev · v1.0</span></footer>}
       </div>
+      {isAuthenticated && isScrollToTopVisible && (
+        <button
+          type="button"
+          className="scroll-to-top"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          aria-label="Volver al inicio de la página"
+          title="Volver arriba"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 19V5m0 0-6 6m6-6 6 6" />
+          </svg>
+        </button>
+      )}
       {navigationNotice && <div className="navigation-view-notice" role="status" aria-live="polite"><strong>{navigationNotice}</strong></div>}
     </div>
   );

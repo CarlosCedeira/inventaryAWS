@@ -1,8 +1,3 @@
-import {
-  normalizeStockQuantity,
-  validateStockQuantity,
-} from "../../utils/stockQuantity";
-
 type NumericFormValue = string | number;
 
 export interface ProductForm {
@@ -13,13 +8,6 @@ export interface ProductForm {
   precio_compra: NumericFormValue;
   precio_venta: NumericFormValue;
   stock_minimo: NumericFormValue;
-  cantidad: NumericFormValue;
-  fecha_caducidad: string;
-  numero_lote: string;
-}
-
-interface ProductValidationOptions {
-  allowZeroQuantity?: boolean;
 }
 
 export interface ProductPayload {
@@ -30,18 +18,13 @@ export interface ProductPayload {
   precio_compra: number;
   precio_venta: number;
   stock_minimo: number;
-  cantidad: number;
-  fecha_caducidad: string | null;
-  numero_lote: string | null;
 }
 
 export const validateProductForm = (
   form: ProductForm,
-  { allowZeroQuantity = false }: ProductValidationOptions = {},
 ): string | null => {
   const nombre = form.producto_nombre.trim();
   const descripcion = form.producto_descripcion.trim();
-  const lote = form.numero_lote.trim();
 
   if (!nombre) return "El nombre del producto es obligatorio";
   if (nombre.length < 3) {
@@ -98,42 +81,8 @@ export const validateProductForm = (
     return "El stock mínimo debe ser un número entero";
   }
 
-  const quantityError = allowZeroQuantity
-    ? validateEditableStockQuantity(form.cantidad)
-    : validateStockQuantity(form.cantidad, {
-        label: "La cantidad inicial",
-      });
-
-  if (quantityError) return quantityError;
-
-  if (lote.length > 50) {
-    return "El número de lote no puede superar los 50 caracteres";
-  }
-
   return null;
 };
-
-function validateEditableStockQuantity(
-  value: NumericFormValue | null | undefined,
-): string | null {
-  if (value === undefined || value === null || String(value).trim() === "") {
-    return "La cantidad es obligatoria";
-  }
-
-  const quantity = Number(value);
-
-  if (!Number.isFinite(quantity)) {
-    return "La cantidad debe ser un número válido";
-  }
-  if (!Number.isInteger(quantity)) {
-    return "La cantidad debe ser un número entero";
-  }
-  if (quantity < 0) {
-    return "La cantidad no puede ser negativa";
-  }
-
-  return null;
-}
 
 export const buildProductPayload = (
   form: ProductForm,
@@ -145,7 +94,4 @@ export const buildProductPayload = (
   precio_compra: Number(form.precio_compra),
   precio_venta: Number(form.precio_venta),
   stock_minimo: Number(form.stock_minimo),
-  cantidad: normalizeStockQuantity(form.cantidad),
-  fecha_caducidad: form.fecha_caducidad || null,
-  numero_lote: form.numero_lote.trim() || null,
 });

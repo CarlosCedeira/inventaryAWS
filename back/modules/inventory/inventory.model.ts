@@ -402,7 +402,7 @@ async function updateProduct(tenantId: number, productId: ProductId, productoDat
 }
 
 // Crear nuevo producto e inventario
-async function createProduct(productoData: ProductFields & { tenant_id: number }, inventarioData: InventoryFields & { tenant_id: number }, userId: number) {
+async function createProduct(productoData: ProductFields & { tenant_id: number }, inventarioData: (InventoryFields & { tenant_id: number }) | undefined, userId: number) {
   const connection = await getConnection();
   try {
     await connection.beginTransaction();
@@ -425,37 +425,41 @@ async function createProduct(productoData: ProductFields & { tenant_id: number }
 
     const productoId = productoResult.insertId;
 
-    const [inventarioResult] = await connection.execute<ResultSetHeader>(
-      `INSERT INTO inventario
-       (tenant_id, producto_id, cantidad, fecha_caducidad, numero_lote)
-       VALUES (?, ?, ?, ?, ?)`,
-      [
-        inventarioData.tenant_id,
-        productoId,
-        inventarioData.cantidad,
-        inventarioData.fecha_caducidad,
-        inventarioData.numero_lote,
-      ]
-    );
+    let inventarioId: number | null = null;
+    if (inventarioData) {
+      const [inventarioResult] = await connection.execute<ResultSetHeader>(
+        `INSERT INTO inventario
+         (tenant_id, producto_id, cantidad, fecha_caducidad, numero_lote)
+         VALUES (?, ?, ?, ?, ?)`,
+        [
+          inventarioData.tenant_id,
+          productoId,
+          inventarioData.cantidad,
+          inventarioData.fecha_caducidad,
+          inventarioData.numero_lote,
+        ]
+      );
+      inventarioId = inventarioResult.insertId;
 
-    await insertInventoryMovement(connection, {
-      tenantId: productoData.tenant_id,
-      productId: productoId,
-      inventoryId: inventarioResult.insertId,
-      type: "entrada",
-      quantity: inventarioData.cantidad,
-      previousStock: 0,
-      newStock: inventarioData.cantidad,
-      lotNumber: inventarioData.numero_lote || null,
-      expirationDate: inventarioData.fecha_caducidad,
-      reason: "Creacion de producto",
-      description: "Entrada inicial generada al crear el producto",
-      userId,
-    });
+      await insertInventoryMovement(connection, {
+        tenantId: productoData.tenant_id,
+        productId: productoId,
+        inventoryId: inventarioId,
+        type: "entrada",
+        quantity: inventarioData.cantidad,
+        previousStock: 0,
+        newStock: inventarioData.cantidad,
+        lotNumber: inventarioData.numero_lote || null,
+        expirationDate: inventarioData.fecha_caducidad,
+        reason: "Creacion de producto",
+        description: "Entrada inicial generada al crear el producto",
+        userId,
+      });
+    }
 
     await connection.commit();
 
-    return { productoId, inventarioId: inventarioResult.insertId };
+    return { productoId, inventarioId };
   } catch (error) {
     await connection.rollback();
     throw error;

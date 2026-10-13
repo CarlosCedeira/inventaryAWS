@@ -16,7 +16,7 @@ tenant_id int NOT NULL,
 nombre varchar(150) NOT NULL,
 email varchar(150) NOT NULL,
 password_hash varchar(255) NOT NULL,
-rol enum('owner','admin') NOT NULL DEFAULT 'admin',
+rol enum('owner','admin','almacen','vendedor') NOT NULL DEFAULT 'admin',
 activo tinyint(1) DEFAULT '1',
 fecha_creacion datetime DEFAULT CURRENT_TIMESTAMP,
 created_at timestamp NULL DEFAULT CURRENT_TIMESTAMP,
@@ -99,6 +99,7 @@ stock_nuevo int NOT NULL,
 numero_lote varchar(100) DEFAULT NULL,
 fecha_caducidad date DEFAULT NULL,
 motivo varchar(255) DEFAULT NULL,
+estado_logistico enum('pendiente_picking','finalizado','cancelado') NOT NULL DEFAULT 'finalizado',
 descripcion text,
 usuario_id int NOT NULL,
 updated_at timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -120,6 +121,7 @@ CONSTRAINT fk_mov_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios (id)
 CREATE TABLE IF NOT EXISTS clientes (
 id int NOT NULL AUTO_INCREMENT,
 tenant_id int NOT NULL,
+usuario_id int DEFAULT NULL,
 nombre varchar(150) NOT NULL,
 contacto_email varchar(150) DEFAULT NULL,
 telefono varchar(30) DEFAULT NULL,
@@ -133,7 +135,9 @@ updated_at timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 PRIMARY KEY (id),
 UNIQUE KEY uq_cliente_identificacion_tenant (tenant_id,identificacion_fiscal),
 KEY idx_cliente_tenant_nombre (tenant_id,nombre),
-CONSTRAINT fk_cliente_tenant FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+KEY idx_cliente_tenant_usuario (tenant_id,usuario_id),
+CONSTRAINT fk_cliente_tenant FOREIGN KEY (tenant_id) REFERENCES tenants (id),
+CONSTRAINT fk_cliente_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS ventas (
@@ -204,6 +208,7 @@ ALTER TABLE ventas MODIFY COLUMN estado ENUM('borrador','completa','anulada','de
 ALTER TABLE ventas MODIFY COLUMN estado ENUM('borrador','pendiente_pago','completa','anulada','devuelta','parcialmente_devuelta') NOT NULL DEFAULT 'borrador';
 ALTER TABLE lineas_venta ADD COLUMN estado ENUM('completa','parcialmente_devuelta','devuelta','cancelada') NOT NULL DEFAULT 'completa' AFTER cantidad;
 ALTER TABLE lineas_venta ADD COLUMN cantidad_devuelta INT NOT NULL DEFAULT 0 AFTER estado;
+ALTER TABLE movimientos_inventario ADD COLUMN estado_logistico ENUM('pendiente_picking','finalizado','cancelado') NOT NULL DEFAULT 'finalizado' AFTER motivo;
 
 -- Mantiene compatible una base inventario_test creada con el esquema anterior.
 ALTER TABLE usuarios
@@ -211,3 +216,10 @@ ALTER TABLE usuarios
 UPDATE usuarios SET rol = 'admin' WHERE rol = 'vendedor';
 ALTER TABLE usuarios
   MODIFY COLUMN rol ENUM('owner','admin') NOT NULL DEFAULT 'admin';
+ALTER TABLE usuarios
+  MODIFY COLUMN rol ENUM('owner','admin','almacen','vendedor') NOT NULL DEFAULT 'admin';
+
+ALTER TABLE clientes
+  ADD COLUMN usuario_id INT NULL AFTER tenant_id,
+  ADD KEY idx_cliente_tenant_usuario (tenant_id, usuario_id),
+  ADD CONSTRAINT fk_cliente_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios (id);

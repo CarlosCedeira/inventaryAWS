@@ -3,9 +3,9 @@ import { isHttpError } from "../../types/http";
 import { buildCommercialClientPayload } from "./clients.validators";
 
 const clientsService = require("./clients.service") as {
-  listClients: (tenantId: number, search: string, daysWithoutPurchase: number | null, activeStatus: boolean | null) => Promise<unknown[]>;
-  createClient: (tenantId: number, client: unknown) => Promise<number>;
-  updateClient: (tenantId: number, clientId: number, client: unknown) => Promise<number>;
+  listClients: (tenantId: number, search: string, daysWithoutPurchase: number | null, activeStatus: boolean | null, scopeUserId: number | null) => Promise<unknown[]>;
+  createClient: (tenantId: number, userId: number, client: unknown) => Promise<number>;
+  updateClient: (tenantId: number, clientId: number, client: unknown, scopeUserId: number | null) => Promise<number>;
 };
 const { log, logUnexpectedError } = require("../../utils/logger");
 
@@ -23,7 +23,8 @@ async function getClients(req: AuthenticatedRequest, res: ApiResponse) {
       return res.status(400).json({ error: "El estado no es valido" });
     }
     const activeStatus = requestedStatus === undefined ? null : requestedStatus === "activo";
-    const clients = await clientsService.listClients(req.tenantId, search, daysWithoutPurchase, activeStatus);
+    const scopeUserId = req.user.rol === "vendedor" ? req.user.id : null;
+    const clients = await clientsService.listClients(req.tenantId, search, daysWithoutPurchase, activeStatus, scopeUserId);
     res.json(clients);
   } catch (error) {
     logUnexpectedError(req, "clients_list_failed", error);
@@ -36,7 +37,7 @@ async function createClient(req: AuthenticatedRequest, res: ApiResponse) {
     const validation = buildCommercialClientPayload(req.body);
     if (validation.error !== undefined) return res.status(400).json({ error: validation.error });
 
-    const clientId = await clientsService.createClient(req.tenantId, validation.client);
+    const clientId = await clientsService.createClient(req.tenantId, req.user.id, validation.client);
     log("info", "client_created", { requestId: req.requestId, tenantId: req.tenantId, userId: req.user.id, clientId });
     res.status(201).json({ id: clientId, ...validation.client });
   } catch (error) {
@@ -56,7 +57,8 @@ async function updateClient(req: AuthenticatedRequest, res: ApiResponse) {
     const validation = buildCommercialClientPayload(req.body);
     if (validation.error !== undefined) return res.status(400).json({ error: validation.error });
 
-    const affectedRows = await clientsService.updateClient(req.tenantId, clientId, validation.client);
+    const scopeUserId = req.user.rol === "vendedor" ? req.user.id : null;
+    const affectedRows = await clientsService.updateClient(req.tenantId, clientId, validation.client, scopeUserId);
     if (!affectedRows) return res.status(404).json({ error: "Cliente no encontrado" });
     log("info", "client_updated", { requestId: req.requestId, tenantId: req.tenantId, userId: req.user.id, clientId });
     res.json({ id: clientId, ...validation.client });

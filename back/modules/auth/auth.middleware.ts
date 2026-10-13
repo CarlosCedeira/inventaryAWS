@@ -7,6 +7,8 @@ const { log } = require("../../utils/logger");
 const ROLES = Object.freeze({
   OWNER: "owner",
   ADMIN: "admin",
+  WAREHOUSE: "almacen",
+  SELLER: "vendedor",
 });
 
 function requireAuth(req: ApiRequest, res: ApiResponse, next: NextFunction) {

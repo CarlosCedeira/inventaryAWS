@@ -7,6 +7,8 @@ import SaleCardLayout from "./SaleCardLayout";
 import SalesOverview from "./SalesOverview";
 import { salesService } from "./salesService";
 import { useToast } from "../feedback/ToastProvider";
+import { getSession } from "../../services/authService";
+import { canAccessInventory, canManageCommercial } from "../../utils/permissions";
 import "./sales.css";
 
 const money = (value) =>
@@ -47,6 +49,9 @@ const createDefaultExportDates = () => {
 
 export default function Sales({ workspaceHeader }) {
   const { success } = useToast();
+  const sessionUser = getSession()?.user;
+  const canExportSales = canManageCommercial(sessionUser);
+  const canViewMovements = canAccessInventory(sessionUser);
   const [activeView, setActiveView] = useState("sales");
   const [sales, setSales] = useState([]);
   const [products, setProducts] = useState([]);
@@ -117,8 +122,8 @@ export default function Sales({ workspaceHeader }) {
     return () => window.clearTimeout(timeout);
   }, [loadSales]);
   useEffect(() => {
-    void loadSummary();
-  }, [loadSummary]);
+    if (canExportSales) void loadSummary();
+  }, [canExportSales, loadSummary]);
   useEffect(() => {
     document.body.style.overflow = selectedSale || showNewSale ? "hidden" : "";
     return () => {
@@ -286,13 +291,13 @@ export default function Sales({ workspaceHeader }) {
         >
           Ventas
         </button>
-        <button
+        {canViewMovements && <button
           type="button"
           className={activeView === "movements" ? "active" : ""}
           onClick={() => setActiveView("movements")}
         >
           Movimientos
-        </button>
+        </button>}
     </section>
   );
 
@@ -305,8 +310,8 @@ export default function Sales({ workspaceHeader }) {
           {workspaceHeader}
           {operationsSwitcher}
           {error && <div className="alert alert-danger">{error}</div>}
-          <SalesOverview summary={summary} />
-          <section className="sales-export" aria-label="Exportar ventas completadas">
+          {canExportSales && <SalesOverview summary={summary} />}
+          {canExportSales && <section className="sales-export" aria-label="Exportar ventas completadas">
             <div>
               <strong>Exportar CSV</strong>
               <small>Incluye únicamente las ventas completadas.</small>
@@ -322,7 +327,7 @@ export default function Sales({ workspaceHeader }) {
             <button type="button" className="btn btn-outline-primary" onClick={() => void exportSales()} disabled={exporting}>
               {exporting ? "Generando…" : "Exportar CSV"}
             </button>
-          </section>
+          </section>}
           <section className="sales-list">
             <div className="sales-list-heading">
               <div>

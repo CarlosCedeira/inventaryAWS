@@ -9,6 +9,8 @@ import NewProduct from "./newProduct/newProduct";
 import NewCategory from "./newCategory/NewCategory";
 import { useTableSelectionShortcutKeys } from "../../hooks/useEscapeKey";
 import { movementService } from "../movements/movementService";
+import { getSession } from "../../services/authService";
+import { canManageInventory } from "../../utils/permissions";
 
 import "./getProducts.css";
 
@@ -64,6 +66,7 @@ const metricFilters = {
 };
 
 const GetProducts = ({ onShowMovements, workspaceHeader }) => {
+  const canManageProducts = canManageInventory(getSession()?.user);
   const {
     items,
     error,
@@ -310,10 +313,10 @@ const GetProducts = ({ onShowMovements, workspaceHeader }) => {
               <span>Valor del inventario:</span>
               <strong>{loading ? "—" : formatCurrency(metrics.inventoryValue)}</strong>
             </div>
-        <div className="inventory-header-actions">
+        {canManageProducts && <div className="inventory-header-actions">
           <NewCategory onCreated={refetchCategories} />
           <NewProduct onCreated={refetch} />
-        </div>
+        </div>}
       </header>
 
       {error && <div className="alert alert-danger" role="alert">{error} <button type="button" className="btn btn-sm btn-outline-danger" onClick={refetch}>Reintentar</button></div>}
@@ -667,13 +670,14 @@ const expirationStatus = getExpirationStatus(item);
           formatDate={formatDate}
           id={selectedProduct.producto_id}
           onClose={handleCloseCard}
-          onEdit={() => {
+          canEdit={canManageProducts}
+          onEdit={canManageProducts ? () => {
             setShowCard(false);
             setEditingProductId(selectedProduct.producto_id);
-          }}
+          } : undefined}
         />
       )}
-      {editingProductId && <ProductEditModal id={editingProductId} onClose={() => setEditingProductId(null)} onSaved={async () => { setEditingProductId(null); await refetch(); }} />}
+      {canManageProducts && editingProductId && <ProductEditModal id={editingProductId} onClose={() => setEditingProductId(null)} onSaved={async () => { setEditingProductId(null); await refetch(); }} />}
     </main>
   );
 };
