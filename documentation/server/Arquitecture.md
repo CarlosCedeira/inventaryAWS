@@ -1,3 +1,28 @@
+# Arquitectura actual del backend
+
+`back/app.js` registra Express, CORS, Helmet, el contexto de petición y el
+manejador global de errores. `back/server.js` carga `back/.env`, valida las
+variables mínimas, inicia HTTP y cierra el pool MySQL de forma ordenada.
+
+Los módulos reales son `auth`, `inventory`, `movements`, `clients`, `sales` y
+`users`. Las rutas aplican `requireAuth` y, cuando procede, `requireRoles`;
+los controladores adaptan HTTP, los servicios agrupan reglas de negocio y los
+modelos ejecutan SQL mediante `back/db.js`. La separación no es idéntica en
+todos los módulos: JavaScript y TypeScript coexisten, por lo que hay que seguir
+el patrón del módulo concreto en vez de imponer uno nuevo.
+
+`requireAuth` acepta la cookie `bretema_session`; Bearer solo funciona en
+pruebas. Tras verificar el JWT consulta el usuario y tenant actuales en MySQL,
+por lo que `req.user.rol` nunca debe tomarse del token para autorizar.
+
+Para las rutas, permisos y pruebas vigentes, consulta [`../../AGENTS.md`](../../AGENTS.md)
+y los archivos `*.routes.js` del módulo. El texto posterior se mantiene como
+descripción histórica del patrón genérico, no como mapa exhaustivo del código.
+
+---
+
+## Referencia histórica
+
 📦 Estructura del Backend por Módulos
 
 El backend del proyecto está organizado siguiendo una arquitectura modular basada en funcionalidades (por ejemplo: inventory, sales, customers).

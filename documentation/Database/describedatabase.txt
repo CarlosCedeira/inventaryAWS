@@ -1,3 +1,7 @@
+REFERENCIA HISTÓRICA DEL ESQUEMA (16/09/2026). No usar como fuente de verdad:
+las migraciones de `back/migrations/` y `back/tests/fixtures/schema.sql`
+describen la evolución y el esquema de pruebas actual.
+
 Last modify  ->  16/09/2026 19:03
 
 mysql> SHOW TABLES;

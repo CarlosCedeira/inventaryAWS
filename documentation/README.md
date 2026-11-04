@@ -1,4 +1,52 @@
-# Documentación Técnica — SaaS de Gestión de Inventario
+# Documentación técnica vigente
+
+## Fuente de verdad y alcance
+
+Brétema es una aplicación React/Vite y Express/MySQL para inventario por lotes
+y operaciones comerciales. El código y las migraciones son la fuente de verdad
+del comportamiento implementado; esta carpeta explica el contexto para leerlo.
+
+### Implementado
+
+- Sesión con cookie `HttpOnly`, JWT firmado y validación en MySQL de usuario,
+  tenant y rol actuales en cada petición protegida.
+- Roles `owner`, `admin`, `almacen` y `vendedor`, aplicados en rutas de servidor.
+- Catálogo, categorías, impuestos, productos sin existencias iniciales, lotes,
+  entradas, salidas, ajustes y trazabilidad de movimientos.
+- Clientes, ventas por líneas, consumo FEFO, picking, finalización, anulación,
+  devolución y exportación de ventas completas.
+
+### Pendiente o por decidir
+
+- Licencias de módulos por tenant, recuperación de contraseña, proveedores,
+  facturación/cobros, política para clientes sin creador y objetivos operativos
+  (copias, RPO/RTO, rendimiento y navegadores).
+- La revocación tras un cambio de contraseña no está implementada; una baja o
+  cambio de rol sí se aplica en la siguiente petición protegida.
+
+## Cómo navegar
+
+| Necesidad | Referencia principal |
+| --- | --- |
+| Entrada al repositorio y comandos | [`../AGENTS.md`](../AGENTS.md) y [`../README.md`](../README.md) |
+| Requisitos, alcance y decisiones pendientes | [`ERS_Bretema.md`](ERS_Bretema.md) |
+| Catálogo, productos y contrato HTTP | [`especificacion-funcional-productos.md`](especificacion-funcional-productos.md) |
+| Sesiones y permisos actuales | [`session-authorization.md`](session-authorization.md) |
+| Pruebas con MySQL | [`../back/tests/README.md`](../back/tests/README.md) y [`../back/tests/integration/README.md`](../back/tests/integration/README.md) |
+| Esquema de prueba y evolución de datos | [`../back/tests/fixtures/schema.sql`](../back/tests/fixtures/schema.sql) y [`../back/migrations/`](../back/migrations/) |
+
+Los informes `informe-progreso-*.md` describen una instantánea fechada. Los
+archivos de `Database/` contienen exportaciones o diagramas de referencia y
+pueden quedarse atrás respecto a migraciones y fixtures.
+
+---
+
+## Referencia histórica no vigente
+
+El contenido que sigue se conserva como referencia de una arquitectura anterior.
+No debe usarse para decidir rutas, roles, sesión, ventas ni reglas de stock.
+
+## Descripción general
 
 ## Descripción general
 

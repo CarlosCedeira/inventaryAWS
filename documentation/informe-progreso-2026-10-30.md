@@ -1,5 +1,10 @@
 # Informe de progreso de Brétema — 30 de octubre de 2026
 
+> **Registro histórico.** Describe el árbol revisado en esa fecha. No es la
+> fuente de verdad del estado actual: la autorización dinámica de sesiones se
+> implementó posteriormente. Consulta `AGENTS.md`,
+> `documentation/session-authorization.md` y el código antes de planificar.
+
 > **Base de evidencia:** rama `main` de GitHub, revisada el 4 de noviembre de
 > 2026. Este informe no atribuye al repositorio publicado cambios que solo
 > existan en un entorno local.

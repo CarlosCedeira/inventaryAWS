@@ -1,4 +1,31 @@
-# Arquitectura funcional y consolidación del sistema
+# Flujos e invariantes vigentes
+
+Este resumen precede al material histórico del archivo y describe las reglas
+que el código actual aplica:
+
+- La sesión se transporta en la cookie HttpOnly `bretema_session`. El frontend
+  solo almacena una copia segura del usuario para la interfaz; no almacena JWT.
+  Cada petición protegida comprueba JWT, usuario/tenant activos y rol actual en
+  MySQL. Bearer es exclusivo de `NODE_ENV=test`.
+- Crear un producto no crea lote ni movimiento. Las existencias solo cambian
+  mediante entradas, salidas, ajustes, ventas, anulaciones o devoluciones.
+- Entradas pueden crear o incrementar un lote; salidas y ajustes manuales
+  requieren el lote seleccionado. Un ajuste fija la cantidad final y puede
+  dejarla a cero. Cada cambio deja un movimiento con tenant y usuario.
+- Las ventas consumen stock disponible mediante FEFO (caducidad más próxima,
+  lotes sin fecha al final y desempate por ID), no FIFO. Creación, anulación y
+  devolución son transaccionales; las reposiciones vuelven al lote original.
+- Todas las relaciones de negocio se acotan al `tenant_id` autenticado y los
+  permisos se verifican en rutas de servidor.
+
+Las pruebas automatizadas son la evidencia de estas reglas; las listas de
+pruebas manuales siguientes son históricas y contienen descripciones de un flujo
+anterior. No deben usarse como contrato vigente sin contrastarlas con
+`back/tests/`, migraciones y módulos.
+
+---
+
+# Referencia histórica: Arquitectura funcional y consolidación del sistema
 
 ## Objetivo
 

@@ -1,5 +1,10 @@
 # Informe local de progreso de Brétema — 4 de noviembre de 2026
 
+> **Registro histórico local.** Recoge el estado previo a la actualización de
+> autorización dinámica. Las afirmaciones sobre que `requireAuth` solo lee el
+> JWT están superadas; consulta `documentation/session-authorization.md` y el
+> código actual para el comportamiento vigente.
+
 > **Ámbito:** árbol de trabajo local, comparado con `origin/main` en
 > `0767c245`. Este documento describe cambios aún sin commit ni publicación;
 > no es evidencia de que estén disponibles en GitHub ni en producción.
@@ -28,7 +33,7 @@ licencias por tenant y la revocación dinámica de sesiones.
 | Área | Cambio local | Estado de evidencia |
 | --- | --- | --- |
 | Productos | `POST /productos/newProduct` rechaza `cantidad`, `numero_lote` y `fecha_caducidad`; crear un producto no genera lote ni movimiento. | Validadores unitarios e integración de productos cubren el rechazo y el alta sin inventario. |
-| Inventario | Se actualiza la ERS y se añade la especificación funcional del catálogo de productos. | Documentación local, pendiente de revisión y publicación. |
+| Documentación operativa | README, ERS y especificación funcional de Productos describen los cuatro roles, rutas actuales y flujo producto → movimiento → lote/stock. | Revisada localmente, pendiente de publicación. |
 | Sesión | Login escribe cookie `HttpOnly`; el frontend usa `credentials: include`; existen `GET /auth/me` y `POST /auth/logout`. | 16 pruebas de integración de autenticación aprobadas contra MySQL de pruebas. |
 | CORS | Se limita a orígenes configurados y se exige `CORS_ORIGIN` en producción. | Implementado localmente; falta validación específica de producción. |
 | Usuarios | Nuevo módulo `/usuarios`, visible para `owner`, para listar, crear, editar, activar/desactivar y restablecer contraseñas de usuarios del mismo tenant. | Cubierto dentro de la suite local de autenticación; pendiente de revisión funcional y publicación. |

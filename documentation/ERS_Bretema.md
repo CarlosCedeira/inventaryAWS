@@ -2,12 +2,12 @@
 
 | Campo | Valor |
 | --- | --- |
-| Versión del documento | 0.1 |
-| Fecha | 22 de septiembre de 2026 |
-| Estado | Borrador para revisión y acuerdo |
+| Versión del documento | 0.2 |
+| Fecha | 4 de noviembre de 2026 |
+| Estado | Documento operativo, pendiente de validación de producción |
 | Producto | Brétema |
-| Entrega principal | Motor de inventario v1 |
-| Evolución prevista | Clientes y ventas, pendiente de concretar |
+| Entrega principal | Inventario y comercial v1 |
+| Evolución prevista | Licencias de módulos por tenant y autorización dinámica |
 | Cliente y responsables de aceptación | Por identificar |
 
 ## 1. Propósito
@@ -20,7 +20,7 @@ Este documento se basa en el código y la documentación del repositorio, y en l
 
 Brétema será una aplicación web para gestionar productos, categorías y existencias por lotes, registrar entradas, salidas y ajustes, y consultar su trazabilidad. Permitirá trabajar con varias empresas manteniendo sus datos separados.
 
-El motor de inventario será la base del futuro módulo de ventas. Los cambios de existencias deberán conservar su coherencia aunque haya operaciones simultáneas o se produzcan errores.
+El motor de inventario es la base del módulo comercial ya disponible. Los cambios de existencias deberán conservar su coherencia aunque haya operaciones simultáneas o se produzcan errores.
 
 ### 2.1 Terminología
 
@@ -28,26 +28,29 @@ El motor de inventario será la base del futuro módulo de ventas. Los cambios d
 | --- | --- |
 | Empresa / tenant | Organización propietaria de sus usuarios y datos; identificada por `tenant_id`. |
 | Usuario | Persona autenticada que opera para una empresa. |
-| Cliente comercial | Comprador registrado en la futura fase de clientes; distinto del usuario y de la empresa. |
+| Cliente comercial | Comprador registrado por una empresa; distinto del usuario y de la empresa. |
 | Lote | Registro de existencias de un producto, con cantidad, número de lote y caducidad opcionales. |
 | Stock físico | Suma de las cantidades de los lotes de un producto, incluidos los caducados. |
 | Stock disponible | Suma de cantidades de lotes sin caducidad o con caducidad igual o posterior al día de referencia. |
 | Stock caducado | Suma de cantidades de lotes cuya caducidad es anterior al día de referencia. |
-| Venta rápida | Salida de stock desde productos; en v1 no equivale a una factura ni a una venta comercial completa. |
+| Venta | Operación comercial con cliente y una o más líneas. Descuenta stock por lotes y puede completarse, anularse o devolverse. No equivale a una factura. |
 
 ### 2.2 Usuarios y permisos
 
-La aplicación reconoce los roles `owner` y `admin`. La política actual permite a ambos operar con productos, categorías, movimientos y ventas rápidas. La asignación de roles y el alta de empresas y usuarios se realizan fuera de una pantalla de administración de v1.
+La aplicación reconoce los roles `owner`, `admin`, `almacen` y `vendedor`. La interfaz oculta acciones no disponibles, pero el backend aplica la autorización efectiva.
 
-| Operación | owner | admin |
-| --- | --- | --- |
-| Consultar y gestionar productos y categorías | Permitida | Permitida |
-| Consultar historial y registrar movimientos | Permitida | Permitida |
-| Registrar ventas rápidas | Permitida | Permitida |
-| Acceder a datos de otra empresa | Prohibida | Prohibida |
-| Editar o eliminar movimientos históricos | Prohibida | Prohibida |
+| Operación | owner | admin | almacen | vendedor |
+| --- | --- | --- | --- | --- |
+| Consultar catálogo de productos, categorías e impuestos | Permitida | Permitida | Permitida | Permitida |
+| Crear, editar o borrar productos; crear categorías | Permitida | Permitida | Prohibida | Prohibida |
+| Consultar y registrar movimientos | Permitida | Permitida | Permitida | Prohibida |
+| Gestionar clientes y crear, completar, anular o devolver ventas | Permitida | Permitida | Prohibida | Permitida, dentro de su alcance |
+| Consultar métricas o exportar ventas | Permitida | Permitida | Prohibida | Prohibida |
+| Gestionar usuarios de su empresa | Permitida | Prohibida | Prohibida | Prohibida |
+| Acceder a datos de otra empresa | Prohibida | Prohibida | Prohibida | Prohibida |
+| Editar o eliminar movimientos históricos | Prohibida | Prohibida | Prohibida | Prohibida |
 
-Esta matriz refleja la política existente y debe ratificarse para la entrega. Restringir movimientos solo a `admin`, excluyendo a `owner`, no se ha acordado como requisito.
+Los módulos contratados por tenant todavía no se aplican: todos los tenants activos pueden llegar a las rutas para las que su rol tenga permiso. Esa restricción es trabajo pendiente.
 
 ## 3. Alcance
 
@@ -59,19 +62,18 @@ Esta matriz refleja la política existente y debe ratificarse para la entrega. R
 - Existencias por lotes y diferenciación de stock físico, disponible y caducado.
 - Entradas, salidas manuales y ajustes de existencias.
 - Historial de movimientos con filtros y detalle.
-- Venta rápida con descuento de existencias y registro de movimientos.
+- Clientes comerciales, ventas por líneas, finalización, anulación y devoluciones.
 - Control de concurrencia, transacciones y detección de ediciones desactualizadas.
 - Pruebas, instrucciones de despliegue, migraciones y procedimiento de recuperación para la entrega.
 
 ### 3.2 Fuera del alcance de inventario v1
 
-- Fichas de clientes comerciales, ventas con múltiples líneas y devoluciones comerciales.
 - Facturas, cumplimiento fiscal, contabilidad, impuestos, cobros y pasarelas de pago.
 - Proveedores, pedidos de compra, reservas y presupuestos.
 - Múltiples almacenes, ubicaciones y transferencias entre almacenes.
 - Unidades fraccionarias, conversiones de unidades y variantes avanzadas de producto.
 - Aplicaciones móviles nativas, funcionamiento sin conexión e integraciones con terceros.
-- Recuperación de contraseña por correo, registro público y panel de gestión de usuarios o empresas.
+- Recuperación de contraseña por correo, registro público y panel de gestión de empresas.
 - Informes avanzados, importación masiva, exportaciones e integración con lectores o impresoras.
 - Migración completa del código a TypeScript o cambio obligatorio a una arquitectura AWS serverless.
 
@@ -92,17 +94,23 @@ Todos los requisitos de esta sección son obligatorios para aceptar el alcance p
 | RF-07 | El usuario deberá poder crear y consultar categorías de su empresa. | Una categoría válida aparece en su selector; una categoría ajena no puede asignarse a su producto. |
 | RF-08 | El usuario deberá poder crear un producto con categoría, precios y stock mínimo, sin existencias iniciales. | El alta crea solo la ficha del producto; cualquier lote o cantidad inicial se rechaza y las existencias se incorporan mediante un movimiento de entrada posterior. |
 | RF-09 | El usuario deberá poder listar, buscar por nombre, filtrar por categoría y consultar productos. | Los resultados pertenecen a su empresa, excluyen productos eliminados y muestran los stocks correspondientes. |
-| RF-10 | El usuario deberá poder editar datos del producto y existencias de los lotes admitidos por la ficha. | Un cambio de cantidad genera ajuste; cambiar únicamente el nombre no genera un movimiento de stock. |
+| RF-10 | El usuario deberá poder editar únicamente los datos maestros del producto. | La edición no acepta lotes ni cantidades; los cambios de existencias se registran mediante un movimiento independiente. |
 | RF-11 | La edición de lotes deberá comprobar su versión. | Si el lote cambió desde su lectura, guardar devuelve 409, conserva los datos actuales y solicita recargar la ficha. |
 | RF-12 | El borrado de productos deberá ser lógico. | El producto deja de aparecer en consultas operativas y no acepta nuevas operaciones; su historial permanece consultable. |
 | RF-13 | Una entrada deberá incrementar existencias y registrar su movimiento. | Para la misma empresa, producto, número de lote y caducidad se incrementa el lote existente; si no existe, se crea. Los campos opcionales vacíos se tratan de forma consistente. |
 | RF-14 | Una salida manual deberá descontar una cantidad positiva del lote seleccionado. | La ausencia de lote, un lote ajeno o una cantidad superior a la disponible en ese lote se rechazan sin cambios parciales. |
 | RF-15 | Un ajuste deberá fijar la cantidad final del lote seleccionado. | Se permite cero y se registra la diferencia; se rechazan cantidades negativas y ajustes que no cambian la cantidad. |
-| RF-16 | La venta rápida deberá descontar únicamente stock disponible y registrar las salidas por lote. | No consume lotes caducados. Prioriza la caducidad más próxima, deja los lotes sin fecha para el final y desempata por ID. Si falta stock disponible, responde 409 sin cambios. |
+| RF-16 | Una venta deberá requerir cliente y una o más líneas, descontar stock disponible y registrar las salidas por lote. | No consume lotes caducados. Prioriza la caducidad más próxima, deja los lotes sin fecha para el final y desempata por ID. Si falta stock disponible, responde 409 sin cambios. |
 | RF-17 | El historial deberá permitir consultar movimientos por producto, tipo e intervalo de fechas. | Cada movimiento muestra producto, lote cuando corresponda, cantidad, tipo, usuario, fecha, stock anterior y nuevo; solo se muestran datos de la empresa autenticada. |
 | RF-18 | Los movimientos históricos no deberán poder editarse ni eliminarse desde la aplicación. | Las correcciones de cantidad generan nuevos movimientos y conservan los anteriores. |
+| RF-19 | El usuario autorizado deberá poder completar, anular y devolver una venta. | Completar cambia una venta pendiente a completa; anular o devolver repone el lote original y registra movimientos de entrada en una única transacción. |
+| RF-20 | Un vendedor solo deberá operar sus clientes y ventas asignados. | Un ID directo de cliente o venta de otro vendedor no permite leer ni modificar datos. Los clientes antiguos sin asignación requieren una política explícita. |
 
-**Estado pendiente conocido:** RF-03 todavía no se cumple. El middleware actual verifica el JWT y utiliza sus datos sin volver a consultar SQL en cada petición.
+**Estado implementado:** RF-03 se cumple en el código actual: tras validar el
+JWT, el middleware consulta en MySQL la cuenta y el tenant activos y reconstruye
+el usuario autenticado con el rol vigente. La evidencia está en
+`back/tests/sessionAuthorization.integration.test.ts`. Esto no equivale a una
+revocación global tras cambio de contraseña.
 
 ## 5. Reglas de negocio
 
@@ -112,13 +120,13 @@ Todos los requisitos de esta sección son obligatorios para aceptar el alcance p
 | RN-02 | El stock físico se calcula desde los lotes y equivale a stock disponible más stock caducado, usando el mismo día de referencia. |
 | RN-03 | Un lote que caduca hoy sigue disponible durante ese día. La zona horaria de referencia debe fijarse en el despliegue. |
 | RN-04 | Todo cambio de cantidad debe quedar registrado con usuario, empresa, producto, lote y saldos anterior y posterior. |
-| RN-05 | Las salidas manuales pueden utilizarse para retirar material caducado; las ventas rápidas no pueden venderlo. |
+| RN-05 | Las salidas manuales pueden utilizarse para retirar material caducado; las ventas no pueden venderlo. |
 | RN-06 | Los precios deben ser numéricos y no negativos. La regla actual exige precio de venta mayor o igual al de compra; modificarla requiere acuerdo. |
 | RN-07 | El nombre de producto debe tener entre 3 y 80 caracteres y su descripción como máximo 300; el número de lote, como máximo 50. |
 | RN-08 | El nombre de categoría debe tener entre 3 y 50 caracteres y su descripción como máximo 200. |
 | RN-09 | Dos operaciones concurrentes no pueden consumir las mismas existencias. Con una unidad disponible y dos ventas de una unidad, solo una puede completarse. |
 
-El código actual de venta rápida ordena por caducidad, no por fecha de entrada. Por ello esta ERS especifica prioridad por caducidad (FEFO); algunas notas anteriores del repositorio lo denominan FIFO de forma imprecisa.
+El código actual de ventas ordena por caducidad, no por fecha de entrada. Por ello esta ERS especifica prioridad por caducidad (FEFO); las referencias históricas a FIFO son imprecisas.
 
 ## 6. Datos e interfaces
 
@@ -132,14 +140,17 @@ El código actual de venta rápida ordena por caducidad, no por fecha de entrada
 | Producto | Empresa, categoría, nombre, descripción, precios, stock mínimo y borrado lógico. |
 | Inventario / lote | Empresa, producto, cantidad, número de lote y caducidad. |
 | Movimiento | Empresa, producto, lote, tipo, cantidad, saldos, motivo, usuario y fecha. |
+| Cliente | Empresa, datos comerciales, usuario asignado y estado activo. |
+| Venta y línea de venta | Empresa, cliente, usuario, estado, importes, productos y cantidades históricas. |
+| Devolución | Venta, motivo, líneas y movimientos de reposición del lote original. |
 
 La edición no deberá permitir relacionar entidades de distintas empresas. La documentación del esquema y las migraciones deberán acompañar cualquier cambio estructural.
 
 ### 6.2 Interfaces
 
-- Interfaz web React con vistas de acceso, productos y movimientos, y formularios operativos.
-- API HTTP JSON Express: `/auth`, `/productos`, `/movimientos` y `/ventas`.
-- `/ventas/:productId` corresponde actualmente a venta rápida de un producto, no a una entidad comercial de venta.
+- Interfaz web React con acceso, espacio de inventario, espacio comercial y configuración de usuarios para `owner`.
+- API HTTP JSON Express: `/auth`, `/productos`, `/movimientos`, `/clientes`, `/ventas` y `/usuarios`.
+- `POST /ventas` crea una venta con `cliente_id` y `lineas`; `POST /ventas/:id/completar`, `/anular` y `/devolver` gestionan sus cambios de estado.
 - Base MySQL como fuente persistente de usuarios, empresas, productos y existencias.
 - No se exige integración externa en v1. El proveedor de alojamiento se decidirá al preparar el despliegue.
 
@@ -147,7 +158,7 @@ La edición no deberá permitir relacionar entidades de distintas empresas. La d
 
 | ID | Requisito | Verificación de aceptación |
 | --- | --- | --- |
-| RNF-01 | Los cambios de stock y sus movimientos deberán ser atómicos. | Provocar un fallo al insertar un movimiento revierte también el stock, tanto en entradas como salidas, ajustes y ventas rápidas. |
+| RNF-01 | Los cambios de stock y sus movimientos deberán ser atómicos. | Provocar un fallo al insertar un movimiento revierte también el stock, tanto en entradas como salidas, ajustes y ventas. |
 | RNF-02 | El sistema deberá preservar consistencia ante concurrencia. | Tests con MySQL real demuestran ausencia de stock negativo y rechazo de ediciones desactualizadas. |
 | RNF-03 | La seguridad deberá aplicarse en el servidor. | Se verifican aislamiento, permisos y validación mediante peticiones directas, sin depender de controles del navegador. |
 | RNF-04 | El despliegue deberá proteger credenciales y comunicaciones. | HTTPS configurado, secretos fuera del repositorio y de respuestas y logs, contraseñas con hash y CORS limitado a los orígenes acordados. |
@@ -165,10 +176,11 @@ No se han acordado todavía disponibilidad, tiempo máximo de respuesta, frecuen
 | Requisitos | Evidencia existente o comprobación necesaria |
 | --- | --- |
 | RF-01, RF-02, RF-04 | `back/tests/auth.integration.test.ts` y pruebas adicionales de token alterado y caducado según cobertura efectiva. |
-| RF-03 | `back/tests/sessionAuthorization.integration.test.ts`; cuatro casos pendientes de superar. |
+| RF-03 | `back/tests/sessionAuthorization.integration.test.ts`; cubre cookie, desactivación, cambios de rol, combinación inválida y `/auth/me`. |
 | RF-06 a RF-12 | `back/tests/products.integration.test.ts`, tests de validadores, versiones y conflictos; completar casos no cubiertos. |
-| RF-13 a RF-18 | `back/tests/movements.integration.test.ts`, `back/tests/quickSales.test.ts` y revisión del recorrido completo. |
-| RNF-01, RNF-02, aislamiento | `back/tests/inventorySafety.integration.test.ts` y `back/tests/integration/mysql.test.ts`; cada suite requiere su configuración de base de pruebas. |
+| RF-13 a RF-18 | Pruebas unitarias e integración de movimientos y ventas; completar recorrido manual. |
+| RF-19, RF-20 | `back/tests/sales.integration.test.ts` e `inventorySafety.integration.test.ts`; falta ampliar evidencia para dos vendedores y clientes antiguos sin asignación. |
+| RNF-01, RNF-02, aislamiento | `back/tests/inventorySafety.integration.test.ts` y `back/tests/integration/mysql.test.ts`; la primera cubre concurrencia, rollback y tenants con MySQL de pruebas. |
 | RNF-06 | Tests del frontend y recorrido manual documentado en los dispositivos acordados. |
 | RNF-08 a RNF-10 | Actas de prueba de migración, restauración y carga; todavía pendientes de aportar. |
 
@@ -176,9 +188,11 @@ La presencia de un archivo de tests no acredita cobertura completa de todos los 
 
 ### 8.1 Última evidencia disponible
 
-En la sesión de migración a TypeScript del 20 de septiembre de 2026 se obtuvo: comprobación de tipos correcta, 35 tests unitarios de backend correctos, 8 tests de frontend correctos y 23 tests de integración correctos con 4 fallos de autorización ya existentes. También se comprobó la carga de la aplicación CommonJS.
-
-Estos son resultados históricos de aquella ejecución, no una certificación de producción ni una nueva ejecución del 22 de septiembre. Al redactar esta ERS se revisó el código, pero no se volvieron a ejecutar los tests.
+La evidencia local del 4 de noviembre de 2026 recoge 32 pruebas unitarias,
+16 pruebas de autenticación, 3 de productos y 5 pruebas críticas de ventas
+correctas con MySQL de pruebas. Son resultados locales sin publicar, no una
+certificación de producción; el detalle se mantiene en
+`documentation/informe-progreso-local-2026-11-04.md`.
 
 ## 9. Entrega y aceptación de inventario v1
 
@@ -187,31 +201,26 @@ La entrega deberá incluir código versionado, esquema y migraciones, instruccio
 Para aceptar v1 se deberá:
 
 1. Ratificar el alcance, las exclusiones y la matriz de permisos.
-2. Corregir RF-03 y superar los cuatro casos pendientes de autorización.
+2. Ejecutar y registrar la evidencia de RF-03 en el entorno de pruebas dedicado.
 3. Ejecutar los tests y resolver los fallos que afecten a los requisitos de esta entrega.
-4. Completar un recorrido de acceso, categoría, producto, entrada, salida, ajuste, venta rápida, historial y borrado lógico, comprobando rechazo de operaciones ajenas.
+4. Completar un recorrido de acceso, categoría, producto, entrada, salida, ajuste, venta, anulación, devolución, historial y borrado lógico, comprobando rechazo de operaciones ajenas.
 5. Verificar actualización de una base anterior y restauración de una copia en un entorno separado.
 6. Acordar y verificar los parámetros operativos pendientes de RNF-06 y RNF-08 a RNF-10.
 7. Registrar la aceptación, incidencias aceptadas y versión entregada, con una etiqueta propuesta `v1.0.0`.
 
 Los fallos de aislamiento entre empresas, pérdida o inconsistencia de existencias y acceso de cuentas desactivadas bloquean la aceptación de producción bajo este alcance. El desarrollo de la siguiente fase puede comenzar antes de esa aceptación.
 
-## 10. Propuesta de fase posterior: clientes y ventas
+## 10. Límites actuales del módulo comercial
 
-Esta sección es una propuesta de evolución, no una funcionalidad ya entregada ni un compromiso incluido en inventario v1. Deberá aprobarse y detallarse antes de convertirse en el alcance de una nueva entrega.
+Clientes, ventas por líneas, finalización, anulación y devoluciones ya forman
+parte del código local. La venta exige cliente activo y conserva los importes,
+impuestos, líneas y movimientos históricos. El consumo de stock es FEFO y las
+operaciones de creación, anulación y devolución se realizan en transacciones.
 
-| ID | Requisito propuesto | Criterio de aceptación propuesto |
-| --- | --- | --- |
-| FUT-01 | Gestionar clientes comerciales por empresa: alta, consulta, búsqueda, edición y desactivación. | Una empresa no puede consultar ni utilizar clientes de otra; desactivar un cliente conserva su histórico. |
-| FUT-02 | Registrar ventas con una o más líneas y cliente opcional. | Cada línea conserva producto, cantidad, descripción e importe aplicados; cambios posteriores del catálogo no alteran la venta histórica. |
-| FUT-03 | Confirmar ventas utilizando el motor de existencias existente. | Venta, líneas, descuento de lotes y movimientos se guardan en una única transacción; el fallo de una línea revierte toda la confirmación. |
-| FUT-04 | Evitar duplicados al repetir una confirmación. | Reintentar la misma operación devuelve la venta ya creada sin descontar stock una segunda vez. |
-| FUT-05 | Consultar listado y detalle de ventas y su relación con movimientos y cliente. | Los importes y cantidades del detalle coinciden con los registrados al confirmar. |
-| FUT-06 | Anular una venta mediante una operación trazable. | Se conserva la venta original y se registra la reposición que corresponda una sola vez, con usuario y motivo. La política de reposición y devoluciones debe concretarse. |
-
-Antes de implementar esta fase se acordarán campos de cliente, estados de venta, moneda, redondeo, descuentos, impuestos, devoluciones parciales y política para lotes caducados o productos eliminados. La incorporación de facturación o cobros requiere ampliar expresamente el alcance.
-
-La venta rápida actual no garantiza idempotencia comercial: impedir vender la misma última unidad no equivale a impedir duplicados si hay stock suficiente. FUT-04 requiere una solución y pruebas específicas.
+No forman parte del alcance actual facturas, cobros, contabilidad, pasarelas de
+pago ni garantías de idempotencia ante reintentos de la misma solicitud. Esa
+última capacidad requiere una clave de idempotencia y pruebas específicas antes
+de poder afirmarla como requisito cumplido.
 
 ## 11. Decisiones pendientes y gestión de cambios
 
@@ -223,7 +232,7 @@ La venta rápida actual no garantiza idempotencia comercial: impedir vender la m
 | D-04 | Acordar carga, navegadores, dispositivos y tiempos aceptables. | Cliente y responsable técnico |
 | D-05 | Acordar copias, retención, RPO, RTO y responsable de restauración. | Cliente y responsable técnico |
 | D-06 | Resolver tratamiento de productos con stock al borrarlos y exposición de lotes agotados en la ficha. | Responsable del producto |
-| D-07 | Concretar alcance, prioridades y aceptación de clientes y ventas. | Cliente y responsable del producto |
+| D-07 | Definir módulos contratados por tenant y su comportamiento al caducar o cambiar de plan. | Cliente y responsable del producto |
 | D-08 | Establecer presupuesto, calendario, mantenimiento y soporte. | Cliente y responsable del proyecto |
 
 Cada cambio deberá registrar solicitud, requisitos afectados, impacto en datos, pruebas, coste y plazo, y la decisión de aceptación. Una vez acordado, se actualizará la versión de esta ERS. Las ideas de documentos antiguos o listas de tareas no amplían por sí solas el alcance aprobado.
@@ -233,7 +242,7 @@ Cada cambio deberá registrar solicitud, requisitos afectados, impacto en datos,
 - `README.md`: descripción general y API; contiene referencias históricas que deben contrastarse con el código.
 - `arquitectura_flujos_invariantes_testing_md.md`: flujos e invariantes originales.
 - `back/modules/auth/`: autenticación y autorización actuales.
-- `back/modules/inventory/`, `movements/` y `quickSales/`: comportamiento del motor.
+- `back/modules/inventory/`, `movements/`, `clients/` y `sales/`: comportamiento del motor y área comercial.
 - `back/tests/README.md` y suites: procedimientos y cobertura disponible.
 - `back/migrations/001_normalize_user_roles.sql`: normalización de roles.
 - `front/src/`: interfaz y servicios HTTP.

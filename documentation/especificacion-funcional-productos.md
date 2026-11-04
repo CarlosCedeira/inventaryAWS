@@ -25,7 +25,7 @@ derivada de ellas.
 Todos los accesos requieren una sesión autenticada y los datos se limitan a la
 empresa (`tenant`) de la sesión.
 
-| Acción | owner | admin | warehouse | seller |
+| Acción | owner | admin | almacen | vendedor |
 | --- | --- | --- | --- | --- |
 | Consultar catálogo, detalle, categorías e impuestos | Sí | Sí | Sí | Sí |
 | Buscar, filtrar y ordenar | Sí | Sí | Sí | Sí |
@@ -266,19 +266,20 @@ a validar siempre el cuerpo recibido.
 
 ## 7. Contrato de API
 
-Todas las rutas requieren `Authorization: Bearer <token>`. Los errores esperados
+Todas las rutas requieren la cookie de sesión `bretema_session`. El encabezado
+`Authorization: Bearer <token>` se admite solo en el entorno de pruebas. Los errores esperados
 se devuelven como `{ "error": "mensaje" }`; los errores no controlados devuelven
 `500` con `Error interno del servidor`.
 
 | Método y ruta | Uso | Roles |
 | --- | --- | --- |
-| `GET /productos` | Lista productos activos con stock agregado. | owner, admin, warehouse, seller |
-| `GET /productos/:id` | Obtiene el detalle y los lotes activos de un producto. | owner, admin, warehouse, seller |
-| `GET /productos/buscar/:name` | Busca productos por nombre. | owner, admin, warehouse, seller |
-| `GET /productos/categoria/:categoryId` | Lista productos de una categoría. | owner, admin, warehouse, seller |
-| `GET /productos/categorias` | Lista categorías de la empresa. | owner, admin, warehouse, seller |
-| `GET /productos/impuestos` | Lista impuestos activos. | owner, admin, warehouse, seller |
-| `GET /productos/sin-ventas` | Devuelve IDs de productos con stock y sin ventas recientes. | owner, admin, warehouse |
+| `GET /productos` | Lista productos activos con stock agregado. | owner, admin, almacen, vendedor |
+| `GET /productos/:id` | Obtiene el detalle y los lotes activos de un producto. | owner, admin, almacen, vendedor |
+| `GET /productos/buscar/:name` | Busca productos por nombre. | owner, admin, almacen, vendedor |
+| `GET /productos/categoria/:categoryId` | Lista productos de una categoría. | owner, admin, almacen, vendedor |
+| `GET /productos/categorias` | Lista categorías de la empresa. | owner, admin, almacen, vendedor |
+| `GET /productos/impuestos` | Lista impuestos activos. | owner, admin, almacen, vendedor |
+| `GET /productos/sin-ventas` | Devuelve IDs de productos con stock y sin ventas recientes. | owner, admin, almacen |
 | `POST /productos/categorias` | Crea una categoría. | owner, admin |
 | `POST /productos/newProduct` | Crea un producto sin existencias iniciales. | owner, admin |
 | `PUT /productos/actualizar/:id` | Actualiza datos maestros. | owner, admin |

@@ -1,20 +1,11 @@
-# Pruebas con MySQL real
+# Estado de la antigua suite SQL temporal
 
-`npm run test:integration:sql` omite esta suite si no está definida `TEST_DB_HOST`.
+`back/package.json` conserva `npm run test:integration:sql`, pero este árbol no
+contiene `tests/integration/mysql.test.ts`, el archivo que el script intenta
+ejecutar. Por tanto, la suite descrita originalmente en este documento no está
+disponible ni debe presentarse como comprobación vigente.
 
-Usa una instancia local o dedicada a pruebas. Define en tu terminal
-`TEST_DB_HOST`, `TEST_DB_USER` y `TEST_DB_PASSWORD`, y ejecuta desde `back`:
-
-```powershell
-npm run test:integration:sql
-```
-
-No se carga el `.env` de la aplicación ni se usa su `DATABASE`. La suite crea
-un esquema temporal `inventory_test_<identificador aleatorio>` y elimina
-exclusivamente ese esquema al terminar. El usuario de pruebas necesita permisos
-para crear/eliminar esquemas, tablas y triggers. Si el proceso se interrumpe a la
-fuerza, puede quedar el esquema temporal para su limpieza manual.
-
-Se comprueban consultas reales, ventas simultáneas, rollback ante un fallo,
-aislamiento de empresas, conflicto de edición, ajuste a cero y liberación del pool.
-El esquema es una fixture mínima de las tablas usadas, no una migración de producción.
+Las pruebas MySQL ejecutables actuales usan `back/.env.test` y la base dedicada
+`inventario_test`; consulta [`../README.md`](../README.md). Si se restaura una
+suite que cree esquemas temporales con `TEST_DB_*`, deberá documentar permisos,
+limpieza y aislamiento antes de volver a habilitar ese comando.

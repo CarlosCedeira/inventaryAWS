@@ -1,10 +1,15 @@
-# Primer test de integración: login
+# Pruebas del backend
+
+Esta guía describe pruebas reales del backend actual. La autenticación de rutas
+protegidas comprueba en cada petición el usuario, tenant y rol vigentes en
+MySQL. `sessionAuthorization.integration.test.ts` cubre ese comportamiento por
+cookie; Bearer se conserva únicamente para compatibilidad de pruebas.
 
 Las pruebas y sus helpers están escritos en TypeScript. Ejecuta
 `npm run typecheck:tests` desde `back` para comprobar sus tipos sin ejecutarlas.
 Las unitarias y la suite SQL usan `tsx` con `node:test`; las de HTTP usan
 Jest con `ts-jest`. El backend combina JavaScript y TypeScript: movimientos,
-el modelo, controlador y validadores de inventario, el modelo de ventas rapidas
+el modelo, controlador y validadores de inventario, el modelo de ventas
 y el middleware de autenticacion estan en TypeScript. `typecheck:tests` comprueba
 todos los modulos TypeScript, los tipos compartidos y los tests. `app.js` registra
 `tsx` para cargar estos modulos desde las rutas y servicios CommonJS existentes.
@@ -21,7 +26,7 @@ npm run test:integration:auth
 ```
 
 La suite usa Jest y Supertest. Supertest importa `app.js`, por lo que no abre
-el puerto HTTP. Antes de la primera prueba crea las seis tablas necesarias con
+el puerto HTTP. Antes de la primera prueba crea las tablas necesarias con
 `CREATE TABLE IF NOT EXISTS`, usando `fixtures/schema.sql`, basado en el esquema
 documentado en `documentation/Database/describedatabase.txt`. No modifica tablas
 ajenas a las pruebas ni crea la base de datos. La fixture si normaliza la columna
@@ -47,8 +52,9 @@ tenant. Los movimientos son inmutables: no existen endpoints para editarlos ni
 eliminarlos, porque son la trazabilidad del inventario.
 
 `npm test` mantiene las pruebas unitarias existentes con `node:test`.
-`npm run test:integration:sql` conserva la suite SQL temporal anterior; es
-independiente de esta base fija de pruebas.
+`package.json` declara `npm run test:integration:sql`, pero su archivo objetivo
+`tests/integration/mysql.test.ts` no está presente en este árbol. Es una
+comprobación pendiente de reparar, no una suite ejecutable actual.
 
 ## Pruebas de cierre de inventario v1
 
@@ -66,15 +72,9 @@ UPDATE, ALTER y TRIGGER. No ejecutes dos suites contra esta base a la vez.
   y ventas cuando falla el movimiento; dos ventas HTTP de la ultima unidad;
   rechazo de productos y lotes ajenos, incluso enviando otro tenant en el body.
   Comprueba el estado persistido, incluida la ausencia de movimientos duplicados.
-- `sessionAuthorization.integration.test.ts`: rechazo por rol, desactivacion de
-  usuario o empresa con sesion abierta, y cambios de rol usando el mismo token.
-  Usa una ruta exclusiva de prueba para owner con los middleware reales, porque
-  las rutas actuales permiten tanto owner como admin.
-
-Los cuatro casos de desactivacion y cambio de rol expresan el comportamiento
-requerido para v1 y actualmente fallan: `requireAuth` solo consulta el JWT.
-No estan omitidos ni marcados como fallos esperados; la suite seguira roja hasta
-que la autenticacion compruebe el usuario y la empresa en SQL en cada peticion.
-No se ha cambiado la politica de permisos de la aplicacion al crear estos tests.
+- `sessionAuthorization.integration.test.ts`: rechazo por rol, desactivación de
+  usuario o empresa con sesión abierta por cookie, cambios de rol, combinaciones
+  usuario/tenant inválidas y `/auth/me` sin datos sensibles. Usa una ruta de
+  prueba exclusiva para owner porque varias rutas reales admiten owner y admin.
 
 Estas suites no verifican copias/restauracion, migraciones ni la interfaz.

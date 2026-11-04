@@ -64,7 +64,9 @@ para relacionar su respuesta con los logs del servidor.
 |       |-- auth/
 |       |-- inventory/
 |       |-- movements/
-|       `-- quickSales/
+|       |-- clients/
+|       |-- sales/
+|       `-- users/
 |-- front/
 |   `-- src/
 |       |-- components/
@@ -88,7 +90,9 @@ un README propio para las instrucciones que solo le afectan.
 
 | Documento | Contenido |
 | --- | --- |
+| [Guía para agentes](AGENTS.md) | Entrada rápida: estructura, comandos, reglas críticas y qué documentación consultar. |
 | [Índice técnico](documentation/README.md) | Visión técnica del sistema, módulos, autenticación y modelo multi-tenant. |
+| [Autorización de sesión](documentation/session-authorization.md) | Comprobación actual de cuenta, tenant y rol en cada petición protegida. |
 | [ERS Brétema](documentation/ERS_Bretema.md) | Especificación de requisitos del sistema. |
 | [Especificación funcional de productos](documentation/especificacion-funcional-productos.md) | Alcance, flujos, reglas, interfaz, permisos, API y aceptación del catálogo de productos. |
 | [Informe de progreso — 30 de octubre de 2026](documentation/informe-progreso-2026-10-30.md) | Estado verificable de la rama `main`, riesgos de piloto y prioridades. |
@@ -108,10 +112,10 @@ un README propio para las instrucciones que solo le afectan.
 
 - Login mediante `/auth/login`.
 - Passwords validadas con bcrypt.
-- Sesion guardada en `localStorage` bajo `inventory_session`.
-- Token JWT enviado como `Authorization: Bearer <token>`.
-- Las rutas privadas del backend rellenan `req.user` y `req.tenantId` desde el token.
-- Los roles normalizados son `owner` (dueño) y `admin` (administración). Ambos tienen acceso completo durante esta versión; el backend rechaza cualquier otro rol.
+- La sesión se conserva en la cookie `HttpOnly` `bretema_session`; el navegador no puede leer el JWT.
+- Las rutas privadas recuperan el token desde esa cookie y rellenan `req.user` y `req.tenantId`.
+- Los roles son `owner` (dueño), `admin` (administración), `almacen` y `vendedor`.
+- `owner` administra usuarios; `owner` y `admin` gestionan catálogo; `almacen` opera inventario y `vendedor` opera el área comercial dentro de su alcance.
 - Rate limit aplicado a rutas bajo `/auth`.
 
 ### Productos e inventario
@@ -134,13 +138,14 @@ un README propio para las instrucciones que solo le afectan.
 - Trazabilidad por producto, lote, usuario, stock anterior y stock nuevo.
 - Las operaciones criticas usan transacciones.
 - Las salidas y ajustes requieren lote de inventario seleccionado.
-- La salida sin lote en la logica interna puede aplicar FIFO, usado por venta rapida.
+- Las ventas consumen lotes por FEFO; una salida manual requiere seleccionar el lote.
 
-### Venta rapida
+### Clientes y ventas
 
-- Endpoint `/ventas/:productId`.
-- Descuenta stock aplicando FIFO.
-- Registra movimientos de salida.
+- Clientes por empresa, con el alcance del usuario vendedor.
+- Ventas por cliente y líneas mediante `POST /ventas`.
+- El consumo de lotes usa FEFO: primero la caducidad más próxima y nunca stock caducado.
+- Las anulaciones y devoluciones restauran el lote original dentro de una transacción.
 
 ### Ciclo de ventas
 
@@ -174,14 +179,23 @@ Antes de poner una actualización en producción, validar al menos:
 POST /auth/login
 ```
 
+La sesión autenticada expone además:
+
+```text
+GET  /auth/me
+POST /auth/logout
+```
+
 ### Protegidas
 
-Todas requieren `Authorization: Bearer <token>`.
+Todas requieren la cookie de sesión `bretema_session`. El encabezado
+`Authorization: Bearer` se conserva únicamente para las pruebas de integración.
 
 ```text
 GET    /productos
 GET    /productos/categorias
 POST   /productos/categorias
+GET    /productos/impuestos
 GET    /productos/categoria/:categoryId
 GET    /productos/buscar/:name
 GET    /productos/:id
@@ -191,9 +205,38 @@ PATCH  /productos/eliminar/:id
 
 GET    /movimientos?producto_id=&tipo=&fecha_desde=&fecha_hasta=
 POST   /movimientos
+PATCH  /movimientos/:movimientoId/finalizar-picking
 
-PUT    /ventas/:productId
+GET    /clientes
+POST   /clientes
+PATCH  /clientes/:id
+
+GET    /ventas
+GET    /ventas/filtros
+GET    /ventas/resumen
+GET    /ventas/exportar
+GET    /ventas/:id
+POST   /ventas
+POST   /ventas/:id/completar
+POST   /ventas/:id/anular
+POST   /ventas/:id/devolver
+
+GET    /usuarios
+POST   /usuarios
+PATCH  /usuarios/:id
+POST   /usuarios/:id/restablecer-password
 ```
+
+### Rutas de la interfaz
+
+- `/login`: acceso.
+- `/inventario`: catálogo, categorías, lotes y movimientos; es la vista inicial
+  para `owner`, `admin` y `almacen`.
+- `/ventas`: clientes y ventas; es la vista inicial para `vendedor`.
+- `/configuracion`: gestión de usuarios de la empresa, solo para `owner`.
+
+Las rutas históricas `/productos`, `/movimientos` y `/clientes` redirigen al
+espacio de trabajo correspondiente; no son vistas independientes.
 
 ## Configuracion
 
@@ -213,12 +256,14 @@ AUTH_SECRET=change-me
 
 La conexion MySQL se configura en `back/db.js`.
 
-### Migración de roles
+### Migraciones
 
-Antes de desplegar esta versión sobre una base existente, ejecuta una vez
-[`001_normalize_user_roles.sql`](back/migrations/001_normalize_user_roles.sql).
-Convierte los usuarios con rol `vendedor` en `admin`; crea los dueños con el
-rol `owner`. La aplicación no ejecuta migraciones automáticamente al arrancar.
+Las migraciones de `back/migrations/` son manuales, ordenadas y no se ejecutan
+al arrancar. Antes de aplicarlas a una base existente, revisa qué versión de
+esquema tiene esa base y el contenido de todas las migraciones pendientes
+(`001` a `008` en este árbol). No ejecutes `001_normalize_user_roles.sql` de
+forma aislada como instrucción general: corresponde a una transición anterior
+de roles.
 
 ### Frontend
 
@@ -287,15 +332,21 @@ npm run preview
 Estado actual:
 
 - JWT para rutas privadas.
-- Autorización por roles `owner` y `admin` en productos, movimientos y ventas.
-- `tenant_id` se extrae del token y se usa como limite de datos.
+- Autorización por roles `owner`, `admin`, `almacen` y `vendedor` según la ruta.
+- `tenant_id` y el rol se recuperan del usuario activo en MySQL después de
+  validar el token; se usan como límite de datos y autorización efectiva.
 - Rate limiting en login.
 - Helmet activado en Express.
 - Passwords con bcrypt.
 
+Limitación conocida: el cambio de contraseña no revoca por sí solo otros JWT
+ya emitidos. En cambio, una baja de usuario/tenant o un cambio de rol se aplica
+en la siguiente petición protegida.
+
 Pendiente o a revisar:
 
-- Restringir CORS. Actualmente `server.js` permite `origin: "*"` para desarrollo.
+- Revisar y acordar `CORS_ORIGIN` antes de producción. `app.js` exige ese valor
+  en producción y usa una lista local explícita fuera de ella.
 - Completar sanitizacion/validacion en todos los endpoints.
 - Confirmar que todos los accesos a datos filtran siempre por `tenant_id`.
 - Revisar secretos y archivos `.env` antes de despliegue.
@@ -314,12 +365,12 @@ Pruebas prioritarias recomendadas:
 
 - Login valido e invalido.
 - Token ausente, invalido y expirado.
-- Crear producto con stock inicial.
+- Crear producto sin stock inicial y registrar una entrada posterior.
 - Crear entrada sobre lote existente y lote nuevo.
 - Crear salida con lote seleccionado.
 - Rechazar salida con stock insuficiente.
 - Crear ajuste de lote.
-- Venta rapida FIFO.
+- Venta por cliente y líneas con consumo FEFO.
 - Aislamiento por tenant.
 
 ## Pendientes principales
