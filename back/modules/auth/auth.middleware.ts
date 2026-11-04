@@ -4,6 +4,9 @@ const { verifyToken } = require("./auth.tokens") as {
 };
 const { log } = require("../../utils/logger");
 const { COOKIE_NAME } = require("./auth.cookies") as { COOKIE_NAME: string };
+const authModel = require("./auth.model") as {
+  findActiveSessionUser: (userId: number, tenantId: number) => Promise<AuthenticatedUser | null>;
+};
 
 const ROLES = Object.freeze({
   OWNER: "owner",
@@ -12,7 +15,7 @@ const ROLES = Object.freeze({
   SELLER: "vendedor",
 });
 
-function requireAuth(req: ApiRequest, res: ApiResponse, next: NextFunction) {
+async function requireAuth(req: ApiRequest, res: ApiResponse, next: NextFunction) {
   const authHeader = req.headers.authorization || "";
   const [scheme, bearerToken] = authHeader.split(" ");
   const cookieHeader = (req.headers as { cookie?: string }).cookie || "";
@@ -30,15 +33,19 @@ function requireAuth(req: ApiRequest, res: ApiResponse, next: NextFunction) {
   }
 
   try {
-    const user = verifyToken(token);
-    if (!user) return res.status(401).json({ error: "Token invalido" });
+    const tokenUser = verifyToken(token);
+    if (!tokenUser?.id || !tokenUser.tenant_id) return res.status(401).json({ error: "Token invalido" });
 
+    const user = await authModel.findActiveSessionUser(tokenUser.id, tokenUser.tenant_id);
+    if (!user) return res.status(401).json({ error: "Sesion no valida" });
+
+    // Nunca se conserva el rol contenido en el token: este objeto procede de SQL.
     req.user = user;
     req.tenantId = user.tenant_id;
-    next();
+    return next();
   } catch (error) {
-    log("warn", "authentication_failed", { requestId: req.requestId, path: req.originalUrl });
-    res.status(401).json({ error: "Token invalido" });
+    log("error", "session_state_lookup_failed", { requestId: req.requestId, path: req.originalUrl });
+    return next(error instanceof Error ? error : new Error("Error al consultar la sesión"));
   }
 }
 

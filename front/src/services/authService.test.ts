@@ -1,5 +1,5 @@
-import { beforeEach, expect, test } from "vitest";
-import { getSession } from "./authService";
+import { beforeEach, expect, test, vi } from "vitest";
+import { fetchWithAuth, getSession, saveSession } from "./authService";
 
 beforeEach(() => localStorage.clear());
 test("sesion corrupta vuelve a login sin lanzar excepciones", () => {
@@ -12,7 +12,18 @@ test("sesion incompleta se descarta", () => {
   expect(getSession()).toBeNull();
 });
 test("sesion valida se conserva", () => {
-  const session = { token: "demo", user: { tenant_id: 1 } };
-  localStorage.setItem("inventory_session", JSON.stringify(session));
+  const session = { user: { tenant_id: 1 } };
+  localStorage.setItem("inventory_session_user", JSON.stringify(session));
   expect(getSession()).toEqual(session);
+});
+
+test("un 403 conserva la sesión y se devuelve para mostrar el error de permisos", async () => {
+  saveSession({ user: { tenant_id: 1, rol: "admin" } });
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ status: 403, ok: false }));
+
+  const response = await fetchWithAuth("/recurso-protegido");
+
+  expect(response.status).toBe(403);
+  expect(getSession()).toEqual({ user: { tenant_id: 1, rol: "admin" } });
+  vi.unstubAllGlobals();
 });

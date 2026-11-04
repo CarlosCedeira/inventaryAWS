@@ -27,7 +27,7 @@ export interface ApiResponse {
   json(body: unknown): ApiResponse;
 }
 
-export type NextFunction = () => void;
+export type NextFunction = (error?: Error) => void;
 export interface HttpError extends Error { statusCode?: number }
 
 export function isHttpError(error: unknown): error is HttpError & { statusCode: number } {
