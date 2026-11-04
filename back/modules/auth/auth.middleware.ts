@@ -3,6 +3,7 @@ const { verifyToken } = require("./auth.tokens") as {
   verifyToken: (token: string) => AuthenticatedUser | null;
 };
 const { log } = require("../../utils/logger");
+const { COOKIE_NAME } = require("./auth.cookies") as { COOKIE_NAME: string };
 
 const ROLES = Object.freeze({
   OWNER: "owner",
@@ -13,9 +14,18 @@ const ROLES = Object.freeze({
 
 function requireAuth(req: ApiRequest, res: ApiResponse, next: NextFunction) {
   const authHeader = req.headers.authorization || "";
-  const [scheme, token] = authHeader.split(" ");
+  const [scheme, bearerToken] = authHeader.split(" ");
+  const cookieHeader = (req.headers as { cookie?: string }).cookie || "";
+  const cookieToken = cookieHeader
+    .split(";")
+    .map((part: string) => part.trim())
+    .find((part: string) => part.startsWith(`${COOKIE_NAME}=`))
+    ?.slice(COOKIE_NAME.length + 1);
+  // Authorization se conserva solo para las pruebas de integración. En
+  // ejecución normal la sesión se autentica exclusivamente por cookie HttpOnly.
+  const token = cookieToken || (process.env.NODE_ENV === "test" && scheme === "Bearer" ? bearerToken : null);
 
-  if (scheme !== "Bearer" || !token) {
+  if (!token) {
     return res.status(401).json({ error: "Token requerido" });
   }
 

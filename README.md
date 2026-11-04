@@ -80,6 +80,28 @@ para relacionar su respuesta con los logs del servidor.
 `-- arquitectura_flujos_invariantes_testing_md.md
 ```
 
+## Documentación
+
+La documentación se organiza por alcance: este README ofrece una visión general;
+`documentation/` reúne los documentos transversales; y cada módulo puede incluir
+un README propio para las instrucciones que solo le afectan.
+
+| Documento | Contenido |
+| --- | --- |
+| [Índice técnico](documentation/README.md) | Visión técnica del sistema, módulos, autenticación y modelo multi-tenant. |
+| [ERS Brétema](documentation/ERS_Bretema.md) | Especificación de requisitos del sistema. |
+| [Especificación funcional de productos](documentation/especificacion-funcional-productos.md) | Alcance, flujos, reglas, interfaz, permisos, API y aceptación del catálogo de productos. |
+| [Informe de progreso — 30 de octubre de 2026](documentation/informe-progreso-2026-10-30.md) | Estado verificable de la rama `main`, riesgos de piloto y prioridades. |
+| [Informe local — 4 de noviembre de 2026](documentation/informe-progreso-local-2026-11-04.md) | Avances sin publicar, validación disponible y bloqueos de la v1. |
+| [Arquitectura del servidor](documentation/server/Arquitecture.md) | Diseño y estructura del backend. |
+| [Modelo de relaciones](documentation/Database/diagrama_relaciones.md) | Diagrama y relaciones de la base de datos. |
+| [Descripción de base de datos](documentation/Database/describedatabase.txt) | Detalle de tablas y campos. |
+| [Consultas de base de datos](documentation/Database/QueryForDatabase.txt) | Consultas SQL de apoyo. |
+| [Flujos, invariantes y pruebas manuales](arquitectura_flujos_invariantes_testing_md.md) | Comportamientos críticos del inventario y sus validaciones. |
+| [Guía de pruebas](back/tests/README.md) | Preparación y ejecución de pruebas del backend. |
+| [Pruebas de integración con MySQL](back/tests/integration/README.md) | Requisitos específicos para las pruebas con MySQL real. |
+| [Tareas pendientes](ToDo.md) | Trabajo planificado y mejoras abiertas. |
+
 ## Funcionalidades
 
 ### Autenticacion

@@ -49,8 +49,8 @@ async function updateProductData(tenantId, productId, productoData) {
   return await inventoryModel.updateProduct(tenantId, productId, productoData);
 }
 
-async function createNewProduct(productoData, inventarioData, userId) {
-  return await inventoryModel.createProduct(productoData, inventarioData, userId);
+async function createNewProduct(productoData) {
+  return await inventoryModel.createProduct(productoData);
 }
 
 async function removeProduct(tenantId, productId) {

@@ -111,6 +111,34 @@ test("la API de productos permite crear, consultar, buscar, filtrar, editar y bo
     .send({ nombre: "Limpieza", descripcion: "Productos de limpieza" });
   expect(categoryResponse.status).toBe(201);
   const categoryId = categoryResponse.body.id;
+  const connection = await getConnection();
+  let taxId: number;
+  try {
+    const [tax] = await connection.execute<ResultSetHeader>(
+      "INSERT INTO impuestos (nombre, porcentaje, pais_codigo) VALUES (?, ?, ?)",
+      ["IVA productos", 21, "ES"],
+    );
+    taxId = tax.insertId;
+  } finally {
+    connection.release();
+  }
+
+  const rejectedInitialStock = await request(app)
+    .post("/productos/newProduct")
+    .set("Authorization", `Bearer ${token}`)
+    .send({
+      producto_nombre: "Jabón líquido",
+      producto_descripcion: "Formato de un litro",
+      categoria_id: categoryId,
+      impuesto_id: taxId!,
+      precio_compra: 2.5,
+      precio_venta: 4.5,
+      stock_minimo: 3,
+      cantidad: 6,
+      numero_lote: "L-001",
+    });
+  expect(rejectedInitialStock.status).toBe(400);
+  expect(rejectedInitialStock.body).toEqual({ error: "El stock inicial se registra mediante un movimiento" });
 
   const createResponse = await request(app)
     .post("/productos/newProduct")
@@ -119,12 +147,10 @@ test("la API de productos permite crear, consultar, buscar, filtrar, editar y bo
       producto_nombre: "Jabón líquido",
       producto_descripcion: "Formato de un litro",
       categoria_id: categoryId,
+      impuesto_id: taxId!,
       precio_compra: 2.5,
       precio_venta: 4.5,
       stock_minimo: 3,
-      cantidad: 6,
-      numero_lote: "L-001",
-      fecha_caducidad: "2030-12-31",
     });
   expect(createResponse.status).toBe(201);
   const { productoId } = createResponse.body;
@@ -158,7 +184,7 @@ test("la API de productos permite crear, consultar, buscar, filtrar, editar y bo
     producto_id: productoId,
     nombre: "Jabón líquido",
     categoria_id: categoryId,
-    inventario: [expect.objectContaining({ cantidad: 6, numero_lote: "L-001" })],
+    inventario: [],
   });
 
   const updatedProduct = {
@@ -179,7 +205,7 @@ test("la API de productos permite crear, consultar, buscar, filtrar, editar y bo
   expect(updatedDetailResponse.body).toMatchObject({
     nombre: "Jabón líquido concentrado",
     precio_venta: "5.00",
-    inventario: [expect.objectContaining({ cantidad: 6 })],
+    inventario: [],
   });
 
   const foreignDetailResponse = await request(app)

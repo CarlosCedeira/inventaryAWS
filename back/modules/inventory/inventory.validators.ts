@@ -1,18 +1,9 @@
-import type { CategoryFields, InventoryDate, InventoryFields, ProductFields } from "./inventory.types";
+import type { CategoryFields, ProductFields } from "./inventory.types";
 
 type Input = Record<string, unknown>;
 type Validation<T> = (T & { error?: never }) | { error: string };
 type CreatePayload = {
   product: ProductFields & { tenant_id: number };
-  inventory?: InventoryFields & { tenant_id: number };
-};
-
-const {
-  normalizeStockQuantity,
-  validateStockQuantity,
-} = require("../../utils/stockQuantity") as {
-  normalizeStockQuantity: (value: unknown) => number;
-  validateStockQuantity: (value: unknown, options: { label: string }) => string | null;
 };
 
 const productNameRegex = /^[\p{L}0-9\s_.(),-]+$/u;
@@ -43,17 +34,6 @@ function validateRequiredInteger(value: unknown, label: string) {
   if (!Number.isInteger(Number(value))) {
     return `${label} debe ser un numero entero`;
   }
-
-  return null;
-}
-
-function validateOptionalDate(value: unknown, label: string) {
-  if (isBlank(value)) return null;
-
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return `${label} no es valida`;
-
-  const date = new Date(`${value}T00:00:00.000Z`);
-  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) return `${label} no es valida`;
 
   return null;
 }
@@ -110,20 +90,6 @@ function validateProductFields(product: Input, { requireTax = false }: { require
   return validateRequiredInteger(product.stock_minimo, "El stock minimo");
 }
 
-function validateInventoryItem(item: Input) {
-  const quantityError = validateStockQuantity(item.cantidad, {
-    label: "La cantidad inicial",
-  });
-  if (quantityError) return quantityError;
-
-  const lot = toTrimmedString(item.numero_lote);
-  if (lot.length > 50) {
-    return "El numero de lote no puede superar los 50 caracteres";
-  }
-
-  return validateOptionalDate(item.fecha_caducidad, "La fecha de caducidad");
-}
-
 function normalizeProductFields(product: Input): ProductFields {
   return {
     nombre: toTrimmedString(product.nombre),
@@ -136,16 +102,11 @@ function normalizeProductFields(product: Input): ProductFields {
   };
 }
 
-function normalizeInventoryItem<T extends Input>(item: T): T & InventoryFields {
-  return {
-    ...item,
-    cantidad: normalizeStockQuantity(item.cantidad),
-    fecha_caducidad: isBlank(item.fecha_caducidad) ? null : item.fecha_caducidad as InventoryDate,
-    numero_lote: toTrimmedString(item.numero_lote) || null,
-  };
-}
-
 function buildCreateProductPayload(body: Input, tenantId: number): Validation<CreatePayload> {
+  if (["cantidad", "numero_lote", "fecha_caducidad"].some((field) => Object.hasOwn(body, field))) {
+    return { error: "El stock inicial se registra mediante un movimiento" };
+  }
+
   const product = {
     tenant_id: tenantId,
     nombre: body.producto_nombre,
@@ -160,26 +121,11 @@ function buildCreateProductPayload(body: Input, tenantId: number): Validation<Cr
   const productError = validateProductFields(product, { requireTax: true });
   if (productError) return { error: productError };
 
-  const includesInitialInventory = ["cantidad", "fecha_caducidad", "numero_lote"]
-    .some((field) => Object.hasOwn(body, field));
-  const inventory = includesInitialInventory ? {
-    tenant_id: tenantId,
-    cantidad: body.cantidad,
-    fecha_caducidad: body.fecha_caducidad,
-    numero_lote: body.numero_lote,
-  } : undefined;
-
-  if (inventory) {
-    const inventoryError = validateInventoryItem(inventory);
-    if (inventoryError) return { error: inventoryError };
-  }
-
   return {
     product: {
       tenant_id: tenantId,
       ...normalizeProductFields(product),
     },
-    ...(inventory ? { inventory: normalizeInventoryItem(inventory) } : {}),
   };
 }
 

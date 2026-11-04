@@ -13,13 +13,15 @@ for (const [handler, method] of [
   test(`${method}: un error inesperado devuelve 500 sin fallar al registrar el contexto`, async () => {
     const original = service[method];
     const originalCategoryCheck = service.categoryBelongsToTenant;
+    const originalTaxCheck = service.taxIsActive;
     service[method] = async () => { throw new Error("Forced controller failure"); };
     service.categoryBelongsToTenant = async () => true;
+    service.taxIsActive = async () => true;
     try {
       const req: AuthenticatedRequest = {
         headers: {}, originalUrl: "/productos", tenantId: 1, user: { id: 1, tenant_id: 1, rol: "admin" },
         params: { id: "1", categoryId: "2" },
-        body: { nombre: "Producto", descripcion: "", categoria_id: 2, impuesto_id: 1, precio_compra: 1, precio_venta: 2, stock_minimo: 0 },
+        body: { nombre: "Producto", descripcion: "Descripción válida", categoria_id: 2, impuesto_id: 1, precio_compra: 1, precio_venta: 2, stock_minimo: 0 },
       };
       let status = 200;
       let body: unknown;
@@ -33,6 +35,7 @@ for (const [handler, method] of [
     } finally {
       service[method] = original;
       service.categoryBelongsToTenant = originalCategoryCheck;
+      service.taxIsActive = originalTaxCheck;
     }
   });
 }

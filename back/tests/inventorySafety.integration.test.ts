@@ -6,94 +6,133 @@ import { seedTenantAndUser } from "./helpers/database";
 const app = require("../app");
 const { getConnection } = require("../db") as { getConnection: () => Promise<PoolConnection> };
 
-async function snapshot() {
+async function snapshot(tenantId: number) {
   const connection = await getConnection();
   try {
-    const [lots] = await connection.query<RowDataPacket[]>("SELECT * FROM inventario ORDER BY id");
-    const [movements] = await connection.query<RowDataPacket[]>("SELECT * FROM movimientos_inventario ORDER BY id");
-    return { lots, movements };
+    const tables = ["inventario", "movimientos_inventario", "ventas", "lineas_venta", "devoluciones", "lineas_devolucion"];
+    const entries = await Promise.all(tables.map(async (table) => {
+      const [rows] = await connection.query<RowDataPacket[]>(`SELECT * FROM ${table} WHERE tenant_id = ? ORDER BY id`, [tenantId]);
+      return [table, rows] as const;
+    }));
+    return Object.fromEntries(entries);
   } finally {
     connection.release();
   }
 }
 
-async function fixture(email = "safety@demo.com", quantity = 5) {
+async function fixture(email = "safety@demo.com", quantity = 5, productName = "Safety") {
   const user = await seedTenantAndUser({ email });
   const login = await request(app).post("/auth/login").send({ email, password: user.password });
   expect(login.status).toBe(200);
   const connection = await getConnection();
   try {
+    const [client] = await connection.execute<ResultSetHeader>(
+      "INSERT INTO clientes (tenant_id, nombre, tarifa) VALUES (?, ?, 0)", [user.tenantId, `Cliente ${productName}`],
+    );
+    const [category] = await connection.execute<ResultSetHeader>(
+      "INSERT INTO categorias (tenant_id, nombre) VALUES (?, ?)", [user.tenantId, `Categoría ${productName}`],
+    );
+    const [tax] = await connection.execute<ResultSetHeader>(
+      "INSERT INTO impuestos (nombre, porcentaje, pais_codigo) VALUES (?, 21, 'ES')", [`IVA ${productName}`],
+    );
     const [product] = await connection.execute<ResultSetHeader>(
-      "INSERT INTO productos (tenant_id, nombre, stock_minimo) VALUES (?, 'Safety', 0)", [user.tenantId],
+      "INSERT INTO productos (tenant_id, nombre, categoria_id, impuesto_id, precio_compra, precio_venta, stock_minimo) VALUES (?, ?, ?, ?, 1, 10, 0)",
+      [user.tenantId, productName, category.insertId, tax.insertId],
     );
     const [lot] = await connection.execute<ResultSetHeader>(
       "INSERT INTO inventario (tenant_id, producto_id, cantidad, numero_lote) VALUES (?, ?, ?, 'BASE')",
       [user.tenantId, product.insertId, quantity],
     );
-    return { ...user, token: login.body.token as string, productId: product.insertId, inventoryId: lot.insertId };
+    return { ...user, token: login.body.token as string, clientId: client.insertId, productId: product.insertId, inventoryId: lot.insertId };
   } finally {
     connection.release();
   }
 }
 
-test.each(["entrada", "salida", "ajuste", "venta"])(
-  "%s: un fallo al registrar el movimiento revierte todo el stock",
-  async (operation) => {
-    const user = await fixture();
-    const before = await snapshot();
-    const connection = await getConnection();
-    try {
-      await connection.query("CREATE TRIGGER safety_fail_movement BEFORE INSERT ON movimientos_inventario FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Forced safety test failure'");
-      try {
-        const response = operation === "venta"
-          ? await request(app).put(`/ventas/${user.productId}`).set("Authorization", `Bearer ${user.token}`).send({ cantidad: 2 })
-          : await request(app).post("/movimientos").set("Authorization", `Bearer ${user.token}`).send({
-            tipo: operation, producto_id: user.productId, inventario_id: user.inventoryId,
-            cantidad: 2, numero_lote: "NEW-LOT",
-          });
-        expect(response.status).toBe(500);
-        expect(await snapshot()).toEqual(before);
-      } finally {
-        await connection.query("DROP TRIGGER safety_fail_movement");
-      }
-    } finally {
-      connection.release();
-    }
-  },
-);
-
-test("dos ventas HTTP simultaneas de la ultima unidad dejan una sola salida", async () => {
-  const user = await fixture("concurrent@demo.com", 1);
-  const sell = () => request(app).put(`/ventas/${user.productId}`)
-    .set("Authorization", `Bearer ${user.token}`).send({ cantidad: 1 });
-  const responses = await Promise.all([sell(), sell()]);
-  expect(responses.map((response) => response.status).sort()).toEqual([200, 409]);
-  const state = await snapshot();
-  expect(state.lots).toHaveLength(1);
-  expect(state.lots[0].cantidad).toBe(0);
-  expect(state.movements).toHaveLength(1);
-  expect(state.movements[0]).toMatchObject({
-    tenant_id: user.tenantId, producto_id: user.productId, usuario_id: user.userId,
-    tipo: "salida", cantidad: 1, stock_anterior: 1, stock_nuevo: 0,
+function createSale(user: Awaited<ReturnType<typeof fixture>>, quantity: number, reference: string, productId = user.productId, clientId = user.clientId) {
+  return request(app).post("/ventas").set("Authorization", `Bearer ${user.token}`).send({
+    cliente_id: clientId, referencia: reference, lineas: [{ producto_id: productId, cantidad: quantity }],
   });
+}
+
+async function withFailingMovementInsert(action: () => Promise<request.Response>) {
+  const connection = await getConnection();
+  try {
+    await connection.query("CREATE TRIGGER safety_fail_movement BEFORE INSERT ON movimientos_inventario FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Forced safety test failure'");
+    return await action();
+  } finally {
+    await connection.query("DROP TRIGGER IF EXISTS safety_fail_movement");
+    connection.release();
+  }
+}
+
+test("dos ventas HTTP simultáneas de la última unidad dejan una sola salida", async () => {
+  const user = await fixture("concurrent@demo.com", 1);
+  const responses = await Promise.all([createSale(user, 1, "CONC-A"), createSale(user, 1, "CONC-B")]);
+  expect(responses.map((response) => response.status).sort()).toEqual([201, 409]);
+  const state = await snapshot(user.tenantId);
+  expect(state.inventario).toHaveLength(1);
+  expect(state.inventario[0].cantidad).toBe(0);
+  expect(state.ventas).toHaveLength(1);
+  expect(state.lineas_venta).toHaveLength(1);
+  expect(state.movimientos_inventario).toHaveLength(1);
+  expect(state.movimientos_inventario[0]).toMatchObject({ producto_id: user.productId, usuario_id: user.userId, tipo: "salida", cantidad: 1, stock_anterior: 1, stock_nuevo: 0 });
 });
 
-test("IDs ajenos no permiten consultar, vender ni modificar lotes de otra empresa", async () => {
-  const current = await fixture();
-  const other = await fixture("other-safety@demo.com");
-  const before = await snapshot();
-  const authorization = `Bearer ${current.token}`;
-  const detail = await request(app).get(`/productos/${other.productId}`).set("Authorization", authorization);
-  expect(detail.status).toBe(404);
-  const sale = await request(app).put(`/ventas/${other.productId}`).set("Authorization", authorization)
-    .send({ cantidad: 1, tenant_id: other.tenantId, usuario_id: other.userId });
-  expect(sale.status).toBe(404);
-  for (const type of ["salida", "ajuste"]) {
-    const response = await request(app).post("/movimientos").set("Authorization", authorization).send({
-      tipo: type, producto_id: current.productId, inventario_id: other.inventoryId,
-      cantidad: 1, tenant_id: other.tenantId,
-    });
-    expect(response.status).toBe(404);
+test("una venta multilínea insuficiente revierte cabecera, líneas, movimientos y stock", async () => {
+  const user = await fixture("multilinea@demo.com", 3, "Primero");
+  const connection = await getConnection();
+  let productId: number;
+  try {
+    const [tax] = await connection.execute<ResultSetHeader>("INSERT INTO impuestos (nombre, porcentaje, pais_codigo) VALUES ('IVA Segundo local', 21, 'ES')");
+    const [category] = await connection.execute<ResultSetHeader>("INSERT INTO categorias (tenant_id, nombre) VALUES (?, 'Segunda línea')", [user.tenantId]);
+    const [product] = await connection.execute<ResultSetHeader>(
+      "INSERT INTO productos (tenant_id, nombre, categoria_id, impuesto_id, precio_compra, precio_venta, stock_minimo) VALUES (?, 'Segundo local', ?, ?, 1, 10, 0)",
+      [user.tenantId, category.insertId, tax.insertId],
+    );
+    productId = product.insertId;
+    await connection.execute("INSERT INTO inventario (tenant_id, producto_id, cantidad, numero_lote) VALUES (?, ?, 1, 'SEGUNDO')", [user.tenantId, productId]);
+  } finally {
+    connection.release();
   }
-  expect(await snapshot()).toEqual(before);
+  const before = await snapshot(user.tenantId);
+  const response = await request(app).post("/ventas").set("Authorization", `Bearer ${user.token}`).send({
+    cliente_id: user.clientId, referencia: "MULTI-ROLLBACK",
+    lineas: [{ producto_id: user.productId, cantidad: 1 }, { producto_id: productId!, cantidad: 2 }],
+  });
+  expect(response.status).toBe(409);
+  expect(await snapshot(user.tenantId)).toEqual(before);
+});
+
+test("un fallo durante la anulación no deja stock ni estado restaurados parcialmente", async () => {
+  const user = await fixture("anulacion-fallo@demo.com", 2);
+  const sale = await createSale(user, 1, "ANULAR-FALLO");
+  expect(sale.status).toBe(201);
+  const before = await snapshot(user.tenantId);
+  const response = await withFailingMovementInsert(() => request(app).post(`/ventas/${sale.body.id}/anular`).set("Authorization", `Bearer ${user.token}`).send({ motivo: "Forzar rollback" }));
+  expect(response.status).toBe(500);
+  expect(await snapshot(user.tenantId)).toEqual(before);
+});
+
+test("un fallo durante una devolución no deja devolución ni stock restaurados parcialmente", async () => {
+  const user = await fixture("devolucion-fallo@demo.com", 2);
+  const sale = await createSale(user, 1, "DEVOLVER-FALLO");
+  expect(sale.status).toBe(201);
+  const before = await snapshot(user.tenantId);
+  const response = await withFailingMovementInsert(() => request(app).post(`/ventas/${sale.body.id}/devolver`).set("Authorization", `Bearer ${user.token}`).send({
+    motivo: "Forzar rollback", lineas: [{ movimiento_id: sale.body.lineas[0].movements[0], cantidad: 1 }],
+  }));
+  expect(response.status).toBe(500);
+  expect(await snapshot(user.tenantId)).toEqual(before);
+});
+
+test("una venta no acepta cliente ni producto de otro tenant y no modifica ningún tenant", async () => {
+  const current = await fixture("actual-safety@demo.com", 2, "Actual");
+  const other = await fixture("ajeno-safety@demo.com", 2, "Ajeno");
+  const currentBefore = await snapshot(current.tenantId);
+  const otherBefore = await snapshot(other.tenantId);
+  expect((await createSale(current, 1, "CLIENTE-AJENO", current.productId, other.clientId)).status).toBe(404);
+  expect((await createSale(current, 1, "PRODUCTO-AJENO", other.productId, current.clientId)).status).toBe(404);
+  expect(await snapshot(current.tenantId)).toEqual(currentBefore);
+  expect(await snapshot(other.tenantId)).toEqual(otherBefore);
 });

@@ -6,3 +6,4 @@ export const canManageInventory = (user) => INVENTORY_MANAGEMENT_ROLES.has(user?
 export const canAccessCommercial = (user) => COMMERCIAL_ACCESS_ROLES.has(user?.rol) || user?.rol === "vendedor";
 export const canAccessInventory = (user) => INVENTORY_ACCESS_ROLES.has(user?.rol);
 export const canManageCommercial = (user) => COMMERCIAL_ACCESS_ROLES.has(user?.rol);
+export const isOwner = (user) => user?.rol === "owner";

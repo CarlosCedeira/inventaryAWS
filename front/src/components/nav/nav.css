@@ -8,7 +8,9 @@
   -webkit-backdrop-filter: blur(18px) saturate(118%);
   transition: width 0.4s ease;
   overflow-x: hidden;
-  z-index: 1020;
+  /* El panel debe quedar por encima del área invisible que captura el clic
+     para cerrar el menú. */
+  z-index: 1050;
   box-shadow: .5rem 0 1.5rem rgba(15, 23, 42, 0.08);
 }
 
@@ -49,7 +51,7 @@
   position: fixed;
   top: 0;
   left: 0;
-  z-index: 2000;
+  z-index: 1060;
   padding: 0;
   width: 44px;
   height: 44px;

@@ -9,21 +9,25 @@ const product = {
 };
 const createBody = {
   ...product, producto_nombre: product.nombre, producto_descripcion: product.descripcion,
-  cantidad: "4", numero_lote: " L-01 ", fecha_caducidad: "",
 };
 
-test("creacion normaliza cantidades y utiliza el tenant autenticado", () => {
+test("creacion utiliza el tenant autenticado y no crea inventario", () => {
   const result = buildCreateProductPayload({ ...createBody, tenant_id: 999 }, 7);
   assert.equal(result.error, undefined);
   assert.equal(result.product.tenant_id, 7);
-  assert.equal(result.inventory.tenant_id, 7);
-  assert.equal(result.inventory.cantidad, 4);
-  assert.equal(result.inventory.numero_lote, "L-01");
-  assert.equal(result.inventory.fecha_caducidad, null);
 });
 
-test("crear producto exige stock inicial positivo", () => {
-  assert.ok(buildCreateProductPayload({ ...createBody, cantidad: 0 }, 7).error);
+test("crear producto rechaza lote y cantidad inicial", () => {
+  for (const body of [
+    { ...createBody, cantidad: 4 },
+    { ...createBody, numero_lote: "L-01" },
+    { ...createBody, fecha_caducidad: "2030-01-01" },
+  ]) {
+    assert.equal(
+      buildCreateProductPayload(body, 7).error,
+      "El stock inicial se registra mediante un movimiento"
+    );
+  }
 });
 
 test("crear producto exige seleccionar un IVA", () => {

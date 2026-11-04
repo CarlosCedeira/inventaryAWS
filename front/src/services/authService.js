@@ -1,23 +1,20 @@
 const API_URL = import.meta.env.VITE_API_URL;
-const SESSION_KEY = "inventory_session";
+const SESSION_KEY = "inventory_session_user";
 
 export function getSession() {
+  // Limpia la clave usada por versiones anteriores, que contenía el JWT.
+  localStorage.removeItem("inventory_session");
   const rawSession = localStorage.getItem(SESSION_KEY);
   try {
     const session = rawSession ? JSON.parse(rawSession) : null;
-    if (session && typeof session.token === "string" && session.user?.tenant_id) return session;
+    if (session?.user?.tenant_id) return session;
   } catch { /* Discard malformed or obsolete sessions. */ }
   localStorage.removeItem(SESSION_KEY);
   return null;
 }
 
-export function getAuthHeaders() {
-  const session = getSession();
-  return session?.token ? { Authorization: `Bearer ${session.token}` } : {};
-}
-
 export function saveSession(session) {
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ user: session.user }));
 }
 
 export function clearSession() {
@@ -26,13 +23,13 @@ export function clearSession() {
 
 export async function fetchWithAuth(input, init = {}) {
   const headers = {
-    ...getAuthHeaders(),
     ...(init.headers || {}),
   };
 
   const response = await fetch(input, {
     ...init,
     headers,
+    credentials: "include",
   });
 
   if (response.status === 401) {
@@ -55,6 +52,7 @@ export async function login(email, password) {
     headers: {
       "Content-Type": "application/json",
     },
+    credentials: "include",
     body: JSON.stringify({ email, password }),
   });
 
@@ -68,4 +66,20 @@ export async function login(email, password) {
 
   saveSession(data);
   return data;
+}
+
+export async function logout() {
+  try {
+    await fetch(`${API_URL}/auth/logout`, { method: "POST", credentials: "include" });
+  } finally {
+    clearSession();
+  }
+}
+
+export async function getCurrentUser() {
+  const response = await fetchWithAuth(`${API_URL}/auth/me`);
+  if (!response.ok) throw new Error("Sesión expirada o no válida");
+  const data = await response.json();
+  saveSession(data);
+  return data.user;
 }

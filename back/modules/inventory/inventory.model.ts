@@ -1,5 +1,5 @@
 import type { PoolConnection, RowDataPacket, ResultSetHeader } from "mysql2/promise";
-import type { CategoryFields, InventoryFields, InventoryMovement, InventoryRow, ProductFields, ProductId, ProductSummaryRow, ProductDetailRow, TaxFields } from "./inventory.types";
+import type { CategoryFields, InventoryRow, ProductFields, ProductId, ProductSummaryRow, ProductDetailRow, TaxFields } from "./inventory.types";
 import type { HttpError } from "../../types/http";
 const { getConnection } = require("../../db") as { getConnection: () => Promise<PoolConnection> };
 
@@ -29,45 +29,6 @@ async function getCurrentStock(connection: PoolConnection, tenantId: number, pro
   );
 
   return Number(rows[0]?.stock_total || 0);
-}
-
-async function insertInventoryMovement(connection: PoolConnection, data: InventoryMovement) {
-  const [result] = await connection.execute<ResultSetHeader>(
-    `
-    INSERT INTO movimientos_inventario
-      (
-        tenant_id,
-        producto_id,
-        inventario_id,
-        tipo,
-        cantidad,
-        stock_anterior,
-        stock_nuevo,
-        numero_lote,
-        fecha_caducidad,
-        motivo,
-        descripcion,
-        usuario_id
-      )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `,
-    [
-      data.tenantId,
-      data.productId,
-      data.inventoryId,
-      data.type,
-      data.quantity,
-      data.previousStock,
-      data.newStock,
-      data.lotNumber,
-      data.expirationDate,
-      data.reason,
-      data.description,
-      data.userId,
-    ]
-  );
-
-  return result.insertId;
 }
 
 // Listar todos los productos
@@ -401,8 +362,8 @@ async function updateProduct(tenantId: number, productId: ProductId, productoDat
   }
 }
 
-// Crear nuevo producto e inventario
-async function createProduct(productoData: ProductFields & { tenant_id: number }, inventarioData: (InventoryFields & { tenant_id: number }) | undefined, userId: number) {
+// Crear un producto sin existencias. El stock se incorpora mediante Movimientos.
+async function createProduct(productoData: ProductFields & { tenant_id: number }) {
   const connection = await getConnection();
   try {
     await connection.beginTransaction();
@@ -425,41 +386,9 @@ async function createProduct(productoData: ProductFields & { tenant_id: number }
 
     const productoId = productoResult.insertId;
 
-    let inventarioId: number | null = null;
-    if (inventarioData) {
-      const [inventarioResult] = await connection.execute<ResultSetHeader>(
-        `INSERT INTO inventario
-         (tenant_id, producto_id, cantidad, fecha_caducidad, numero_lote)
-         VALUES (?, ?, ?, ?, ?)`,
-        [
-          inventarioData.tenant_id,
-          productoId,
-          inventarioData.cantidad,
-          inventarioData.fecha_caducidad,
-          inventarioData.numero_lote,
-        ]
-      );
-      inventarioId = inventarioResult.insertId;
-
-      await insertInventoryMovement(connection, {
-        tenantId: productoData.tenant_id,
-        productId: productoId,
-        inventoryId: inventarioId,
-        type: "entrada",
-        quantity: inventarioData.cantidad,
-        previousStock: 0,
-        newStock: inventarioData.cantidad,
-        lotNumber: inventarioData.numero_lote || null,
-        expirationDate: inventarioData.fecha_caducidad,
-        reason: "Creacion de producto",
-        description: "Entrada inicial generada al crear el producto",
-        userId,
-      });
-    }
-
     await connection.commit();
 
-    return { productoId, inventarioId };
+    return { productoId };
   } catch (error) {
     await connection.rollback();
     throw error;

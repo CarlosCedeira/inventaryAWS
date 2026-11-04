@@ -90,7 +90,7 @@ Todos los requisitos de esta sección son obligatorios para aceptar el alcance p
 | RF-05 | El sistema deberá permitir cerrar la sesión local. | Al salir se elimina la sesión del navegador y se vuelve al acceso. Esto no supone revocación individual del JWT en el servidor. |
 | RF-06 | Toda operación deberá limitarse a la empresa autenticada, incluidas las relaciones con categorías, productos y lotes. | Alterar IDs o enviar otro `tenant_id` no permite consultar ni modificar datos ajenos. La empresa efectiva se determina en el servidor. |
 | RF-07 | El usuario deberá poder crear y consultar categorías de su empresa. | Una categoría válida aparece en su selector; una categoría ajena no puede asignarse a su producto. |
-| RF-08 | El usuario deberá poder crear un producto con categoría, precios, stock mínimo y lote inicial. | Producto, lote y movimiento de entrada se guardan juntos; cualquier fallo revierte la operación completa. |
+| RF-08 | El usuario deberá poder crear un producto con categoría, precios y stock mínimo, sin existencias iniciales. | El alta crea solo la ficha del producto; cualquier lote o cantidad inicial se rechaza y las existencias se incorporan mediante un movimiento de entrada posterior. |
 | RF-09 | El usuario deberá poder listar, buscar por nombre, filtrar por categoría y consultar productos. | Los resultados pertenecen a su empresa, excluyen productos eliminados y muestran los stocks correspondientes. |
 | RF-10 | El usuario deberá poder editar datos del producto y existencias de los lotes admitidos por la ficha. | Un cambio de cantidad genera ajuste; cambiar únicamente el nombre no genera un movimiento de stock. |
 | RF-11 | La edición de lotes deberá comprobar su versión. | Si el lote cambió desde su lectura, guardar devuelve 409, conserva los datos actuales y solicita recargar la ficha. |
@@ -108,7 +108,7 @@ Todos los requisitos de esta sección son obligatorios para aceptar el alcance p
 
 | ID | Regla |
 | --- | --- |
-| RN-01 | Las cantidades se expresan en unidades enteras. El stock no puede quedar negativo. Entradas, salidas y stock inicial requieren cantidades positivas; el ajuste permite cero. |
+| RN-01 | Las cantidades se expresan en unidades enteras. El stock no puede quedar negativo. Entradas y salidas requieren cantidades positivas; el ajuste permite cero. |
 | RN-02 | El stock físico se calcula desde los lotes y equivale a stock disponible más stock caducado, usando el mismo día de referencia. |
 | RN-03 | Un lote que caduca hoy sigue disponible durante ese día. La zona horaria de referencia debe fijarse en el despliegue. |
 | RN-04 | Todo cambio de cantidad debe quedar registrado con usuario, empresa, producto, lote y saldos anterior y posterior. |

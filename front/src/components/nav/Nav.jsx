@@ -3,18 +3,19 @@ import { Routes, Route, Link, Navigate, useLocation, useNavigate } from "react-r
 
 import { CommercialWorkspace, InventoryWorkspace } from "../workspaces/Workspaces";
 import UsersManager from "../logging.jsx";
-import { clearSession, getSession } from "../../services/authService";
-import { canAccessCommercial, canAccessInventory } from "../../utils/permissions";
+import UsersSettings from "../settings/UsersSettings";
+import { getCurrentUser, getSession, logout } from "../../services/authService";
+import { canAccessCommercial, canAccessInventory, isOwner } from "../../utils/permissions";
 import { useNavigationShortcutKeys } from "../../hooks/useEscapeKey";
 
 import "./nav.css";
 
-function ProtectedRoute({ isAuthenticated, hasAccess = true, children }) {
+function ProtectedRoute({ isAuthenticated, hasAccess = true, redirectTo = "/", children }) {
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  if (!hasAccess) return <Navigate to="/inventario" replace />;
+  if (!hasAccess) return <Navigate to={redirectTo} replace />;
 
   return children;
 }
@@ -30,8 +31,9 @@ function Nav() {
   const user = session?.user;
   const hasInventoryAccess = canAccessInventory(user);
   const hasCommercialAccess = canAccessCommercial(user);
+  const hasSettingsAccess = isOwner(user);
   const defaultWorkspace = hasInventoryAccess ? "/inventario" : "/ventas";
-  const isAuthenticated = Boolean(session?.token && session?.user?.tenant_id);
+  const isAuthenticated = Boolean(session?.user?.tenant_id);
   const wasAuthenticated = useRef(isAuthenticated); // <-- esto faltaba
   const lastScrollY = useRef(0);
   const toggleSidebar = () => setIsCollapsed(!isCollapsed);
@@ -46,6 +48,10 @@ function Nav() {
     }
     wasAuthenticated.current = isAuthenticated;
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (getSession()) void getCurrentUser().catch(() => {});
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -80,8 +86,8 @@ function Nav() {
     }
   };
 
-  const handleLogout = () => {
-    clearSession();
+  const handleLogout = async () => {
+    await logout();
     setIsCollapsed(false);
     navigate("/login", { replace: true });
   };
@@ -210,6 +216,10 @@ function Nav() {
   <Link to="/ventas" onClick={handleNavLinkClick} className={`nav-link text-white ${location.pathname === "/ventas" ? "active" : ""}`} title="Atajo: tecla S" aria-keyshortcuts="S">Comercial</Link>
 </li>}
 
+{hasSettingsAccess && <li className="nav-item mt-2">
+  <Link to="/configuracion" onClick={handleNavLinkClick} className={`nav-link text-white ${location.pathname === "/configuracion" ? "active" : ""}`}>Configuración</Link>
+</li>}
+
             </ul>
 
             <div className=" mt-auto mx-2 mb-4 ">
@@ -233,14 +243,15 @@ function Nav() {
         </aside>
       )}
 
-      <div className={`flex-grow-1 ps-md-3 app-content${["/inventario", "/ventas"].includes(location.pathname) ? " app-surface" : ""}`} style={{ minWidth: 0 }}>
+      <div className={`flex-grow-1 ps-md-3 app-content${["/inventario", "/ventas", "/configuracion"].includes(location.pathname) ? " app-surface" : ""}`} style={{ minWidth: 0 }}>
         <Routes>
           <Route
             path="/"
             element={<Navigate to={isAuthenticated ? defaultWorkspace : "/login"} replace />}
           />
-          <Route path="/inventario" element={<ProtectedRoute isAuthenticated={isAuthenticated} hasAccess={hasInventoryAccess}><InventoryWorkspace /></ProtectedRoute>} />
-          <Route path="/ventas" element={<ProtectedRoute isAuthenticated={isAuthenticated} hasAccess={hasCommercialAccess}><CommercialWorkspace /></ProtectedRoute>} />
+          <Route path="/inventario" element={<ProtectedRoute isAuthenticated={isAuthenticated} hasAccess={hasInventoryAccess} redirectTo={defaultWorkspace}><InventoryWorkspace /></ProtectedRoute>} />
+          <Route path="/ventas" element={<ProtectedRoute isAuthenticated={isAuthenticated} hasAccess={hasCommercialAccess} redirectTo={defaultWorkspace}><CommercialWorkspace /></ProtectedRoute>} />
+          <Route path="/configuracion" element={<ProtectedRoute isAuthenticated={isAuthenticated} hasAccess={hasSettingsAccess} redirectTo={defaultWorkspace}><UsersSettings /></ProtectedRoute>} />
           <Route path="/productos" element={<Navigate to={defaultWorkspace} replace />} />
           <Route path="/movimientos" element={<Navigate to={defaultWorkspace} replace />} />
           <Route path="/clientes" element={<Navigate to="/ventas" replace />} />

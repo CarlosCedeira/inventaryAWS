@@ -190,15 +190,11 @@ async function createProduct(req: AuthenticatedRequest, res: ApiResponse) {
       return res.status(400).json({ error: "El impuesto seleccionado no es valido" });
     }
 
-    const result = await inventoryService.createNewProduct(
-      validation.product,
-      validation.inventory,
-      req.user.id
-    );
+    const result = await inventoryService.createNewProduct(validation.product);
 
     log("info", "product_created", {
       requestId: req.requestId, tenantId: req.tenantId, userId: req.user.id,
-      productId: result.productoId, inventoryId: result.inventarioId,
+      productId: result.productoId,
     });
     res.status(201).json({ message: "Producto creado correctamente", ...result });
   } catch (error) {
