@@ -95,6 +95,8 @@ un README propio para las instrucciones que solo le afectan.
 | [Autorización de sesión](documentation/session-authorization.md) | Comprobación actual de cuenta, tenant y rol en cada petición protegida. |
 | [ERS Brétema](documentation/ERS_Bretema.md) | Especificación de requisitos del sistema. |
 | [Especificación funcional de productos](documentation/especificacion-funcional-productos.md) | Alcance, flujos, reglas, interfaz, permisos, API y aceptación del catálogo de productos. |
+| [Especificación funcional de ventas](documentation/especificacion-funcional-ventas.md) | Flujos comerciales, estados, lotes, devoluciones, API, cobertura y límites del módulo de ventas. |
+| [Registro de decisiones](documentation/decisions/README.md) | Decisiones respaldadas por código o requisitos y cuestiones pendientes de ratificar. |
 | [Informe de progreso — 30 de octubre de 2026](documentation/informe-progreso-2026-10-30.md) | Estado verificable de la rama `main`, riesgos de piloto y prioridades. |
 | [Informe local — 4 de noviembre de 2026](documentation/informe-progreso-local-2026-11-04.md) | Avances sin publicar, validación disponible y bloqueos de la v1. |
 | [Arquitectura del servidor](documentation/server/Arquitecture.md) | Diseño y estructura del backend. |

@@ -27,8 +27,9 @@ por tenant, facturación, cobros, proveedores ni recuperación de contraseña.
    `back/modules/auth/` y `back/modules/*/*.routes.js`.
 3. Para inventario o catálogo: `documentation/especificacion-funcional-productos.md`,
    `back/modules/inventory/`, `back/modules/movements/` y sus pruebas.
-4. Para ventas: `documentation/ERS_Bretema.md`, `back/modules/sales/` y
-   `back/tests/sales.integration.test.ts`.
+4. Para ventas: `documentation/especificacion-funcional-ventas.md`,
+   `documentation/decisions/`, `back/modules/sales/` y las pruebas de ventas
+   y seguridad de inventario.
 5. Para datos: migraciones y `back/tests/fixtures/schema.sql`. Los ficheros
    `documentation/Database/*.txt` son referencias históricas, no el esquema
    autoritativo.
@@ -97,3 +98,14 @@ comprobación hasta restaurar o sustituir esa suite.
 Al cambiar API, permisos, migraciones o reglas de negocio, actualiza el README
 raíz, el índice de `documentation/`, la especificación afectada, la guía de
 pruebas y este archivo si cambian rutas, comandos o invariantes.
+
+## Flujo breve para cambios de desarrollo
+
+1. Lee la especificación y las decisiones del área afectada.
+2. Identifica rutas, contratos, datos y reglas que el cambio debe preservar.
+3. Implementa el cambio siguiendo las convenciones del módulo.
+4. Ejecuta comprobaciones proporcionales, sin paralelizar suites que comparten
+   `inventario_test`.
+5. Si cambia el comportamiento, actualiza la especificación, trazabilidad de
+   pruebas y documentación de API o permisos correspondiente.
+6. Informa de resultados reales, límites y decisiones de producto pendientes.

@@ -31,6 +31,8 @@ del comportamiento implementado; esta carpeta explica el contexto para leerlo.
 | Entrada al repositorio y comandos | [`../AGENTS.md`](../AGENTS.md) y [`../README.md`](../README.md) |
 | Requisitos, alcance y decisiones pendientes | [`ERS_Bretema.md`](ERS_Bretema.md) |
 | Catálogo, productos y contrato HTTP | [`especificacion-funcional-productos.md`](especificacion-funcional-productos.md) |
+| Ventas, clientes, estados, API y cobertura real | [`especificacion-funcional-ventas.md`](especificacion-funcional-ventas.md) |
+| Decisiones respaldadas y pendientes de ratificar | [`decisions/`](decisions/) |
 | Sesiones y permisos actuales | [`session-authorization.md`](session-authorization.md) |
 | Pruebas con MySQL | [`../back/tests/README.md`](../back/tests/README.md) y [`../back/tests/integration/README.md`](../back/tests/integration/README.md) |
 | Esquema de prueba y evolución de datos | [`../back/tests/fixtures/schema.sql`](../back/tests/fixtures/schema.sql) y [`../back/migrations/`](../back/migrations/) |

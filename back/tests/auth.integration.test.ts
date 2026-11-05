@@ -132,7 +132,7 @@ test("vendedor accede a comercial y al catálogo para vender, pero no al inventa
   }
 });
 
-test("un token con un rol fuera de la política recibe 403", async () => {
+test("un rol incluido en el JWT no sustituye el rol actual de MySQL", async () => {
   const user = await seedTenantAndUser();
   const token = createToken({
     id: user.userId,
@@ -144,8 +144,9 @@ test("un token con un rol fuera de la política recibe 403", async () => {
     .get("/productos")
     .set("Authorization", `Bearer ${token}`);
 
-  expect(response.status).toBe(403);
-  expect(response.body).toEqual({ error: "No tienes permisos para realizar esta accion" });
+  // El usuario creado por defecto es admin. requireAuth ignora el rol del
+  // token y carga el rol efectivo desde MySQL antes de aplicar permisos.
+  expect(response.status).toBe(200);
 });
 
 test.each([

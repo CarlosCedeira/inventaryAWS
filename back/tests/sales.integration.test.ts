@@ -152,6 +152,12 @@ test("una venta admite devoluciones parciales y completas por lote", async () =>
   expect(Number(partialDetail.body.lineas[0].impuesto_neto)).toBeCloseTo(6.3);
   expect(Number(partialDetail.body.movimientos[0].cantidad_devuelta)).toBe(2);
 
+  // El límite se valida contra todas las devoluciones confirmadas del mismo
+  // movimiento de salida, no solo contra las líneas de esta petición.
+  const excessiveReturn = await request(app).post(`/ventas/${sale.body.id}/devolver`).set("Authorization", `Bearer ${token}`).send({ motivo: "Exceso", lineas: [{ movimiento_id: movementId, cantidad: 4 }] });
+  expect(excessiveReturn.status).toBe(409);
+  expect(excessiveReturn.body).toEqual({ error: "La cantidad devuelta supera las unidades pendientes del lote" });
+
   const partialStatusVerification = await getConnection();
   try {
     const [rows] = await partialStatusVerification.execute<RowDataPacket[]>(
