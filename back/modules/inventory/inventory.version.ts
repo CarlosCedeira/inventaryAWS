@@ -1,7 +1,13 @@
-const { createHash } = require("node:crypto");
+import { createHash } from "node:crypto";
+
+interface VersionedInventoryItem {
+  cantidad: number | null;
+  fecha_caducidad: Date | string | null;
+  numero_lote: string | null;
+}
 
 // An opaque snapshot token, compared while the lot is locked for editing.
-function inventoryVersion(item) {
+function inventoryVersion(item: VersionedInventoryItem) {
   const date = item.fecha_caducidad;
   const normalizedDate = date instanceof Date
     ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
@@ -11,4 +17,4 @@ function inventoryVersion(item) {
   ])).digest("hex");
 }
 
-module.exports = { inventoryVersion };
+export { inventoryVersion };

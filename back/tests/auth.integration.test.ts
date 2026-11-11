@@ -137,7 +137,7 @@ test("un rol incluido en el JWT no sustituye el rol actual de MySQL", async () =
   const token = createToken({
     id: user.userId,
     tenant_id: user.tenantId,
-    rol: "rol_no_autorizado",
+    session_version: 0,
   });
 
   const response = await request(app)
@@ -147,6 +147,27 @@ test("un rol incluido en el JWT no sustituye el rol actual de MySQL", async () =
   // El usuario creado por defecto es admin. requireAuth ignora el rol del
   // token y carga el rol efectivo desde MySQL antes de aplicar permisos.
   expect(response.status).toBe(200);
+});
+
+test("restablecer la contraseña invalida la cookie de sesión anterior", async () => {
+  const owner = await seedTenantAndUser({ email: "owner-reset@demo.com", role: "owner" });
+  const ownerAgent = request.agent(app);
+  const ownerLogin = await ownerAgent.post("/auth/login").send({ email: owner.email, password: owner.password });
+  expect(ownerLogin.status).toBe(200);
+
+  const created = await ownerAgent.post("/usuarios").send({
+    nombre: "Usuario a restablecer", email: "reset@demo.com", password: "password-antigua", rol: "vendedor",
+  });
+  expect(created.status).toBe(201);
+
+  const userAgent = request.agent(app);
+  expect((await userAgent.post("/auth/login").send({ email: "reset@demo.com", password: "password-antigua" })).status).toBe(200);
+  expect((await ownerAgent.post(`/usuarios/${created.body.id}/restablecer-password`).send({ password: "password-nueva" })).status).toBe(204);
+  expect((await userAgent.get("/auth/me")).status).toBe(401);
+
+  const newSession = request.agent(app);
+  expect((await newSession.post("/auth/login").send({ email: "reset@demo.com", password: "password-nueva" })).status).toBe(200);
+  expect((await newSession.get("/auth/me")).status).toBe(200);
 });
 
 test.each([

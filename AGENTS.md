@@ -78,7 +78,9 @@ comprobación hasta restaurar o sustituir esa suite.
 - `tenant_id` procede de `requireAuth`, no del cuerpo ni de parámetros enviados
   por el cliente. Toda consulta o relación debe acotarse al tenant efectivo.
 - La cookie `bretema_session` es HttpOnly. El JWT valida la sesión, pero cada
-  petición protegida obtiene usuario, tenant activo y rol actual de MySQL.
+  petición protegida obtiene usuario, tenant activo, rol actual y
+  `session_version` de MySQL. Un restablecimiento de contraseña incrementa esa
+  versión y debe invalidar los JWT emitidos antes del cambio.
   Bearer solo se acepta con `NODE_ENV=test` para integración.
 - La autorización se impone en las rutas del servidor; los controles del
   frontend no sustituyen `requireRoles`.

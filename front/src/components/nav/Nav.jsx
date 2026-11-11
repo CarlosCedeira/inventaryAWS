@@ -4,7 +4,7 @@ import { Routes, Route, Link, Navigate, useLocation, useNavigate } from "react-r
 import { CommercialWorkspace, InventoryWorkspace } from "../workspaces/Workspaces";
 import UsersManager from "../logging.jsx";
 import UsersSettings from "../settings/UsersSettings";
-import { getCurrentUser, getSession, logout } from "../../services/authService";
+import { useSession } from "../../context/SessionContext";
 import { canAccessCommercial, canAccessInventory, isOwner } from "../../utils/permissions";
 import { useNavigationShortcutKeys } from "../../hooks/useEscapeKey";
 
@@ -27,13 +27,12 @@ function Nav() {
   const [navigationNotice, setNavigationNotice] = useState("");
   const location = useLocation();
   const navigate = useNavigate();
-  const session = getSession();
-  const user = session?.user;
+  const { user, isLoading, signOut } = useSession();
   const hasInventoryAccess = canAccessInventory(user);
   const hasCommercialAccess = canAccessCommercial(user);
   const hasSettingsAccess = isOwner(user);
   const defaultWorkspace = hasInventoryAccess ? "/inventario" : "/ventas";
-  const isAuthenticated = Boolean(session?.user?.tenant_id);
+  const isAuthenticated = Boolean(user?.tenant_id);
   const wasAuthenticated = useRef(isAuthenticated); // <-- esto faltaba
   const lastScrollY = useRef(0);
   const toggleSidebar = () => setIsCollapsed(!isCollapsed);
@@ -48,10 +47,6 @@ function Nav() {
     }
     wasAuthenticated.current = isAuthenticated;
   }, [isAuthenticated]);
-
-  useEffect(() => {
-    if (getSession()) void getCurrentUser().catch(() => {});
-  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -87,7 +82,7 @@ function Nav() {
   };
 
   const handleLogout = async () => {
-    await logout();
+    await signOut();
     setIsCollapsed(false);
     navigate("/login", { replace: true });
   };
@@ -109,6 +104,8 @@ function Nav() {
     () => { if (hasInventoryAccess) changeSection("/inventario", "Productos"); },
     () => { if (hasCommercialAccess) changeSection("/ventas", "Clientes"); }
   );
+
+  if (isLoading) return null;
 
   return (
     <div className="d-flex w-100 min-vh-100">

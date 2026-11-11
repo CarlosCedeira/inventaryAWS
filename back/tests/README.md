@@ -39,7 +39,9 @@ Al terminar limpia los datos y después cierra el pool, incluso si falla la limp
 Las tablas se conservan vacías para la siguiente ejecución.
 
 Los casos iniciales cubren login correcto, contraseña incorrecta, email que no
-existe, campos ausentes, usuario inactivo y tenant inactivo. La vista de
+existe, campos ausentes, usuario inactivo y tenant inactivo. También comprueban
+que un restablecimiento de contraseña invalida una cookie emitida antes del
+cambio y que el usuario puede iniciar sesión con la nueva contraseña. La vista de
 productos también comprueba que exige sesión y que solo muestra los productos,
 la categoría y los stocks del tenant autenticado. También cubre el ciclo completo
 de creación, listado, búsqueda, filtro por categoría, detalle, edición y borrado

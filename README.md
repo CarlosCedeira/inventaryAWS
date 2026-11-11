@@ -116,6 +116,7 @@ un README propio para las instrucciones que solo le afectan.
 - Passwords validadas con bcrypt.
 - La sesión se conserva en la cookie `HttpOnly` `bretema_session`; el navegador no puede leer el JWT.
 - Las rutas privadas recuperan el token desde esa cookie y rellenan `req.user` y `req.tenantId`.
+- El frontend mantiene el usuario y sus permisos en `SessionContext`; no persiste la sesión ni el rol en `localStorage`.
 - Los roles son `owner` (dueño), `admin` (administración), `almacen` y `vendedor`.
 - `owner` administra usuarios; `owner` y `admin` gestionan catálogo; `almacen` opera inventario y `vendedor` opera el área comercial dentro de su alcance.
 - Rate limit aplicado a rutas bajo `/auth`.
@@ -263,7 +264,7 @@ La conexion MySQL se configura en `back/db.js`.
 Las migraciones de `back/migrations/` son manuales, ordenadas y no se ejecutan
 al arrancar. Antes de aplicarlas a una base existente, revisa qué versión de
 esquema tiene esa base y el contenido de todas las migraciones pendientes
-(`001` a `008` en este árbol). No ejecutes `001_normalize_user_roles.sql` de
+(`001` a `009` en este árbol). No ejecutes `001_normalize_user_roles.sql` de
 forma aislada como instrucción general: corresponde a una transición anterior
 de roles.
 
@@ -335,15 +336,17 @@ Estado actual:
 
 - JWT para rutas privadas.
 - Autorización por roles `owner`, `admin`, `almacen` y `vendedor` según la ruta.
-- `tenant_id` y el rol se recuperan del usuario activo en MySQL después de
-  validar el token; se usan como límite de datos y autorización efectiva.
+- `tenant_id`, rol y versión de sesión se recuperan del usuario activo en MySQL
+  después de validar el token; se usan como límite de datos, autorización e
+  invalidación efectiva de sesiones tras restablecer contraseña.
 - Rate limiting en login.
 - Helmet activado en Express.
 - Passwords con bcrypt.
 
-Limitación conocida: el cambio de contraseña no revoca por sí solo otros JWT
-ya emitidos. En cambio, una baja de usuario/tenant o un cambio de rol se aplica
-en la siguiente petición protegida.
+Un restablecimiento de contraseña incrementa la versión de sesión del usuario;
+los JWT emitidos antes del cambio quedan invalidados en la siguiente petición.
+Una baja de usuario/tenant o un cambio de rol también se aplica en la siguiente
+petición protegida.
 
 Pendiente o a revisar:
 

@@ -1,12 +1,18 @@
 const DEFAULT_MAX_STOCK_QUANTITY = 999999;
 
-function isBlank(value) {
+interface StockQuantityOptions {
+  label?: string;
+  max?: number;
+  allowZero?: boolean;
+}
+
+function isBlank(value: unknown) {
   return value === undefined || value === null || String(value).trim() === "";
 }
 
 function validateStockQuantity(
-  value,
-  { label = "La cantidad", max = DEFAULT_MAX_STOCK_QUANTITY, allowZero = false } = {}
+  value: unknown,
+  { label = "La cantidad", max = DEFAULT_MAX_STOCK_QUANTITY, allowZero = false }: StockQuantityOptions = {}
 ) {
   if (isBlank(value)) return `${label} es obligatoria`;
 
@@ -31,15 +37,15 @@ function validateStockQuantity(
   return null;
 }
 
-function normalizeStockQuantity(value) {
+function normalizeStockQuantity(value: unknown) {
   return Number(value);
 }
 
-function parseStockQuantity(value, options) {
+function parseStockQuantity(value: unknown, options?: StockQuantityOptions) {
   const errorMessage = validateStockQuantity(value, options);
 
   if (errorMessage) {
-    const error = new Error(errorMessage);
+    const error = new Error(errorMessage) as Error & { statusCode: number };
     error.statusCode = 400;
     throw error;
   }
@@ -47,7 +53,7 @@ function parseStockQuantity(value, options) {
   return normalizeStockQuantity(value);
 }
 
-module.exports = {
+export {
   validateStockQuantity,
   normalizeStockQuantity,
   parseStockQuantity,

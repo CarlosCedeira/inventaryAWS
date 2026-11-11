@@ -1,4 +1,5 @@
 const dotenv = require("dotenv");
+require("tsx/cjs/api").register();
 dotenv.config({ path: require("node:path").join(__dirname, ".env") });
 for (const key of ["DB_HOST", "DATABASE", "DB_USER", "AUTH_SECRET"]) {
   if (!process.env[key]?.trim()) throw new Error(`Falta la variable de entorno ${key}`);

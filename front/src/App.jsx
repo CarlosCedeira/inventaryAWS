@@ -4,6 +4,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
 import Nav from "./components/nav/Nav.jsx";
 import { ToastProvider } from "./components/feedback/ToastProvider.jsx";
+import { SessionProvider } from "./context/SessionContext.jsx";
 
 import "@fontsource/inter/400.css";
 import "@fontsource/inter/500.css";
@@ -16,9 +17,11 @@ import "./App.css";
 function App() {
   return (
     <BrowserRouter>
-      <ToastProvider>
-        <Nav />
-      </ToastProvider>
+      <SessionProvider>
+        <ToastProvider>
+          <Nav />
+        </ToastProvider>
+      </SessionProvider>
     </BrowserRouter>
   );
 }

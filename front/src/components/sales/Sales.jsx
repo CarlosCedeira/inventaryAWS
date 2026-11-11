@@ -7,7 +7,7 @@ import SaleCardLayout from "./SaleCardLayout";
 import SalesOverview from "./SalesOverview";
 import { salesService } from "./salesService";
 import { useToast } from "../feedback/ToastProvider";
-import { getSession } from "../../services/authService";
+import { useSession } from "../../context/SessionContext";
 import { canAccessInventory, canManageCommercial } from "../../utils/permissions";
 import "./sales.css";
 
@@ -49,9 +49,9 @@ const createDefaultExportDates = () => {
 
 export default function Sales({ workspaceHeader }) {
   const { success } = useToast();
-  const sessionUser = getSession()?.user;
-  const canExportSales = canManageCommercial(sessionUser);
-  const canViewMovements = canAccessInventory(sessionUser);
+  const { user } = useSession();
+  const canExportSales = canManageCommercial(user);
+  const canViewMovements = canAccessInventory(user);
   const [activeView, setActiveView] = useState("sales");
   const [sales, setSales] = useState([]);
   const [products, setProducts] = useState([]);

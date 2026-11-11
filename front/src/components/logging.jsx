@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { login } from "../services/authService";
+import { useSession } from "../context/SessionContext";
 import "./logging.css";
 
 const UsersManager = () => {
   const navigate = useNavigate();
+  const { signIn } = useSession();
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -22,9 +23,8 @@ const UsersManager = () => {
     setLoading(true);
 
     try {
-      await login(form.email, form.password);
-      console.log("login successful, navigating to /productos", Response);
-      navigate("/productos");
+      await signIn(form.email, form.password);
+      navigate("/", { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {

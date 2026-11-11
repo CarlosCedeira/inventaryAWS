@@ -9,7 +9,7 @@ import NewProduct from "./newProduct/newProduct";
 import NewCategory from "./newCategory/NewCategory";
 import { useTableSelectionShortcutKeys } from "../../hooks/useEscapeKey";
 import { movementService } from "../movements/movementService";
-import { getSession } from "../../services/authService";
+import { useSession } from "../../context/SessionContext";
 import { canManageInventory } from "../../utils/permissions";
 
 import "./getProducts.css";
@@ -66,7 +66,8 @@ const metricFilters = {
 };
 
 const GetProducts = ({ onShowMovements, workspaceHeader }) => {
-  const canManageProducts = canManageInventory(getSession()?.user);
+  const { user } = useSession();
+  const canManageProducts = canManageInventory(user);
   const {
     items,
     error,

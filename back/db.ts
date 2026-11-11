@@ -1,7 +1,6 @@
-// db.js
-const mysql = require("mysql2/promise");
+import mysql, { type Pool, type PoolConnection } from "mysql2/promise";
 
-const pool = mysql.createPool({
+const pool: Pool = mysql.createPool({
   host: process.env.DB_HOST,
   port: Number(process.env.DB_PORT || 3306),
   database: process.env.DATABASE,
@@ -15,12 +14,15 @@ const pool = mysql.createPool({
   queueLimit: 100,
 });
 
-async function getConnection() {
+async function getConnection(): Promise<PoolConnection> {
   return pool.getConnection();
 }
 
-async function closePool() {
+async function closePool(): Promise<void> {
   await pool.end();
 }
 
-module.exports = { getConnection, closePool };
+// Se exporta un objeto CommonJS mutable para conservar el contrato de los
+// modelos y pruebas existentes, que sustituyen `getConnection` en memoria.
+const db = { closePool, getConnection };
+export = db;

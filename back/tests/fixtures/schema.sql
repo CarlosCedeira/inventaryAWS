@@ -16,6 +16,7 @@ tenant_id int NOT NULL,
 nombre varchar(150) NOT NULL,
 email varchar(150) NOT NULL,
 password_hash varchar(255) NOT NULL,
+session_version int unsigned NOT NULL DEFAULT '0',
 rol enum('owner','admin','almacen','vendedor') NOT NULL DEFAULT 'admin',
 activo tinyint(1) DEFAULT '1',
 fecha_creacion datetime DEFAULT CURRENT_TIMESTAMP,
@@ -218,6 +219,7 @@ ALTER TABLE usuarios
   MODIFY COLUMN rol ENUM('owner','admin') NOT NULL DEFAULT 'admin';
 ALTER TABLE usuarios
   MODIFY COLUMN rol ENUM('owner','admin','almacen','vendedor') NOT NULL DEFAULT 'admin';
+ALTER TABLE usuarios ADD COLUMN session_version INT UNSIGNED NOT NULL DEFAULT 0 AFTER password_hash;
 
 ALTER TABLE clientes
   ADD COLUMN usuario_id INT NULL AFTER tenant_id,

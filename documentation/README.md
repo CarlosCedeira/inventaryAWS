@@ -10,6 +10,8 @@ del comportamiento implementado; esta carpeta explica el contexto para leerlo.
 
 - Sesión con cookie `HttpOnly`, JWT firmado y validación en MySQL de usuario,
   tenant y rol actuales en cada petición protegida.
+- `SessionContext` mantiene el estado visual de la sesión en React; no se usa
+  `localStorage` como fuente de permisos.
 - Roles `owner`, `admin`, `almacen` y `vendedor`, aplicados en rutas de servidor.
 - Catálogo, categorías, impuestos, productos sin existencias iniciales, lotes,
   entradas, salidas, ajustes y trazabilidad de movimientos.
@@ -21,8 +23,9 @@ del comportamiento implementado; esta carpeta explica el contexto para leerlo.
 - Licencias de módulos por tenant, recuperación de contraseña, proveedores,
   facturación/cobros, política para clientes sin creador y objetivos operativos
   (copias, RPO/RTO, rendimiento y navegadores).
-- La revocación tras un cambio de contraseña no está implementada; una baja o
-  cambio de rol sí se aplica en la siguiente petición protegida.
+- La revocación tras un restablecimiento de contraseña se aplica mediante una
+  versión de sesión; una baja o cambio de rol también se aplica en la siguiente
+  petición protegida.
 
 ## Cómo navegar
 

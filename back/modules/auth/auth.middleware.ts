@@ -1,11 +1,13 @@
-import type { ApiRequest, ApiResponse, AuthenticatedUser, NextFunction, Role } from "../../types/http";
+import type { ApiRequest, ApiResponse, NextFunction, Role } from "../../types/http";
+import type { SessionUser } from "./auth.model";
+import type { SessionTokenPayload } from "./auth.tokens";
 const { verifyToken } = require("./auth.tokens") as {
-  verifyToken: (token: string) => AuthenticatedUser | null;
+  verifyToken: (token: string) => SessionTokenPayload | null;
 };
 const { log } = require("../../utils/logger");
 const { COOKIE_NAME } = require("./auth.cookies") as { COOKIE_NAME: string };
 const authModel = require("./auth.model") as {
-  findActiveSessionUser: (userId: number, tenantId: number) => Promise<AuthenticatedUser | null>;
+  findActiveSessionUser: (userId: number, tenantId: number) => Promise<SessionUser | null>;
 };
 
 const ROLES = Object.freeze({
@@ -34,13 +36,18 @@ async function requireAuth(req: ApiRequest, res: ApiResponse, next: NextFunction
 
   try {
     const tokenUser = verifyToken(token);
-    if (!tokenUser?.id || !tokenUser.tenant_id) return res.status(401).json({ error: "Token invalido" });
+    if (!tokenUser?.id || !tokenUser.tenant_id || !Number.isSafeInteger(tokenUser.session_version)) {
+      return res.status(401).json({ error: "Token invalido" });
+    }
 
     const user = await authModel.findActiveSessionUser(tokenUser.id, tokenUser.tenant_id);
-    if (!user) return res.status(401).json({ error: "Sesion no valida" });
+    if (!user || user.session_version !== tokenUser.session_version) {
+      return res.status(401).json({ error: "Sesion no valida" });
+    }
 
     // Nunca se conserva el rol contenido en el token: este objeto procede de SQL.
-    req.user = user;
+    const { session_version: _sessionVersion, ...authenticatedUser } = user;
+    req.user = authenticatedUser;
     req.tenantId = user.tenant_id;
     return next();
   } catch (error) {

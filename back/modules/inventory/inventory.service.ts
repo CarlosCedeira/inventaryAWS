@@ -1,11 +1,12 @@
-const { groupProductWithInventory } = require("./inventory.mappers");
-const inventoryModel = require("./inventory.model");
+import { groupProductWithInventory } from "./inventory.mappers";
+import * as inventoryModel from "./inventory.model";
+import type { CategoryFields, ProductFields, ProductId } from "./inventory.types";
 
-async function listProducts(tenantId) {
+async function listProducts(tenantId: number) {
   return await inventoryModel.getAllProducts(tenantId);
 }
 
-async function listCategories(tenantId) {
+async function listCategories(tenantId: number) {
   return await inventoryModel.getAllCategories(tenantId);
 }
 
@@ -13,31 +14,31 @@ async function listTaxes() {
   return await inventoryModel.getAllTaxes();
 }
 
-async function listProductsWithoutRecentSales(tenantId) {
+async function listProductsWithoutRecentSales(tenantId: number) {
   return await inventoryModel.getProductsWithoutRecentSales(tenantId);
 }
 
-async function taxIsActive(taxId) {
+async function taxIsActive(taxId: number) {
   return await inventoryModel.taxExists(taxId);
 }
 
-async function createCategoryForTenant(tenantId, categoryData) {
+async function createCategoryForTenant(tenantId: number, categoryData: CategoryFields) {
   return await inventoryModel.createCategory(tenantId, categoryData);
 }
 
-async function categoryBelongsToTenant(tenantId, categoryId) {
+async function categoryBelongsToTenant(tenantId: number, categoryId: number) {
   return await inventoryModel.categoryExistsForTenant(tenantId, categoryId);
 }
 
-async function searchProducts(tenantId, name) {
+async function searchProducts(tenantId: number, name: string) {
   return await inventoryModel.searchProductsByName(tenantId, name);
 }
 
-async function listProductsByCategory(tenantId, categoryId) {
+async function listProductsByCategory(tenantId: number, categoryId: number) {
   return await inventoryModel.getProductsByCategory(tenantId, categoryId);
 }
 
-async function getProduct(tenantId, id) {
+async function getProduct(tenantId: number, id: ProductId) {
   const rows = await inventoryModel.getProductById(tenantId, id);
 
   return groupProductWithInventory(rows);
@@ -45,19 +46,19 @@ async function getProduct(tenantId, id) {
 
 
 
-async function updateProductData(tenantId, productId, productoData) {
+async function updateProductData(tenantId: number, productId: ProductId, productoData: ProductFields) {
   return await inventoryModel.updateProduct(tenantId, productId, productoData);
 }
 
-async function createNewProduct(productoData) {
+async function createNewProduct(productoData: ProductFields & { tenant_id: number }) {
   return await inventoryModel.createProduct(productoData);
 }
 
-async function removeProduct(tenantId, productId) {
+async function removeProduct(tenantId: number, productId: ProductId) {
   return await inventoryModel.softDeleteProduct(tenantId, productId);
 }
 
-module.exports = {
+export {
   listProducts,
   listCategories,
   listTaxes,

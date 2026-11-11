@@ -1,7 +1,18 @@
-const { randomUUID } = require("node:crypto");
-const { log } = require("../utils/logger");
+import { randomUUID } from "node:crypto";
+import type { ApiRequest, NextFunction } from "../types/http";
+import { log } from "../utils/logger";
 
-function requestContext(req, res, next) {
+interface RequestWithContext extends ApiRequest {
+  method: string;
+}
+
+interface ContextResponse {
+  statusCode: number;
+  setHeader(name: string, value: string): unknown;
+  on(event: "finish", listener: () => void): unknown;
+}
+
+function requestContext(req: RequestWithContext, res: ContextResponse, next: NextFunction): void {
   const startedAt = process.hrtime.bigint();
   req.requestId = randomUUID();
   res.setHeader("X-Request-Id", req.requestId);
@@ -19,8 +30,7 @@ function requestContext(req, res, next) {
       role: req.user?.rol,
     });
   });
-
   next();
 }
 
-module.exports = { requestContext };
+export { requestContext };

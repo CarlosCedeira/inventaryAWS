@@ -1,11 +1,35 @@
-const { inventoryVersion } = require("./inventory.version");
+import { inventoryVersion } from "./inventory.version";
+import type { ProductDetailRow } from "./inventory.types";
 
-function groupProductWithInventory(rows) {
-  const map = new Map();
+interface InventoryLot {
+  inventario_id: number;
+  version: string;
+  cantidad: number | null;
+  fecha_caducidad: Date | null;
+  numero_lote: string | null;
+}
+
+interface ProductWithInventory {
+  producto_id: number;
+  nombre: string;
+  descripcion: string | null;
+  categoria_nombre: string | null;
+  categoria_id: number | null;
+  precio_compra: string;
+  precio_venta: string;
+  stock_minimo: number;
+  inventario: InventoryLot[];
+  impuesto_id?: number | null;
+  impuesto_nombre?: string | null;
+  impuesto_porcentaje?: string | null;
+}
+
+function groupProductWithInventory(rows: ProductDetailRow[]): ProductWithInventory | undefined {
+  const map = new Map<number, ProductWithInventory>();
 
   rows.forEach(row => {
     if (!map.has(row.producto_id)) {
-      const product = {
+      const product: ProductWithInventory = {
         producto_id: row.producto_id,
         nombre: row.producto_nombre,
         descripcion: row.producto_descripcion,
@@ -24,7 +48,8 @@ function groupProductWithInventory(rows) {
       map.set(row.producto_id, product);
     }
 
-    if (row.inventario_id != null) map.get(row.producto_id).inventario.push({
+    const product = map.get(row.producto_id);
+    if (row.inventario_id != null && product) product.inventario.push({
       inventario_id: row.inventario_id,
       version: inventoryVersion(row),
       cantidad: row.cantidad,
@@ -36,6 +61,6 @@ function groupProductWithInventory(rows) {
   return Array.from(map.values())[0]; // si es un producto único
 }
 
-module.exports = {
+export {
   groupProductWithInventory
 };
